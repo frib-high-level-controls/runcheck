@@ -17,6 +17,10 @@
       "warn"
     ],
     "camelcase": 0,
+    "comma-dangle": [
+      "warn",
+      "never"
+    ],
     "consistent-this": 0,
     "filenames/match-exported": 2,
     "filenames/match-regex": [
