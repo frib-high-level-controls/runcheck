@@ -1,12 +1,4 @@
-/*global deviceDetailsTemplate: false*/
-
-var statusMap = {
-  '0': 'Spare',
-  '1': 'Prepare to install',
-  '1.5': 'Prepare installation checklist',
-  '2': 'approved to install',
-  '3': 'installed'
-};
+/*global deviceDetailsTemplate: false, Typeahead: false*/
 
 /**
  * render page
@@ -14,6 +6,7 @@ var statusMap = {
 function dataRender() {
   // $('#prepare-panel .slot,.device').hide();
   var role = 'AM';
+  var status = $('#dStatus').attr('name');
   disableButton(status, role); // TODO: get the role
 }
 
@@ -24,38 +17,39 @@ function dataRender() {
  * @param role DO: device owner AM: area manger
  */
 function disableButton(status, role) {
-  //TODO: confirm all the roles, and disable buttons by role.
-  if (role == 'AM') {
-    if (status === 0) {
+  role = 'AM';//TODO: confirm all the roles, and disable buttons by role.
+  $('#preInstall').removeAttr('disabled');
+  $('#approve-install').removeAttr('disabled');
+  $('#reject-install').removeAttr('disabled');
+  $('#install').removeAttr('disabled');
+  $('#set-spare').removeAttr('disabled');
+  if (role === 'AM') {
+    if (status == '0') {
       $('#approve-install').attr('disabled', 'disabled');
       $('#reject-install').attr('disabled', 'disabled');
       $('#install').attr('disabled', 'disabled');
       $('#set-spare').attr('disabled', 'disabled');
     }
-    if (status === 1) {
+    if (status == '1') {
       $('#preInstall').attr('disabled', 'disabled');
       $('#install').attr('disabled', 'disabled');
     }
-    if (status === 1.5) {
+    if (status == '1.5') {
       $('#preInstall').attr('disabled', 'disabled');
       $('#install').attr('disabled', 'disabled');
     }
-    if (status === 2) {
+    if (status == '2') {
       $('#preInstall').attr('disabled', 'disabled');
       $('#approve-install').attr('disabled', 'disabled');
       $('#reject-install').attr('disabled', 'disabled');
     }
-    if (status === 3) {
+    if (status == '3') {
       $('#preInstall').attr('disabled', 'disabled');
       $('#approve-install').attr('disabled', 'disabled');
       $('#reject-install').attr('disabled', 'disabled');
       $('#install').attr('disabled', 'disabled');
     }
   }
-}
-
-function updateStatus(s) {
-  $('#dStatus').text(statusMap[s]);
 }
 
 
@@ -77,6 +71,7 @@ function setInstallTo(url, targetId) {
     $('#prepare-panel input.form-control').val('');
     $('#prepare-panel').addClass('hidden');
     History.prependHistory(data.__updates);
+    disableButton(data.status);
   }).fail(function (jqXHR) {
     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   });
@@ -84,9 +79,9 @@ function setInstallTo(url, targetId) {
 
 function setSpare() {
   var url =  window.location.pathname + '/';
-  if ($('#dInstallToDevice a')) {
+  if ($('#dInstallToDevice a').length) {
     url += 'install-to-device/' + $('#dInstallToDevice a').prop('href').split('/').pop();
-  } else if ($('#dInstallToSlot a')) {
+  } else if ($('#dInstallToSlot a').length) {
     url += 'install-to-slot/' + $('#dInstallToSlot a').prop('href').split('/').pop();
   } else {
     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now spare. </div>');
@@ -101,6 +96,7 @@ function setSpare() {
     $('#device-details').html(deviceDetailsTemplate({device: data}));
     $('#prepare-panel').removeClass('hidden');
     History.prependHistory(data.__updates);
+    disableButton(data.status)
   }).fail(function (jqXHR) {
     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   });
@@ -108,9 +104,9 @@ function setSpare() {
 
 function setStatus(status) {
   var url =  window.location.pathname + '/';
-  if ($('#dInstallToDevice a')) {
+  if ($('#dInstallToDevice a').length) {
     url += 'install-to-device/' + $('#dInstallToDevice a').prop('href').split('/').pop();
-  } else if ($('#dInstallToSlot a')) {
+  } else if ($('#dInstallToSlot a').length) {
     url += 'install-to-slot/' + $('#dInstallToSlot a').prop('href').split('/').pop();
   } else {
     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now spare. </div>');
@@ -130,6 +126,7 @@ function setStatus(status) {
     $('#device-details').html(deviceDetailsTemplate({device: data}));
     $('#prepare-panel').removeClass('hidden');
     History.prependHistory(data.__updates);
+    disableButton(data.status)
   }).fail(function (jqXHR) {
     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   });
@@ -137,6 +134,7 @@ function setStatus(status) {
 
 
 $(function () {
+
   dataRender();
   var selected = null;
 
@@ -215,9 +213,9 @@ $(function () {
   });
 
 
-  $('#prepare-panel button[type="reset"]').click(function (e) {
-    // e.preventDefault();
-    $('#prepare-panel .slot,.device').hide();
+  $('#prepare-panel button[type="reset"]').click(function () {
+    $('#prepare-panel .slot,.device').addClass('hidden');
+    $('#prepare-title').text('');
   });
 
 });

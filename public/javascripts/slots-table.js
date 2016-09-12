@@ -52,24 +52,34 @@ var deviceColumn = {
   title: 'Device',
   data: 'device',
   render: function (data) {
-    if (!data) {
+    if (!data.id) {
       return 'Not installed';
     }
-    return '<a href="' + '/device/' + data + '" target="_blank" data-toggle="tooltip" title="go to the slot serialized device"><i class="fa fa-link fa-2x"></i></a>';
+    return '<a href="' + '/devices/' + data.id + '" target="_blank" data-toggle="tooltip" title="go to the slot serialized device"><i class="fa fa-link fa-2x"></i></a>';
   },
   order: false
 };
 
+var statusMap = {0: 'Device not installed',
+  1: 'Device installed',
+  2: 'DO OK',
+  2.5: 'Slot DRR checklist',
+  3: 'AM approved',
+  4:'DRR approved'
+};
+
 var approvelStatusColumn = {
-  title: 'Approved for installation',
-  defaultContent: 'unknown',
-  data: 'approvalStatus',
+  title: 'Approved status',
+  data: 'status',
+  render: function (data) {
+    return  statusMap[data];
+  },
   searching: true
 };
 
 var machineModeColumn = {
   title: 'Associated machine mode(s)',
-  defaultContent: 'unknown',
+  defaultContent: 'None',
   data: 'machineMode',
   searching: true
 };

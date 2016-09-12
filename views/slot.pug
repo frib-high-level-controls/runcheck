@@ -1,9 +1,9 @@
-extends layout-history
+extends layout-history.pug
 
 block head
-  link(rel='stylesheet', href='/datatables/media/css/dataTables.bootstrap.min.css')
   title RunCheck slot
-
+    = ' '
+    = slot.name
 
 block content
     br
@@ -23,94 +23,109 @@ block content
             thead
               tr
                 th Name
-                th Owner
-                th Associated area
-                th Leve of care
                 th Device type
                 th Approval status
                 th Slot group
+                th Installed device
             tbody
               tr
-                td #{slot.name}
-                td #{slot.owner}
-                td #{slot.area}
-                td #{slot.level}
-                td #{slot.deviceType}
-                td #{slot.approvalStatus}
-                if (slotGroup)
-                  - var sotGroupUrl = {'href': '/slotGroups/' + slotGroup._id};
+                td= slot.name
+                td= slot.deviceType
+                -
+                  var statusMap = {0: 'Device not installed',
+                    1: 'Device installed',
+                    2: 'DO OK',
+                    2.5: 'Slot DRR checklist',
+                    3: 'AM approved',
+                    4:'DRR approved'
+                  };
+                td#status= statusMap[slot.status]
+                if (slot.inGroup)
+                  - var sotGroupUrl = {'href': '/slotGroups/' + slot.inGroup._id};
                   td
-                    a&attributes(sotGroupUrl) #{slotGroup.name}
+                    a&attributes(sotGroupUrl) #{slot.inGroup.name}
                 else
-                  td
-        button#list-slot.btn.btn-default.fa.fa-chevron-down(aria-hidden='true',title='show more details')
+                  td N/A
+                if (slot.device)
+                  - var deviceUrl = {'href': '/devices/' + slot.device.id};
+                  td#device
+                    a&attributes(deviceUrl) #{slot.device.serialNo}
+                else
+                  td#device N/A
+        button#list-slot.btn.btn-default.fa.fa-chevron-down(aria-hidden='true',title='show more details') more
         .row
           .col-md-6.col-md-offset-3
             .table-responsive
               table.table
                 tbody#slot-detail
                   tr
-                    th System
-                    td #{slot.system}
-                  tr
-                    th Sub-system
-                    td #{slot.subsystem}
-                  tr
-                    th Device naming
-                    td #{slot.deviceNaming}
-                  tr
-                    th Installed device
-                    if (slot.device)
-                      - var deviceUrl = {'href': '/devices/' + slot.device};
-                      td
-                        a&attributes(deviceUrl) #{slot.device}
-                    else
-                      td
-                  tr
-                    th Element name
-                    td #{slot.elementName}
-                  tr
-                    th Beam line position (dm)
-                    td #{slot.beamlinePosition}
-                  tr
-                    th Minimum Beam Pipe Inner Diameter (mm)
-                    td #{slot.InnerDiameter}
-                  tr
-                    th Element Flange to Flange Length (m)
-                    td #{slot.flangeLength}
-                  tr
-                    th PLACE HOLDER
-                    td #{slot.placeHolder}
-                  tr
-                    th Element Effective Length (m)
-                    td #{slot.effectiveLength}
-                  tr
-                    th Global Coordinate Z (m)
-                    td #{slot.coordinateZ}
-                  tr
-                    th Global Coordinate Y (m)
-                    td #{slot.coordinateY}
-                  tr
-                    th Global Coordinate X (m)
-                    td #{slot.coordinateX}
-                  tr
                     th Accumulated center-to-center Length (m)
-                    td #{slot.center2centerLength}
+                    td= slot.center2centerLength
                   tr
                     th Accumulated end-to-end Length (m)
-                    td #{slot.end2endLength}
+                    td= slot.end2endLength
+                  tr
+                    th Associated area
+                    td=slot.area
+                  tr
+                    th Beam line position (dm)
+                    td= slot.beamlinePosition
                   tr
                     th Comment
-                    td #{slot.comment}
+                    td= slot.comment
+                  tr
+                    th Device naming
+                    td= slot.deviceNaming
+                  tr
+                    th Element Effective Length (m)
+                    td= slot.effectiveLength
+                  tr
+                    th Element Flange to Flange Length (m)
+                    td= slot.flangeLength
+                  tr
+                    th Element name
+                    td= slot.elementName
+                  tr
+                    th Global Coordinate X (m)
+                    td= slot.coordinateX
+                  tr
+                    th Global Coordinate Y (m)
+                    td= slot.coordinateY
+                  tr
+                    th Global Coordinate Z (m)
+                    td= slot.coordinateZ
+                  tr
+                    th Leve of care
+                    td= slot.level
+                  tr
+                    th Minimum Beam Pipe Inner Diameter (mm)
+                    td= slot.InnerDiameter
                   tr
                     th Machine mode
-                    td #{slot.machineMode}
+                    td= slot.machineMode
+                  tr
+                    th Owner
+                    td= slot.owner
+                  tr
+                    th PLACE HOLDER
+                    td= slot.placeHolder
+                  tr
+                    th System
+                    td= slot.system
+                  tr
+                    th Sub-system
+                    td= slot.subsystem
+    button.btn.btn-space.btn-primary#DO-approve DO Approve
+    button.btn.btn-space.btn-primary#AM-approve AM Approve
+    button.btn.btn-space.btn-primary#DRR-approve DRR Approve
+    br
+    br
     .panel.panel-default
         .panel-heading
           strong Checklist
         .panel-body
-
+block history
+  each h in slot.__updates.reverse()
+    +change(h, moment)
 block js
-  script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
-  script(type='text/javascript', src='/datatables/media/js/dataTables.bootstrap.js')
   script(type='text/javascript', src='/javascripts/slot-action.js')

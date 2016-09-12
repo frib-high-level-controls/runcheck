@@ -49,7 +49,7 @@ var device = new Schema({
     id: {
       type: String,
       default: null
-    },
+    }
   },
   installToSlot: {
     name: {
@@ -59,7 +59,7 @@ var device = new Schema({
     id: {
       type: String,
       default: null
-    },
+    }
   },
   /**
    * 0: spare
