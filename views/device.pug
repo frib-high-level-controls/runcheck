@@ -1,4 +1,4 @@
-extends layout-history
+extends layout-history.pug
 
 block head
   link(rel='stylesheet', href='/stylesheets/typeaheadjs.css')
@@ -8,7 +8,6 @@ block head
 
 block content
   br
-  //- div#device(style='display: none') #{JSON.stringify(device)}
   div(id = 'message')
   .well(id = 'device-details')
     include ./client-side/device-details.pug
@@ -16,10 +15,10 @@ block content
     button.btn.btn-space.btn-primary(id = 'reject-install') Reject
     button.btn.btn-space.btn-primary(id = 'approve-install') Approve
     button.btn.btn-space.btn-primary(id = 'install') Install
-    button.btn.btn-space.btn-danger(id = 'set-spare') Set spare
+    button.btn.btn-space.btn-danger(id = 'set-not-installed') Set not installed
   br
-  - var spare = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
-  .panel.panel-default(id = 'prepare-panel' class=spare? '' : 'hidden')
+  - var notInstalled = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
+  .panel.panel-default(id = 'prepare-panel', class=notInstalled? '' : 'hidden')
     .panel-heading
       .btn-group
         button.btn.btn-space.btn-primary.dropdown-toggle(type='button', data-toggle='dropdown', aria-haspopup='true', aria-expanded='false')#preInstall
@@ -31,7 +30,7 @@ block content
             a.prepare-install device
           li
             a.prepare-install slot
-      Strong(id = 'prepare-title')
+      strong(id = 'prepare-title')
     .panel-body
       form.form-inline.slot.hidden
         .form-group
@@ -56,8 +55,8 @@ block content
       h4 Pre-installation Checklist
       #irrChecklist
     else
-      form(method='POST')
-        input(type='hidden' name='action', value="checklist-required")
+      form(method='POST', action='./')
+        input(type='hidden', name='action', value='checklist-required')
         button(type='submit') Request Checklist
 block history
   each h in device.__updates.reverse()
@@ -67,9 +66,9 @@ block js
   script(type='text/javascript', src='/javascripts/typeahead.js')
   script(type='text/javascript', src='/javascripts/device-action.js')
   script(type='text/javascript', src='/javascripts/template/device-details.js')
-  script(type='text/javascript' src='/javascripts/checklist-helper.js')
-  script(type='text/javascript' src='/javascripts/template/checklist-input.js')
-  script(type='text/javascript' src='/javascripts/template/checklist-config.js')
-  script(type='text/javascript' src='/javascripts/template/checklist-config-item.js')
+  script(type='text/javascript', src='/javascripts/checklist-helper.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-input.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
   if device.irrChecklist && device.irrChecklist.required
     script ChecklistHelper().render('#irrChecklist', '#{device.irrChecklist.id}');

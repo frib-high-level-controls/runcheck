@@ -243,7 +243,7 @@ devices.put('/:id/install-to-slot', auth.ensureAuthenticated, reqUtils.exist('id
   var device = req[req.params['id']];
   var slot = req[req.body['targetId']];
   if (device.installToDevice.id || device.installToSlot.id) {
-    return res.status(400).send('The device already has a install-to-slot target.');
+    return res.status(400).send('The device already has a install-to target.');
   }
   var deviceSlot = new DeviceSlot({
     deviceId: device._id,

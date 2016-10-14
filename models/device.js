@@ -62,7 +62,7 @@ var device = new Schema({
     }
   },
   /**
-   * 0: spare
+   * 0: not installed
    * 1: prepare to install
    * 1.5: prepare installation checklist
    * 2: approved to install

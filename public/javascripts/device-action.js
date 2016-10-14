@@ -4,7 +4,6 @@
  * render page
  */
 function dataRender() {
-  // $('#prepare-panel .slot,.device').hide();
   var role = 'AM';
   var status = $('#dStatus').attr('name');
   disableButton(status, role); // TODO: get the role
@@ -22,13 +21,13 @@ function disableButton(status, role) {
   $('#approve-install').removeAttr('disabled');
   $('#reject-install').removeAttr('disabled');
   $('#install').removeAttr('disabled');
-  $('#set-spare').removeAttr('disabled');
+  $('#set-not-installed').removeAttr('disabled');
   if (role === 'AM') {
     if (status == '0') {
       $('#approve-install').attr('disabled', 'disabled');
       $('#reject-install').attr('disabled', 'disabled');
       $('#install').attr('disabled', 'disabled');
-      $('#set-spare').attr('disabled', 'disabled');
+      $('#set-not-installed').attr('disabled', 'disabled');
     }
     if (status == '1') {
       $('#preInstall').attr('disabled', 'disabled');
@@ -77,14 +76,14 @@ function setInstallTo(url, targetId) {
   });
 }
 
-function setSpare() {
+function setNotInstalled() {
   var url =  window.location.pathname + '/';
   if ($('#dInstallToDevice a').length) {
     url += 'install-to-device/' + $('#dInstallToDevice a').prop('href').split('/').pop();
   } else if ($('#dInstallToSlot a').length) {
     url += 'install-to-slot/' + $('#dInstallToSlot a').prop('href').split('/').pop();
   } else {
-    $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now spare. </div>');
+    $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now not installed. </div>');
     return;
   }
 
@@ -92,7 +91,7 @@ function setSpare() {
     url: url,
     type: 'DELETE'
   }).done(function (data) {
-    $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>The device is set to be spare.</div>');
+    $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>The device is set to be not installed.</div>');
     $('#device-details').html(deviceDetailsTemplate({device: data}));
     $('#prepare-panel').removeClass('hidden');
     History.prependHistory(data.__updates);
@@ -109,7 +108,7 @@ function setStatus(status) {
   } else if ($('#dInstallToSlot a').length) {
     url += 'install-to-slot/' + $('#dInstallToSlot a').prop('href').split('/').pop();
   } else {
-    $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now spare. </div>');
+    $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now not installed. </div>');
     return;
   }
   url += '/status';
@@ -181,7 +180,7 @@ $(function () {
 
   $('#prepare-panel button[type="submit"]').click(function (e) {
     e.preventDefault();
-    if (!selected._id) {
+    if (!selected || !selected._id) {
       $('#prepare-title').text('Must select from suggestions');
       return;
     }
@@ -196,9 +195,9 @@ $(function () {
   });
 
 
-  $('#set-spare').click(function (e) {
+  $('#set-not-installed').click(function (e) {
     e.preventDefault();
-    setSpare();
+    setNotInstalled();
   });
 
   $('#approve-install').click(function (e) {
