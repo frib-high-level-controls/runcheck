@@ -1,4 +1,15 @@
 {
   "extends": "clock",
-  "validateLineBreaks": null
+  "validateLineBreaks": null,
+  "requireSpecificAttributes": [
+    {
+      "img": "alt"
+    },
+    {
+      "input": "type"
+    },
+    {
+      "input[type=submit]": "value"
+    }
+  ]
 }
