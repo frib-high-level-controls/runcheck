@@ -52,7 +52,7 @@ var deviceColumn = {
   title: 'Device',
   data: 'device',
   render: function (data) {
-    if (!data.id) {
+    if (!data || !data.id) {
       return 'Not installed';
     }
     return '<a href="' + '/devices/' + data.id + '" target="_blank" data-toggle="tooltip" title="go to the slot serialized device"><i class="fa fa-link fa-2x"></i></a>';
@@ -85,7 +85,7 @@ var machineModeColumn = {
 };
 
 var checkedProgressColumn = {
-  title: 'Readiness Checked progress',
+  title: 'Device checklist',
   order: true,
   type: 'numeric',
   autoWidth: false,
@@ -96,7 +96,7 @@ var checkedProgressColumn = {
 };
 
 var DRRProgressColumn = {
-  title: 'DRR progress',
+  title: 'DRR checklist',
   order: true,
   type: 'numeric',
   autoWidth: false,
@@ -107,7 +107,7 @@ var DRRProgressColumn = {
 };
 
 var ARRProgressColumn = {
-  title: 'ARR progress',
+  title: 'ARR checklist',
   order: true,
   type: 'numeric',
   autoWidth: false,
