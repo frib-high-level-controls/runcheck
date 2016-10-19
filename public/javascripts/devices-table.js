@@ -41,7 +41,7 @@ var departmentColumn = {
 var ownerColumn = Table.personColumn('Owner', 'owner');
 
 var checkedProgressColumn = {
-  title: 'Checked progress',
+  title: 'Device checklist',
   order: true,
   type: 'numeric',
   autoWidth: false,
