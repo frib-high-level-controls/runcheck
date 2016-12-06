@@ -12,6 +12,10 @@ block content
   .well(id = 'device-details')
     include ./client-side/device-details.pug
   .btn-toolbar
+    if device.checklist
+      button.btn.btn-space.btn-primary(id='device-add-checklist' disabled='disabled') Add Checklist
+    else
+      button.btn.btn-space.btn-primary(id='device-add-checklist') Add Checklist
     button.btn.btn-space.btn-primary(id = 'reject-install') Reject
     button.btn.btn-space.btn-primary(id = 'approve-install') Approve
     button.btn.btn-space.btn-primary(id = 'install') Install
@@ -51,13 +55,7 @@ block content
         button.btn.btn-space.btn-primary(type='submit', value='device') Confirm
         button.btn.btn-space(type='reset') Cancel
   .well
-    if device.irrChecklist && device.irrChecklist.required
-      h4 Pre-installation Checklist
-      #irrChecklist
-    else
-      form(method='POST')
-        input(type='hidden', name='action', value='checklist-required')
-        button(type='submit') Request Checklist
+    #irrChecklist
 block history
   each h in device.__updates.reverse()
     +change(h, moment)
@@ -70,5 +68,5 @@ block js
   script(type='text/javascript', src='/javascripts/template/checklist-input.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
-  if device.irrChecklist && device.irrChecklist.required
-    script ChecklistHelper().render('#irrChecklist', '#{device.irrChecklist.id}');
+  if device.checklist
+    script ChecklistHelper().render('#irrChecklist', '#{device.checklist}');

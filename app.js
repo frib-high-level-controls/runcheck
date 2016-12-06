@@ -49,6 +49,8 @@ if (config.mongo.auth) {
   mongoOptions.auth = config.mongo.auth;
 }
 
+mongoose.Promise = global.Promise;
+
 mongoose.connect(mongoURL, mongoOptions);
 
 mongoose.connection.on('connected', function () {

@@ -9,17 +9,33 @@ var device = new Schema({
     index: true,
     unique: true
   },
-  name: String,
-  type: String,
-  department: String,
-  owner: String,
-  details: ObjectId,
-  irrChecklist: {
-    id: ObjectId,
-    required: {
-      type: Boolean,
-      default: false
-    }
+  name: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    required: true
+  },
+  //owner: {
+  //  type: String,
+  //  required: true
+  //},
+  managed: {
+    type: Boolean,
+    default: true
+  },
+  // area: {
+  //   type: String,
+  //   required: true
+  //},
+  department: {
+    type: String,
+    required: true
+  },
+  checklist: {
+    type: ObjectId,
+    default: null
   },
   irrApproval: {
     status: {

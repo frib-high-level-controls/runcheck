@@ -1,13 +1,13 @@
 tr.checklist-item.form-group
   td.text-left
-    if item.custom
+    if item.checklist
       button.btn.btn-danger.checklist-item-remove(type='button')
         span.glyphicon.glyphicon-minus
     else
       .form-control-static
         span.like-btn.glyphicon.glyphicon-lock.checklist-item-lock
   td.text-left
-    input.form-control.checklist-item-name(type='hidden', value=item.name)
+    input.form-control.checklist-item-id(type='hidden', value=item._id)
     if item.custom
       input.form-control.checklist-item-subject(type='text', value=item.subject)
     else

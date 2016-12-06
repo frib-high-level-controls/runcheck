@@ -131,6 +131,19 @@ function setStatus(status) {
   });
 }
 
+function addChecklist() {
+  $.ajax({
+    url: window.location.pathname + '/checklist/json',
+    type: 'PUT'
+    //contentType: 'application/json',
+    //data: JSON.stringify({})
+  }).done(function (device) {
+    ChecklistHelper().render('#irrChecklist', device.checklist);
+  }).fail(function (err) {
+    $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + err.responseText + '</div>');
+  });
+};
+
 
 $(function () {
 
@@ -187,6 +200,11 @@ $(function () {
     var id = selected._id;
     var url = window.location.pathname + '/' + 'install-to-' + $(this).val();
     setInstallTo(url, id);
+  });
+
+  $('#device-add-checklist').click(function (e) {
+    e.preventDefault();
+    addChecklist();
   });
 
   $('#reject-install').click(function (e) {

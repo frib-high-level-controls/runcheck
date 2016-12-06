@@ -1,0 +1,24 @@
+
+{ "subject":"EE",   "type": "device", "checklist":null, "order":0, "assignee": "SME-EE",    "mandatory": false, "required": true, "final": false }
+{ "subject":"ME",   "type": "device", "checklist":null, "order":1, "assignee": "SME-ME",    "mandatory": false, "required": true, "final": false }
+{ "subject":"CRYO", "type": "device", "checklist":null, "order":2, "assignee": "SME-CTRL",  "mandatory": false, "required": true, "final": false }
+{ "subject":"PHYS", "type": "device", "checklist":null, "order":3, "assignee": "SME-PHYS",  "mandatory": false, "required": true, "final": false }
+{ "subject":"ESHQ", "type": "device", "checklist":null, "order":4, "assignee": "SME-ESHQ",  "mandatory": false, "required": true, "final": false }
+{ "subject":"DO",   "type": "device", "checklist":null, "order":5, "assignee": ">MGR-DEPT", "mandatory": true,  "required": true, "final": true  }
+
+{ "subject":"DO",   "type": "beamline-slot", "checklist":null, "order":0, "assignee": ">MGR-DEPT", "mandatory": false, "required": true, "final": false }
+{ "subject":"EE",   "type": "beamline-slot", "checklist":null, "order":1, "assignee": "SME-EE",    "mandatory": false, "required": true, "final": false }
+{ "subject":"ME",   "type": "beamline-slot", "checklist":null, "order":2, "assignee": "SME-ME",    "mandatory": false, "required": true, "final": false }
+{ "subject":"CRYO", "type": "beamline-slot", "checklist":null, "order":3, "assignee": "SME-CTRLS", "mandatory": false, "required": true, "final": false }
+{ "subject":"PHYS", "type": "beamline-slot", "checklist":null, "order":4, "assignee": "SME-PHYS",  "mandatory": false, "required": true, "final": false }
+{ "subject":"ESHQ", "type": "beamline-slot", "checklist":null, "order":5, "assignee": "SME-ESHQ",  "mandatory": false, "required": true, "final": false }
+{ "subject":"AM",   "type": "beamline-slot", "checklist":null, "order":6, "assignee": ">MGR-AREA", "mandatory": true,  "required": true, "final": true  }
+
+{ "subject":"DO",   "type": "safety-slot", "checklist":null, "order":0, "assignee": ">MGR-DEPT", "mandatory": false, "required": true, "final": false }
+{ "subject":"EE",   "type": "safety-slot", "checklist":null, "order":1, "assignee": "SME-EE",    "mandatory": false, "required": true, "final": false }
+{ "subject":"ME",   "type": "safety-slot", "checklist":null, "order":2, "assignee": "SME-ME",    "mandatory": false, "required": true, "final": false }
+{ "subject":"CRYO", "type": "safety-slot", "checklist":null, "order":3, "assignee": "SME-CTRL",  "mandatory": false, "required": true, "final": false }
+{ "subject":"PHYS", "type": "safety-slot", "checklist":null, "order":4, "assignee": "SME-PHYS",  "mandatory": false, "required": true, "final": false }
+{ "subject":"ESHQ", "type": "safety-slot", "checklist":null, "order":5, "assignee": "SME-ESHQ",  "mandatory": false, "required": true, "final": false }
+{ "subject":"AM",   "type": "safety-slot", "checklist":null, "order":6, "assignee": ">MGR-AREA", "mandatory": true,  "required": true, "final": true  }
+{ "subject":"CM",   "type": "safety-slot", "checklist":null, "order":7, "assignee": "MGR-COMM",  "mandatory": true,  "required": true, "final": true  }

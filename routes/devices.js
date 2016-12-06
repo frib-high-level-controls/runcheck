@@ -49,72 +49,91 @@ devices.get('/:id', auth.ensureAuthenticated, reqUtils.exist('id', Device), func
 });
 
 
-devices.post('/:id', auth.ensureAuthenticated, function (req, res) {
-  Device.findById(req.params['id'], function (err, device) {
-    if (err) {
-      return res.status(404).render('error', {
+devices.put('/:id/checklist/json', auth.ensureAuthenticated, function (req, res) {
+  Device.findById(req.params['id']).exec().catch(function (err) {
+    console.log('warn: Error retrieving Device (' + req.params['id'] + '): ' + err);
+    return Promise.reject({
+      error: err,
+      status: 404,
+      body: {
         error: {
-          status: err
+          message: 'device not found'
+        }
+      }
+    });
+  })
+
+  .then(function (device) {
+    var p, checklist;
+    if (!_.isNil(device.checklist)) {
+      p = Checklist.findById(device.checklist).exec().catch(function (err) {
+        console.log('warn: Error retrieving Checklist (' + device.checklist + '): ' + err);
+        return Promise.reject({
+          error: err,
+          status: 500,
+          body: {
+            error: {
+              message: 'error retrieving checklist'
+            }
+          }
+        });
+      });
+      return Promise.all([ device, p ]);
+    }
+    checklist = new Checklist({
+      target: device._id,
+      type: 'device'
+    });
+    p = checklist.save().catch(function (err) {
+      console.log('warn: Error saving checklist: ' + err);
+      return Promise.reject({
+        error: err,
+        status: 500,
+        body: {
+          error: {
+            message: 'error saving checklist'
+          }
+        }
+      });
+    });
+    return Promise.all([ device, p ]);
+  })
+
+  .then(function ([device, checklist]) {
+    if (device.checklist.equals(checklist._id)) {
+      return device;
+    }
+    device.checklist = checklist._id;
+    return device.save().catch(function (err) {
+      console.log('warn: Error saving device: ' + err);
+      return Promise.reject({
+        error: err,
+        status: 500,
+        body: {
+          error: {
+            message: 'error saving device'
+          }
+        }
+      });
+    });
+  })
+
+  .then(function (device) {
+    res.status(200).json(device)
+  })
+
+  .catch(function (err) {
+    var status = err.status || 500;
+    if (!err.body) {
+      console.log('warn: Responding to unhandled error');
+      console.log(err);
+      return res.status(status).json({
+        error: {
+          message: 'unknown error'
         }
       });
     }
-    if (req.body['action'] === 'checklist-required') {
-      if (device.irrChecklist && device.irrChecklist.id) {
-        // checklist already created
-        Checklist.findById(device.irrChecklist.id, function (err, checklist) {
-          if (err) {
-            return res.status(500).render('error', {
-              error: {
-                status: err
-              }
-            });
-          }
-          device.irrChecklist.required = true;
-          device.save(function (err) {
-            if (err) {
-              return res.status(500).render('error', {
-                error: {
-                  status: err
-                }
-              });
-            }
-            return res.status(200).render('device', {
-              device: device,
-              moment: moment,
-              _: _
-            });
-          });
-        });
-      } else {
-        // checklist must be created
-        var checklist = new Checklist(defaultDeviceChecklist);
-        checklist.save(function (err) {
-          if (err) {
-            return res.status(500).render('error', {
-              error: {
-                status: err
-              }
-            });
-          }
-          device.irrChecklist.id = checklist._id;
-          device.irrChecklist.required = true;
-          device.save(function (err) {
-            if (err) {
-              return res.status(500).render('error', {
-                error: {
-                  status: err
-                }
-              });
-            }
-            return res.status(201).render('device', {
-              device: device,
-              moment: moment,
-              _: _
-            });
-          });
-        });
-      }
-    }
+    return res.status(status).json(err.body);
   });
 });
 

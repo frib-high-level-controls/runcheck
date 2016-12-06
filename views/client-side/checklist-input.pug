@@ -14,20 +14,20 @@ form
             span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history
             span.btn.glyphicon.glyphicon-triangle-bottom.checklist-item-hide-history.hidden
           td.text-left
-            input.form-control.checklist-item-name(type='hidden', value=item.name)
+            input.form-control.checklist-item-id(type='hidden', value=item._id)
             .form-control-static.checklist-item-subject #{item.subject}
           td.text-center
             if item.mandatory || item.required
               select.form-control
-                if inputs[item.name] && inputs[item.name].value === 'N'
+                if inputs[item._id] && inputs[item._id].value === 'N'
                   option.checklist-item-value(selected) N
                 else
                   option.checklist-item-value N
-                if inputs[item.name] && inputs[item.name].value === 'Y'
+                if inputs[item._id] && inputs[item._id].value === 'Y'
                   option.checklist-item-value(selected) Y
                 else
                   option.checklist-item-value Y
-                if inputs[item.name] && inputs[item.name].value === 'YC'
+                if inputs[item._id] && inputs[item._id].value === 'YC'
                   option.checklist-item-value(selected) YC
                 else
                   option.checklist-item-value YC
@@ -35,8 +35,8 @@ form
               .form-control-static.checklist-item-value N/A
           td.text-left
             if item.mandatory || item.required
-              if inputs[item.name]
-                input.form-control.checklist-item-comment(type="text", value=inputs[item.name].comment)
+              if inputs[item._id]
+                input.form-control.checklist-item-comment(type="text", value=inputs[item._id].comment)
               else
                 input.form-control.checklist-item-comment(type="text")
             else
@@ -46,8 +46,8 @@ form
               .form-control-static.checklist-item-assignee= item.assignee 
             else
               .form-control-static.checklist-item-assignee UNASSIGNED
-        if history[item.name]
-          for input in history[item.name]
+        if history[item._id]
+          for input in history[item._id]
             tr.checklist-item-history.hidden
               td.text-left.text-primary
                 span.like-btn.glyphicon.glyphicon-time

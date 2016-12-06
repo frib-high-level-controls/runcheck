@@ -48,7 +48,7 @@ function ChecklistHelper() {
       event.preventDefault();
       elem.find('.checklist-item').each(function (i, e) {
         item = {};
-        item.name = $(e).find('.checklist-item-name').val();
+        item._id = $(e).find('.checklist-item-id').val();
         item.subject = $(e).find('input.checklist-item-subject').val() 
                         || $(e).find('.checklist-item-subject').text();
         item.assignee = $(e).find('input.checklist-item-assignee').val() 
@@ -56,9 +56,9 @@ function ChecklistHelper() {
         item.required = ($(e).find('.checklist-item-required:checked').length > 0);
         items.push(item);
       });
-
+      console.log(items);
       $.ajax({
-        url: '/checklists/' + checklist.id + '/items/json',
+        url: '/checklists/' + checklist._id + '/items/json',
         type: 'PUT',
         data: JSON.stringify(items),
         contentType: 'application/json;charset=UTF-8',
@@ -76,23 +76,23 @@ function ChecklistHelper() {
   function renderInputTemplate(elem, checklist) {
     var idx, input, inputs = {}, history = {};
 
-    for (idx=0; idx<checklist.inputs.length; idx+=1) {
-      input = checklist.inputs[idx];
+    for (idx=0; idx<checklist.data.length; idx+=1) {
+      input = checklist.data[idx];
       input.inputOn = new Date(input.inputOn);
 
-      if (inputs.hasOwnProperty(input.name)) {
-        if( input.inputOn > inputs[input.name].inputOn) {
-          inputs[input.name] = input;
+      if (inputs[input.item]) {
+        if( input.inputOn > inputs[input.item].inputOn) {
+          inputs[input.item] = input;
         }
       } else {
-        inputs[input.name] = input;
+        inputs[input.item] = input;
       }
 
-      if (history[input.name] !== undefined) {
-        history[input.name].push(input);
-        history[input.name].sort(function (a, b) { return (a.inputOn < b.inputOn) ? 1 : -1 });
+      if (history[input.item]) {
+        history[input.item].push(input);
+        history[input.item].sort(function (a, b) { return (a.inputOn < b.inputOn) ? 1 : -1 });
       } else {
-        history[input.name] = [ input ];
+        history[input.item] = [ input ];
       }
     }
 
@@ -131,14 +131,14 @@ function ChecklistHelper() {
     
       elem.find('.checklist-item').each(function (i, e) {
         input = {};
-        input.name = $(e).find('.checklist-item-name').val();
+        input._id = $(e).find('.checklist-item-id').val();
         input.value = $(e).find('.checklist-item-value:checked').val();
         input.comment = $(e).find('.checklist-item-comment').val();
         inputs.push(input);
       });
 
       $.ajax({
-        url: '/checklists/' + checklist.id + '/inputs/json',
+        url: '/checklists/' + checklist._id + '/inputs/json',
         type: 'PUT',
         data: JSON.stringify(inputs),
         contentType: 'application/json;charset=UTF-8',

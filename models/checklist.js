@@ -1,30 +1,40 @@
+var _ = require('lodash');
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var addHistory = require('./history').addHistory;
+var ObjectId = Schema.Types.ObjectId;
+//var addHistory = require('./history').addHistory;
 
 var checklistValues = ['N', 'Y', 'YC'];
-var subjects = ['EE', 'ME', 'CRYO', 'CTRLS', 'PHYS', 'ESHQ'];
-var deviceChecklistSubjects = subjects.concat('DO');
-var drrChecklistSubjects = ['DO'].concat(subjects).concat('AM');
-var arrChecklistSubjects = ['DO'].concat(subjects).concat('AM');
 
-/*******
- * A checklistItem is the configuration information for an item in a checklist.
- * name: unique identifier for the item within the checklist
- * subject: title of the item that is displayed to the user
- * assignee: user id of person required to respond to this item
- * required: indicate if the item must have a response
- * mandatory: (virtual) indicate if the item must be required
- * custom: (virtual) indicate if the item is user created
- *******/
+var checklistTypes = [ 'device', 'beamline-slot', 'safety-slot' ];
+
+
+// A checklistItem represents single item of a checklist:
+//   type: the checklist type to which this item belongs
+//   subject: name of the subject of this checklist item
+//   checklist: the specific checklist to which this item belongs
+//   order: the order in which this item should be rendered
+//   assignee: the role to which this item is assigned
+//   required: indicates if this item must be completed
+//   mandatory: indicates if this item must be required
+//   final: indicates of this item finalizes the checklist
 var checklistItem = Schema({
-  name: {
+  type: {
     type: String,
-    required: true
+    required: true,
+    enum: checklistTypes
   },
   subject: {
     type: String,
     required: true
+  },
+  checklist: {
+    type: ObjectId,
+    default: null
+  },
+  order: {
+    type: Number,
+    default: 0 
   },
   assignee: {
     type: String,
@@ -33,35 +43,94 @@ var checklistItem = Schema({
   required: {
     type: Boolean,
     default: true
+  },
+  mandatory: {
+    type: Boolean,
+    default: false
+  },
+  final: {
+    type: Boolean,
+    default: false
   }
 });
 
-checklistItem.virtual('mandatory').get(function () {
-  return (subjects.indexOf(this.name) === -1);
-});
 
-checklistItem.virtual('custom').get(function () {
-  return (subjects.indexOf(this.name) === -1)
-          && (['DO', 'AM'].indexOf(this.name) === -1);
-});
+checklistItem.statics.applyCfg = function(item, cfg) {
+  if (item && cfg) {
+    if (_.isString(cfg.subject)) {
+      item.subject = cfg.subject;
+    }
+    if (_.isString(cfg.assignee)) {
+      item.assignee = cfg.assignee;
+    }
+    if (_.isBoolean(cfg.required)) {
+      item.required = cfg.required;
+    }
+  }
+  return item;
+}
 
-/*******
- * A checklistInput is the response for a checklist item.
- * name: unique identifier for the item to which this input belongs
- * value: the value of the input
- * comment: extra information
- * inputOn: date when the input was submitted
- * inputBy: user id of the persion who submitted the input
- *******/
-var checklistInput = Schema({
-  name: {
+checklistItem.methods.applyCfg = function(cfg) {
+  return checklistItem.statics.applyCfg(this, cfg);
+}
+
+var ChecklistItem = mongoose.model('ChecklistItem', checklistItem);
+
+
+
+// A checklistItemCfg is configuration for a checklist item.
+//   checklist: the checklist to which this configuration belongs
+//   item: the checklist item to which this configuration applies
+//   subject: alternative subject to override the item
+//   assignee: user id of person required to respond to this item
+//   required: indicate if the item must have a response
+var checklistItemCfg = Schema({
+  checklist: {
+    type: ObjectId,
+    required: true
+  },
+  item: {
+    type: ObjectId,
+    required: true
+  },
+  subject: {
     type: String,
+    default: null
+  },
+  assignee: {
+    type: String,
+    default: null
+  },
+  required: {
+    type: Boolean,
+    default: null
+  }
+});
+
+
+var ChecklistItemCfg = mongoose.model('ChecklistItemCfg', checklistItemCfg);
+
+
+// A checklistItemData is the response for a checklist item.
+//  checklist: the checklist to which this response belongs
+//  item: the checklist item to which this response applies
+//  value: the value of the input
+//  comment: extra information
+//  inputOn: date when the input was submitted
+//  inputBy: user id of the persion who submitted the input
+var checklistItemData = Schema({
+  checklist: {
+    type: ObjectId,
+    required: true
+  },
+  item: {
+    type: ObjectId,
     required: true
   },
   value: {
     type: String,
-    enum: checklistValues,
-    required: true
+    required: true,
+    enum: checklistValues
   },
   comment: {
     type: String,
@@ -78,55 +147,50 @@ var checklistInput = Schema({
 });
 
 
-/*******
- * A checklist is a list of responses for various subjects
- * items: list of checklist items
- * input: list of checklist inputs
- */
+var ChecklistItemData = mongoose.model('ChecklistItemData', checklistItemData);
+
+
+// A checklist is a list of responses for various subjects
+//  target: the object to which this checklist belongs
+//  type: the type of this checklist
 var checklist = Schema({
-  items: [checklistItem],
-  inputs: [checklistInput]
+  target: {
+    type: ObjectId,
+    required: true
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: checklistTypes
+  }
+  // Consider adding checklist completion information from device
+  //, checkedValue: {
+  //   type: Number,
+  //   default: 0,
+  //   min: 0
+  // },
+  // totalValue: {
+  //   type: Number,
+  //   default: 0,
+  //   min: 0
+  // }
 });
 
-checklist.plugin(addHistory, {
-  fieldsToWatch: ['items']
-});
 
+// checklist.plugin(addHistory, {
+//   fieldsToWatch: ['items']
+// });
 
 var Checklist = mongoose.model('Checklist', checklist);
 
 
-var defaultDeviceChecklist = { items: [] };
-deviceChecklistSubjects.forEach(function (s) {
-  defaultDeviceChecklist.items.push({
-    name: s,
-    subject: s
-  });
-});
-
-var defaultDRRChecklist = { items: [] };
-drrChecklistSubjects.forEach(function (s) {
-  defaultDRRChecklist.items.push({
-    subject: s
-  });
-});
-
-var defaultARRChecklist = { items: [] };
-arrChecklistSubjects.forEach(function (s) {
-  defaultARRChecklist.items.push({
-    subject: s
-  });
-});
-
-
 module.exports = {
+  // enums
   checklistValues: checklistValues,
-  subjects: subjects,
-  deviceChecklistSubjects: deviceChecklistSubjects,
-  drrChecklistSubjects: drrChecklistSubjects,
-  arrChecklistSubjects: arrChecklistSubjects,
-  defaultDeviceChecklist: defaultDeviceChecklist,
-  defaultDRRChecklist: defaultDRRChecklist,
-  defaultARRChecklist: defaultARRChecklist,
-  Checklist: Checklist
+  checklistTypes: checklistTypes,
+  // models
+  Checklist: Checklist,
+  ChecklistItem: ChecklistItem,
+  ChecklistItemCfg: ChecklistItemCfg,
+  ChecklistItemData: ChecklistItemData,
 };
