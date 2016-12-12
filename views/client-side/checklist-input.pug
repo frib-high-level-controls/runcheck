@@ -2,7 +2,8 @@ form
   table.table
     thead
       tr
-        th.text-left.col-md-1 &nbsp;
+        th.text-left.col-md-1
+          span.btn.glyphicon.glyphicon-time
         th.text-left.col-md-2 Subject
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
@@ -11,7 +12,10 @@ form
       for item in items
         tr.form-group.checklist-item
           td.text-left.form-control-static
-            span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history
+            if inputs[item._id] && (inputs[item._id].__updates.length > 0)
+              span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history
+            else
+              span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history.hidden
             span.btn.glyphicon.glyphicon-triangle-bottom.checklist-item-hide-history.hidden
           td.text-left
             input.form-control.checklist-item-id(type='hidden', value=item._id)
@@ -46,18 +50,21 @@ form
               .form-control-static.checklist-item-assignee= item.assignee 
             else
               .form-control-static.checklist-item-assignee UNASSIGNED
-        if history[item._id]
-          for input in history[item._id]
+        if inputs[item._id] && (inputs[item._id].__updates.length > 0)
+          for update in inputs[item._id].__updates
             tr.checklist-item-history.hidden
               td.text-left.text-primary
-                span.like-btn.glyphicon.glyphicon-time
-              td.text-right.text-primary= moment(input.inputOn).format('MMM D YYYY, h:mm:ss A')
-              td.text-center.text-primary= input.value
-              if input.comment
-                td.text-left.text-primary= input.comment
-              else
-                td.text-left.text-primary (NONE)
-              td.text-center.text-primary= input.inputBy
+                span.like-btn.glyphicon.glyphicon-user
+              td.text-left.text-primary= update.b
+              - var value = 'NONE', comment = 'NONE';
+              for change in update.c
+                if change.p === 'value' && change.v
+                  - value = change.v
+                if change.p === 'comment' && change.v
+                  - comment = change.v
+              td.text-center.text-primary= value
+              td.text-left.text-primary= comment
+              td.text-right.text-primary= moment(update.a).format('MMM D YYYY, h:mm:ss A')
   .row
     .col-xs-6.text-left
       button.btn.btn-default.checklist-input-edit(type='button') Edit

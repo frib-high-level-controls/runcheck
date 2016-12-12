@@ -7,6 +7,7 @@ var Checklist = require('../models/checklist').Checklist;
 var ChecklistItem = require('../models/checklist').ChecklistItem;
 var ChecklistItemCfg = require('../models/checklist').ChecklistItemCfg;
 var ChecklistItemData = require('../models/checklist').ChecklistItemData;
+var checklistValues = require('../models/checklist').checklistValues;
 
 var debug = require('debug')('runcheck:checklists');
 
@@ -27,12 +28,19 @@ function findChecklistById(id, lean) {
 };
 
 
-function findItemsForChecklist(cl, lean) {
+function findItemsForChecklist(cl) {
   var query = ChecklistItem.find({
     type: cl.type,
     checklist: { $in:[null, cl._id ] }
   });
-  return query.lean(lean).exec().catch(function (err) {
+  return query.exec().then(function (items) {
+    var idx, prms = [];
+    for (idx=0; idx<items.length; idx+=1) {
+      prms.push(items[idx].populate('__updates').execPopulate());
+    }
+    return Promise.all(prms);
+  })
+  .catch(function (err) {
     console.log('warn: Error retrieving ChecklistItems: ' + query + ': ' + err);
     return Promise.reject({
       error: err,
@@ -47,11 +55,18 @@ function findItemsForChecklist(cl, lean) {
 };
 
 
-function findItemCfgsForChecklist(cl, lean) {
+function findItemCfgsForChecklist(cl) {
   var query = ChecklistItemCfg.find({
     checklist: cl._id
   });
-  return query.lean(lean).exec().catch(function (err) {
+  return query.exec().then(function (cfgs) {
+    var idx, prms = [];
+    for (idx=0; idx<cfgs.length; idx+=1) {
+      prms.push(cfgs[idx].populate('__updates').execPopulate());
+    }
+    return Promise.all(prms);
+  })
+  .catch(function (err) {
     console.log('warn: Error retrieving ChecklistItemCfgs: ' + query + ': ' + err);
     return Promise.reject({
       error: err,
@@ -70,7 +85,14 @@ function findItemDataForChecklist(cl, lean) {
   var query = ChecklistItemData.find({
     checklist: cl._id
   });
-  return query.lean(lean).exec().catch(function (err) {
+  return query.lean(lean).exec().then(function (data){
+    var idx, prms = [];
+    for (idx=0; idx<data.length; idx+=1) {
+      prms.push(data[idx].populate('__updates').execPopulate());
+    }
+    return Promise.all(prms);
+  })
+  .catch(function (err) {
     console.log('warn: Error retrieving ChecklistItemData: ' + dataQuery + ': ' + err);
     return Promise.reject({
       error: err,
@@ -104,12 +126,12 @@ checklists.get('/:id/json', auth.ensureAuthenticated, function (req, res) {
   findChecklistById(req.params['id'], true)
 
   .then(function (checklist) {
-    var items = findItemsForChecklist(checklist, true);
-    var cfgs = findItemCfgsForChecklist(checklist, true);
-    var data = findItemDataForChecklist(checklist, true);
+    var items = findItemsForChecklist(checklist);
+    var cfgs = findItemCfgsForChecklist(checklist);
+    var data = findItemDataForChecklist(checklist);
     return Promise.all([checklist, items, cfgs, data]);
   })
-  
+
   .then(function ([checklist, items, cfgs, data]) {
     var idx, cfg, cfgMap = {};
 
@@ -143,7 +165,7 @@ checklists.put('/:id/items/json', auth.ensureAuthenticated, function (req, res) 
   })
   
   .then(function ([checklist, items, cfgs]) {
-    var idx,
+    var idx, opts,
         cfg, cfgMap = {}, cfgPms = [],
         item, itemMap = {}, itemPms = [],
         newItem, newItemMap = {}, rmItemPms = [];
@@ -168,6 +190,7 @@ checklists.put('/:id/items/json', auth.ensureAuthenticated, function (req, res) 
       if (itemMap[newItem._id]) {
         item = itemMap[newItem._id];
         cfg = cfgMap[newItem._id];
+        itemPms.push(item);
         debug('Update ChecklistItem (%s) with subject: %s', item._id, item.subject);
       } else {
         item = new ChecklistItem({
@@ -177,9 +200,28 @@ checklists.put('/:id/items/json', auth.ensureAuthenticated, function (req, res) 
           checklist: checklist._id,
           subject: 'SUBJECT'
         });
+
         if (_.isString(newItem.subject)) {
           item.subject = newItem.subject;
         }
+        //debug('save Checklist Item: %s', item._id);
+        opts = {
+          userid: req.session.userid,
+          desc: 'Add checklist item'
+        }
+
+        itemPms.push(item.saveWithHistory(opts).catch(function (err) {
+          console.log('warn: Error saving ChecklistItem (' + item._id + '): ' + err);
+          return Promise.reject({
+            error: err,
+            status: 500,
+            body: {
+              error: {
+                message: 'error saving checklist item'
+              }
+            }
+          });
+        }));
         debug('Add ChecklistItem (%s) with subject: %s', item._id, item.subject);
       }
 
@@ -262,28 +304,14 @@ checklists.put('/:id/items/json', auth.ensureAuthenticated, function (req, res) 
         console.log('warn: ChecklistItem property, "assignee", expecting String');
       }
 
-      if (item.isModified()) {
-        debug('save Checklist Item: %s', item._id);
-        itemPms.push(item.save().catch(function (err) {
-          console.log('warn: Error saving ChecklistItem (' + item._id + '): ' + err);
-          return Promise.reject({
-            error: err,
-            status: 500,
-            body: {
-              error: {
-                message: 'error saving checklist item'
-              }
-            }
-          });
-        }));
-      } else {
-        itemPms.push(item);
-      }
-
       if (cfg) {
         if (cfg.isModified()) {
           debug('save ChecklistItemCfg: %s', cfg._id);
-          cfgPms.push(cfg.save().catch(function (err) {
+          opts = {
+            userid: req.session.userid,
+            desc: 'Update checklist item'
+          };
+          cfgPms.push(cfg.saveWithHistory(opts).catch(function (err) {
             console.log('warn: Error saving ChecklistItemCfg ()' + cfg._id + '): ' + err);
             return Promise.reject({
               error: err,
@@ -341,7 +369,7 @@ checklists.put('/:id/inputs/json', auth.ensureAuthenticated, function (req, res)
   })
 
   .then(function ([checklist, items, cfgs, data]) {
-    var idx, pms = [], 
+    var idx, prms = [], 
         item, itemMap = {}, cfgMap = {},
         input, newInput, inputMap = {};
 
@@ -355,13 +383,7 @@ checklists.put('/:id/inputs/json', auth.ensureAuthenticated, function (req, res)
     }
 
     for (idx=0; idx<data.length; idx+=1) {
-      if (inputMap[data[idx].item]) {
-        if (inputMap[data[idx].item].inputOn < data[idx].inputOn) {
-          inputMap[data[idx].item] = data[idx];
-        }
-      } else {
-        inputMap[data[idx].item] = data[idx];
-      }
+      inputMap[data[idx].item] = data[idx];
     }
 
     for (idx=0; idx<req.body.length; idx+=1) {
@@ -370,38 +392,70 @@ checklists.put('/:id/inputs/json', auth.ensureAuthenticated, function (req, res)
         item = itemMap[newInput._id];
         input = inputMap[newInput._id];
         if (item && (item.mandatory || item.required)) {
-          debug('Input permitted: value: %s, comment:"%s"', newInput.value, newInput.comment)
+          debug('Input permitted: value: "%s", comment:"%s"', newInput.value, newInput.comment)
           // TODO: check authorization
-          if ((!input && (newInput.value !== 'N' || newInput.comment !== '')) 
-              || (input && newInput.value !== input.value)
-              || (input && newInput.comment !== input.comment)) {
-            debug('Create new input');
-            input = new ChecklistItemData({
-              item: item._id,
-              checklist: checklist._id,
-              value: newInput.value,
-              comment: newInput.comment,
-              inputOn: new Date(),
-              inputBy: req.session.userid
-            });
-            pms.push(input.save().catch(function (err) {
-              console.log('warm: Error saving ChecklistItemData: ' + err);
-              return Promise.reject({
-                error: err,
-                status: 500,
-                body: {
-                  error: {
-                    message: 'error saving checklist data'
+          if (input) {
+            if ((newInput.value != input.value) && _.includes(checklistValues, newInput.value)) {
+              debug('Update input value: %s', newInput.value);
+              input.value = newInput.value;
+              input.inputOn = new Date();
+              input.inputBy = req.session.userid;
+            }
+            if ((newInput.comment !== input.comment) && _.isString(newInput.comment)) {
+              debug('Update input comment: %s', newInput.comment);
+              input.comment = newInput.comment;
+              input.inputOn = new Date();
+              input.inputBy = req.session.userid;
+            }
+
+            if (input.isModified()) {
+              prms.push(input.saveWithHistory(req.session.userid).catch(function (err) {
+                console.log('warn: Error saving ChecklistItemData: ' + err);
+                return Promise.reject({
+                  error: err,
+                  status: 500,
+                  body: {
+                    error: {
+                      message: 'error saving checklist data'
+                    }
                   }
-                }
+                });
+              }));
+            }
+          } else {
+            debug('No existing input found');
+            debug(newInput.value !== 'N');
+            debug(_.includes(checklistValues, newInput.value));
+            debug(checklistValues);
+            if ((newInput.value !== 'N') && _.includes(checklistValues, newInput.value)) {
+              debug('Crete input: value: %s, comment: %s', newInput.value, newInput.comment);
+              input = new ChecklistItemData({
+                item: item._id,
+                checklist: checklist._id,
+                value: newInput.value,
+                comment: newInput.comment,
+                inputOn: new Date(),
+                inputBy: req.session.userid
               });
-            }));
+              prms.push(input.saveWithHistory(req.session.userid).catch(function (err) {
+                console.log('warn: Error saving ChecklistItemData: ' + err);
+                return Promise.reject({
+                  error: err,
+                  status: 500,
+                  body: {
+                    error: {
+                      message: 'error saving checklist data'
+                    }
+                  }
+                });
+              }));
+            }
           }
         }
       }
     }
 
-    return Promise.all([checklist, Promise.all(pms)]);
+    return Promise.all([checklist, Promise.all(prms)]);
   })
 
   .then(function () {

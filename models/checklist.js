@@ -2,7 +2,7 @@ var _ = require('lodash');
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var ObjectId = Schema.Types.ObjectId;
-//var addHistory = require('./history').addHistory;
+var addHistory = require('./history').addHistory;
 
 var checklistValues = ['N', 'Y', 'YC'];
 
@@ -66,6 +66,16 @@ checklistItem.statics.applyCfg = function(item, cfg) {
     if (_.isBoolean(cfg.required)) {
       item.required = cfg.required;
     }
+    if (_.isArray(cfg.__updates)) {
+      console.log("Found Cfg updates!");
+      if (item.__updates) {
+        console.log("Apply Cfg updates! (concat)" + cfg.__updates.length);
+        item.__updates = item.__updates.concat(cfg.__updates);
+      } else {
+        console.log("Apply Cfg updates! (splice)" + cfg.__updates.length);
+        item.__updates = cfg.__updates.splice();
+      }
+    }
   }
   return item;
 }
@@ -73,6 +83,10 @@ checklistItem.statics.applyCfg = function(item, cfg) {
 checklistItem.methods.applyCfg = function(cfg) {
   return checklistItem.statics.applyCfg(this, cfg);
 }
+
+checklistItem.plugin(addHistory, {
+  fieldsToWatch: ['subject']
+});
 
 var ChecklistItem = mongoose.model('ChecklistItem', checklistItem);
 
@@ -107,6 +121,9 @@ var checklistItemCfg = Schema({
   }
 });
 
+checklistItemCfg.plugin(addHistory, {
+  fieldsToWatch: ['subject', 'assignee', 'required' ]
+});
 
 var ChecklistItemCfg = mongoose.model('ChecklistItemCfg', checklistItemCfg);
 
@@ -146,6 +163,9 @@ var checklistItemData = Schema({
   }
 });
 
+checklistItemData.plugin(addHistory, {
+  fieldsToWatch: ['value', 'comment']
+});
 
 var ChecklistItemData = mongoose.model('ChecklistItemData', checklistItemData);
 

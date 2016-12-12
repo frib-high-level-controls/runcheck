@@ -100,11 +100,11 @@ devices.put('/:id/checklist/json', auth.ensureAuthenticated, function (req, res)
   })
 
   .then(function ([device, checklist]) {
-    if (device.checklist.equals(checklist._id)) {
+    if (device.checklist && device.checklist.equals(checklist._id)) {
       return device;
     }
     device.checklist = checklist._id;
-    return device.save().catch(function (err) {
+    return device.saveWithHistory(req.session.userid).catch(function (err) {
       console.log('warn: Error saving device: ' + err);
       return Promise.reject({
         error: err,

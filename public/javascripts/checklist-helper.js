@@ -3,30 +3,17 @@
 function ChecklistHelper() {
 
   function renderConfigTemplate(elem, checklist) {
-    var count = 0;
+    var idx, count = 0;
 
     elem.off().html(checklistConfigTemplate({
       items: checklist.items
     }));
 
     elem.find('.checklist-item-add').click(function () {
-      var idx, name = null;
-      // ensure random name is unique
-      while(!name) {
-        name = 'Z' + Math.floor((Math.random()*90000)+10000).toString(16).toUpperCase();
-        for (idx=0; idx<checklist.items.length; idx+=1) {
-          if (name === checklist.items[idx]) {
-            name = null;
-            break;
-          }
-        }
-      }
-
       count += 1;
 
       $(this).parents('tr').before(checklistConfigItemTemplate({
         item: {
-          name: name,
           subject: 'Custom' + count,
           required: true,
           mandatory: true,
@@ -71,7 +58,14 @@ function ChecklistHelper() {
         }
       });
     });
-  }
+    
+    for (idx=0; idx<checklist.items.length; idx+=1) {
+      History.prependHistory(checklist.items[idx].__updates);
+    }
+    for (idx=0; idx<checklist.data.length; idx+=1) {
+      History.prependHistory(checklist.data[idx].__updates);
+    }
+  };
 
   function renderInputTemplate(elem, checklist) {
     var idx, input, inputs = {}, history = {};
@@ -79,27 +73,12 @@ function ChecklistHelper() {
     for (idx=0; idx<checklist.data.length; idx+=1) {
       input = checklist.data[idx];
       input.inputOn = new Date(input.inputOn);
-
-      if (inputs[input.item]) {
-        if( input.inputOn > inputs[input.item].inputOn) {
-          inputs[input.item] = input;
-        }
-      } else {
-        inputs[input.item] = input;
-      }
-
-      if (history[input.item]) {
-        history[input.item].push(input);
-        history[input.item].sort(function (a, b) { return (a.inputOn < b.inputOn) ? 1 : -1 });
-      } else {
-        history[input.item] = [ input ];
-      }
+      inputs[input.item] = input;
     }
 
     elem.off().html(checklistInputTemplate({
       items: checklist.items,
-      inputs: inputs,
-      history: history
+      inputs: inputs
     }));
 
     elem.on('click', '.checklist-item-show-history', function () {
@@ -151,6 +130,13 @@ function ChecklistHelper() {
         }
       });
     });
+    
+    for (idx=0; idx<checklist.items.length; idx+=1) {
+      History.prependHistory(checklist.items[idx].__updates);
+    }
+    for (idx=0; idx<checklist.data.length; idx+=1) {
+      History.prependHistory(checklist.data[idx].__updates);
+    }
   }
 
   function renderTo(element, checklistId, config) {

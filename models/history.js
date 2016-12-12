@@ -101,56 +101,77 @@ function addHistory(schema, options) {
    * @param  {Function} cb     the callback when save is done
    */
   schema.methods.saveWithHistory = function (userid, cb) {
-    assert.equal(typeof userid, 'string', 'need a user id');
-    assert.equal(typeof cb, 'function', 'need a callback function');
     var doc = this;
-    var c = [];
-    var h;
-    if (doc.isModified()) {
-      debug(options.fieldsToWatch);
-      options.fieldsToWatch.forEach(function (field) {
-        debug(field + ' is modified ' + doc.isModified(field));
-        if ((doc.isNew && doc.get(field)) || doc.isModified(field)) {
-          c.push({
-            p: field,
-            v: doc.get(field)
-          });
+    var p = new Promise(function (resolve, reject) {
+      var uid
+      var c = [];
+      var h;
+
+      if (!_.isNil(userid)) {
+        if (_.isString(userid)) {
+          uid = userid;
+        } else {
+          if (_.isString(userid.userid)) {
+            uid = userid.userid;
+          }
         }
-      });
-      debug(c);
-      if (c.length > 0) {
-        h = new History({
-          a: Date.now(),
-          b: userid,
-          c: c,
-          t: doc.constructor.modelName,
-          i: doc._id
-        });
-        debug(h);
-        h.save(function (err, historyDoc) {
-          if (err) {
-            debug(err.errors);
-            return handleErr(err, cb);
-          }
-          doc.__updates.push(historyDoc._id);
-          doc.save(function (err, newDoc) {
-            if (err) {
-              return handleErr(err, cb);
-            }
-            return cb(err, newDoc);
-          })
-        });
-      } else {
-        // no history need to record, save anyway
-        doc.save(function (err, newDoc) {
-          if (err) {
-            return handleErr(err, cb);
-          }
-          return cb(err, newDoc);
-        })
       }
-    } else {
-      return cb(null);
+
+      assert.ok(uid, 'must specify user id');
+
+      if (doc.isModified()) {
+        debug(options.fieldsToWatch);
+        options.fieldsToWatch.forEach(function (field) {
+          debug(field + ' is modified ' + doc.isModified(field));
+          if ((doc.isNew && doc.get(field)) || doc.isModified(field)) {
+            c.push({
+              p: field,
+              v: doc.get(field)
+            });
+          }
+        });
+        debug(c);
+        if (c.length > 0) {
+          h = new History({
+            a: Date.now(),
+            b: uid,
+            c: c,
+            t: doc.constructor.modelName,
+            i: doc._id
+          });
+          debug(h);
+          resolve(h.save());
+          return
+        }
+      }
+      resolve();
+    })
+  
+    .then(function (historyDoc) {
+      if (historyDoc) {
+        doc.__updates.push(historyDoc._id);
+      }
+      return doc.save();
+    })
+    
+    .then(function (newDoc) {
+      if (_.isFunction(cb)) {
+        cb(null, newDoc);
+      }
+      return newDoc;
+    })
+    
+    .catch(function (err) {
+      if (_.isFunction(cb)) {
+        return cb(err);
+      } else {
+        log.error(err);
+        return Promise.reject(err);
+      }
+    });
+
+    if (!_.isFunction(cb)) {
+      return p;
     }
   };
 
