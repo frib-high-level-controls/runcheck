@@ -2,7 +2,6 @@ var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
-var log = require('./lib/log');
 var rotator = require('file-stream-rotator');
 var bodyParser = require('body-parser');
 
@@ -26,9 +25,30 @@ config.auth = require('./config/auth');
 config.mongo = require('./config/mongo');
 config.redis = require('./config/redis');
 
-// Ensure log directory is an absolute path
+// ensure log directory is an absolute path
 config.app.log_dir = path.resolve(__dirname, './config', config.app.log_dir || '../logs/');
 // load configuration end
+
+
+// bunyan logging start
+var log = require('./lib/log');
+var bunyan = require('bunyan');
+var bunyanLogger = bunyan.createLogger({
+ name: 'runcheck',
+ streams: [{
+        type: 'stream',
+        stream: process.stderr
+    },{
+        type: 'rotating-file',
+        path: path.join(config.app.log_dir, 'runcheck.log'),
+        period: '1d',   // daily rotation
+        count: 3        // keep 3 back copies
+    }]
+});
+log.info = bunyanLogger.info.bind(bunyanLogger);
+log.warn = bunyanLogger.warn.bind(bunyanLogger);
+log.error = bunyanLogger.error.bind(bunyanLogger);
+// bunyan logging end
 
 
 // mongoDB starts
