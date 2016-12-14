@@ -9,7 +9,6 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var RedisStore = require('connect-redis')(session);
 
-var config = require('./config/config.js');
 
 
 logger.token('remote-user', function (req) {
@@ -19,6 +18,17 @@ logger.token('remote-user', function (req) {
     return 'unknown';
   }
 });
+// load configuration start
+var config = require('./config/config');
+config.ad = require('./config/ad');
+config.app = require('./config/app');
+config.auth = require('./config/auth');
+config.mongo = require('./config/mongo');
+config.redis = require('./config/redis');
+
+// Ensure log directory is an absolute path
+config.app.log_dir = path.resolve(__dirname, './config', config.app.log_dir || '../logs/');
+// load configuration end
 
 
 // mongoDB starts

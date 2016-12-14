@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var config = require('../config/config.js');
+var config = require('../config/config');
 var mongoose = require('mongoose');
 var program = require('commander');
 var path = require('path');

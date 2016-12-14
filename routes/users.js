@@ -2,7 +2,7 @@ var express = require('express');
 var users = express.Router();
 var debug = require('debug')('runcheck:users');
 
-var ad = require('../config/ad.json');
+var ad = require('../config/config').ad;
 var ldapClient = require('../lib/ldap-client');
 
 var mongoose = require('mongoose');
