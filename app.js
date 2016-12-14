@@ -1,22 +1,10 @@
-var express = require('express');
 var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
+var express = require('express');
 var rotator = require('file-stream-rotator');
-var bodyParser = require('body-parser');
 
-var session = require('express-session');
-var RedisStore = require('connect-redis')(session);
+var app = express();
+var env = app.get('env');
 
-
-
-logger.token('remote-user', function (req) {
-  if (req.session && req.session.userid) {
-    return req.session.userid;
-  } else {
-    return 'unknown';
-  }
-});
 // load configuration start
 var config = require('./config/config');
 config.ad = require('./config/ad');
@@ -94,28 +82,97 @@ mongoose.connection.on('error', function (err) {
 mongoose.connection.on('disconnected', function () {
   log.warn('Mongoose default connection disconnected');
 });
-
 // mongoDB ends
 
-// mongoose models start
-require('./models/user');
-// mongoose models end
+// CAS client start
+var casClientFactory = require('./lib/cas-client');
+casClientFactory.create({
+  base_url: config.auth.cas,
+  service: config.auth.login_service,
+  version: 1.0
+});
+// CAS client end
 
 
-// ldap client starts
-var adClient = require('./lib/ldap-client').client;
-adClient.on('connect', function () {
+// LDAP client start
+var ldapClientFactory = require('./lib/ldap-client');
+
+var ldapClient = ldapClientFactory.create({
+  url: config.ad.url,
+  paging: true,
+  timeout: 15 * 1000,
+  reconnect: true,
+  bindDN: config.ad.adminDn,
+  bindCredentials: config.ad.adminPassword
+});
+
+ldapClient.on('connect', function () {
   log.info('ldap client connected');
 });
-adClient.on('timeout', function (message) {
+
+ldapClient.on('timeout', function (message) {
   log.warn(message);
 });
-adClient.on('error', function (error) {
+
+ldapClient.on('error', function (error) {
   log.error(error);
 });
-// ldap client ends
+// LDAP client ends
 
-// redis store starts
+
+// authentication start
+var auth = require('./lib/auth');
+var casLdapAuth = require('./lib/cas-ldap-auth');
+auth.ensureAuthenticated = casLdapAuth.ensureAuthenticated({
+  ldap: config.ad,
+  auth: config.auth
+});
+// authentication end
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
+
+// uncomment after placing your favicon in /public
+var favicon = require('serve-favicon');
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+
+// morgan start
+var morgan = require('morgan');
+morgan.token('remote-user', function (req) {
+  if (req.session && req.session.userid) {
+    return req.session.userid;
+  } else {
+    return 'unknown';
+  }
+});
+
+if (env === 'production') {
+  app.use(morgan('combined', {
+    stream: rotator.getStream({
+      filename: path.resolve(config.app.log_dir, 'access.log'),
+      frequency: 'daily'
+    })
+  }));
+}
+
+if (env === 'development') {
+  app.use(morgan('dev'));
+}
+// morgan end
+
+
+var bodyParser = require('body-parser');
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+
+// session start
+var session = require('express-session');
+
+var RedisStore = require('connect-redis')(session);
+
 var redisStore = new RedisStore(config.redis);
 redisStore.on('connect', function () {
   log.info('redis connected');
@@ -127,43 +184,7 @@ redisStore.on('disconnect', function (err) {
     log.error(err);
   }
 });
-// redis store ends
 
-
-var index = require('./routes/index');
-var users = require('./routes/users');
-var devices = require('./routes/devices');
-var slots = require('./routes/slots');
-var slotGroups = require('./routes/slot-groups');
-var checklists = require('./routes/checklists');
-var auth = require('./lib/auth');
-var app = express();
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
-
-// uncomment after placing your favicon in /public
-app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-
-if (app.get('env') === 'production') {
-  var logStream = rotator.getStream({
-    filename: path.resolve(config.app.log_dir, 'access.log'),
-    frequency: 'daily'
-  });
-  app.use(logger('combined', {
-    stream: logStream
-  }));
-}
-
-if (app.get('env') === 'development') {
-  app.use(logger('dev'));
-}
-// app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({
-  extended: false
-}));
 app.use(session({
   store: redisStore,
   resave: false,
@@ -176,17 +197,20 @@ app.use(session({
     log.error(err);
   }
 }));
+// session end
+
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'bower_components')));
 
 app.use(auth.sessionLocals);
 
-app.use('/', index);
-app.use('/users', users);
-app.use('/devices', devices);
-app.use('/slots', slots);
-app.use('/slotgroups', slotGroups);
-app.use('/checklists', checklists);
+app.use('/', require('./routes/index'));
+app.use('/users', require('./routes/users'));
+app.use('/devices', require('./routes/devices'));
+app.use('/slots', require('./routes/slots'));
+app.use('/slotgroups', require('./routes/slot-groups'));
+app.use('/checklists', require('./routes/checklists'));
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -199,7 +223,7 @@ app.use(function (req, res, next) {
 
 // development error handler
 // will print stacktrace
-if (app.get('env') === 'development') {
+if (env === 'development') {
   app.use(function (err, req, res) {
     res.status(err.status || 500);
     res.render('error', {
