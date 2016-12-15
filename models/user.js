@@ -1,5 +1,6 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
+var Mixed = Schema.Types.Mixed;
 var addHistory = require('./history').addHistory;
 
 var subjects = require('./device').subjects;
@@ -25,16 +26,7 @@ var user = new Schema({
   office: String,
   phone: String,
   mobile: String,
-  roles: {
-    admin: {
-      type: Boolean,
-      default: false
-    },
-    leader: {
-      type: Boolean,
-      default: false
-    }
-  },
+  roles: Mixed,
   expert: {
     type: String,
     enum: subjects

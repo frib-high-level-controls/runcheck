@@ -64,6 +64,17 @@ devices.put('/:id/checklist/json', auth.ensureAuthenticated, function (req, res)
   })
 
   .then(function (device) {
+    if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
+      return Promise.reject({
+        error: new Error('User forbidden to create checklist'),
+        status: 403,
+        body: {
+          error: {
+            message: 'forbidden to create checklist'
+          }
+        }
+      });
+    }
     var p, checklist;
     if (!_.isNil(device.checklist)) {
       p = Checklist.findById(device.checklist).exec().catch(function (err) {

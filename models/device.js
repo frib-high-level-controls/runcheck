@@ -17,10 +17,10 @@ var device = new Schema({
     type: String,
     required: true
   },
-  //owner: {
-  //  type: String,
-  //  required: true
-  //},
+  owner: {
+    type: String,
+    required: true
+  },
   managed: {
     type: Boolean,
     default: true
