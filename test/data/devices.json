@@ -1,0 +1,4 @@
+[
+  { "serialNo":"T99999-TEST-0009-0099-S00001", "name":"Test Device #1", "type":"DEV", "department":"Front End", "owner":"FE_DEPT_MGR"},
+  { "serialNo":"T99999-TEST-0009-0099-S00002", "name":"Test Device #2", "type":"DEV", "department":"Front End", "owner":"FE_DEPT_MGR"}
+]

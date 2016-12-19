@@ -1,0 +1,4 @@
+[
+  { "adid":"feam", "roles": { "FE_AREA_MGR":true }},
+  { "adid":"fedm", "roles": { "FE_DEPT_MGR":true }}
+]
