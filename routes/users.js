@@ -5,8 +5,7 @@ var debug = require('debug')('runcheck:users');
 var ad = require('../config/config').ad;
 var ldapClient = require('../lib/ldap-client');
 
-var mongoose = require('mongoose');
-var User = mongoose.model('User');
+var User = require('../models/user').User;
 var auth = require('../lib/auth');
 var authConfig = require('../config/config').auth;
 var log = require('../lib/log');
