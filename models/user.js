@@ -26,7 +26,10 @@ var user = new Schema({
   office: String,
   phone: String,
   mobile: String,
-  roles: Mixed,
+  roles: {
+    type: Mixed,
+    default: {}
+  },
   expert: {
     type: String,
     enum: subjects
