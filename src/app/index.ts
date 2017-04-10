@@ -85,16 +85,21 @@ async function start(): Promise<express.Application> {
   mongoose.Promise = global.Promise;
 
   mongoose.connection.on('connected', function() {
+    monitor.setComponentOk('MongoDB', 'Connected');
     log('Mongoose default connection opened.');
   });
 
   mongoose.connection.on('disconnected', function() {
+    monitor.setComponentError('MongoDB', 'Disconnected');
     log('Mongoose default connection disconnected');
   });
 
   mongoose.connection.on('error', function(err) {
+    monitor.setComponentError('MongoDB', err.message || 'Unknown Error');
     log('Mongoose default connection error: ' + err);
   });
+
+  monitor.setComponentError('MongoDB', 'Never Connected');
 
   mongoose.connect(mongoUrl, mongoOptions);
 
