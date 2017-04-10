@@ -2,12 +2,12 @@ var express = require('express');
 var users = express.Router();
 var debug = require('debug')('runcheck:users');
 
-var ad = require('../config/config').ad;
+var ad = require('../../config/config').ad;
 var ldapClient = require('../lib/ldap-client');
 
 var User = require('../models/user').User;
 var auth = require('../lib/auth');
-var authConfig = require('../config/config').auth;
+var authConfig = require('../../config/config').auth;
 var log = require('../lib/log');
 var reqUtils = require('../lib/req-utils');
 var subjects = require('../models/checklist').subjects;

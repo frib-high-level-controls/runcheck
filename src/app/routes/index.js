@@ -2,7 +2,7 @@ var express = require('express');
 var index = express.Router();
 var auth = require('../lib/auth');
 var log = require('../lib/log');
-var config = require('../config/config');
+var config = require('../../config/config');
 
 /* GET home page. */
 index.get('/', function(req, res) {
