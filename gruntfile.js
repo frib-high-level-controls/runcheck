@@ -30,7 +30,7 @@ module.exports = function (grunt) {
     ts: {
             app: {
                 files: [{
-                    src: ['src/app/\*\*/\*.ts', '!src/app/.baseDir.ts'],
+                    src: ['src/app/\*\*/\*.ts', 'src/app/**/*.js', '!src/app/.baseDir.ts'],
                     dest: './app'
                 }],
                 tsconfig: 'src/app/tsconfig.json'
@@ -50,7 +50,7 @@ module.exports = function (grunt) {
                 ]
             }
         }
-
+  
   });
 
   grunt.registerTask('template', ['shell:template']);

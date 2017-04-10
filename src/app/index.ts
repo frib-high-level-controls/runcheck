@@ -8,7 +8,16 @@ import favicon = require('serve-favicon');
 import morgan = require('morgan');
 import session = require('express-session');
 
+import monitor = require('./shared/monitor');
+
 import monitor_routes = require('./routes/monitor');
+import index_routes = require('./routes/index');
+import users_routes = require('./routes/users');
+import devices_routes = require('./routes/devices');
+import slots_routes = require('./routes/slots');
+import slot_groups_routes = require('./routes/slot-groups');
+import checklists_routes = require('./routes/checklists');
+
 
 // error interface
 interface StatusError extends Error {
@@ -106,6 +115,12 @@ async function start(): Promise<express.Application> {
   app.use(express.static(path.resolve(__dirname, '../bower_components')));
 
   app.use('/monitor', monitor_routes);
+  app.use('/', index_routes);
+  app.use('/users', users_routes);
+  app.use('/devices', devices_routes);
+  app.use('/slots', slots_routes);
+  app.use('/slotgroups', slot_groups_routes);
+  app.use('/checklists', checklists_routes);
 
   // catch 404 and forward to error handler
   app.use(function(req, res, next) {
