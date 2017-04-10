@@ -7,6 +7,7 @@ import express = require('express');
 import favicon = require('serve-favicon');
 import morgan = require('morgan');
 import session = require('express-session');
+import mongoose = require('mongoose');
 
 import monitor = require('./shared/monitor');
 
@@ -30,6 +31,14 @@ interface IAppCfg {
   addr?: string;
   session_life?: number;
   session_secret?: string;
+};
+
+// MongoDB configuration
+interface MongoCfg {
+  address?: string;
+  port?: number | string;
+  db?: string;
+  options?: any;
 };
 
 // application singleton
@@ -63,6 +72,32 @@ async function start(): Promise<express.Application> {
 
   app = express();
   let env = app.get('env');
+
+  // Connect to MongoDB
+  let mongoCfg: MongoCfg = await readConfigFile('mongo.json');
+
+  let mongoUrl = 'mongodb://' + (mongoCfg.address || 'localhost')
+                              + ':' + (mongoCfg.port || '27017')
+                              + '/' + (mongoCfg.db || 'runcheck-dev');
+
+  let mongoOptions = mongoCfg.options || {};
+
+  mongoose.Promise = global.Promise;
+
+  mongoose.connection.on('connected', function() {
+    log('Mongoose default connection opened.');
+  });
+
+  mongoose.connection.on('disconnected', function() {
+    log('Mongoose default connection disconnected');
+  });
+
+  mongoose.connection.on('error', function(err) {
+    log('Mongoose default connection error: ' + err);
+  });
+
+  mongoose.connect(mongoUrl, mongoOptions);
+
 
   let cfg: IAppCfg = await readConfigFile('app.json');
 
@@ -147,6 +182,10 @@ async function start(): Promise<express.Application> {
 // Asynchronously start the application
 async function stop(): Promise<void> {
   log('Application stopping');
+
+  // Disconnect MongoDB
+  mongoose.disconnect();
+
   log('Application stopped');
   return;
 }
