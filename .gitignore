@@ -55,3 +55,21 @@ public/javascripts/template/*
 
 # data in excel
 tools/*.xlsx
+
+# NPM package installations
+node_modules/
+
+# NPM debug log
+npm-debug.log
+
+# Ignore Typescript cache
+.tscache
+
+# Ignore grunt-ts crumb
+src/app/.baseDir.ts
+
+# Ignore build directory
+/app/
+
+# Ignore configuration files
+/config/app.json
