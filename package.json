@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "grunt": "./node_modules/grunt/bin/grunt"
+    "grunt": "./node_modules/grunt/bin/grunt",
+    "bower": "./node_modules/bower/bin/bower"
   },
   "dependencies": {
     "body-parser": "^1.15.1",
