@@ -10,6 +10,10 @@ import session = require('express-session');
 import mongoose = require('mongoose');
 
 import monitor = require('./shared/monitor');
+import auth = require('./lib/auth');
+import casLdapAuth = require('./lib/cas-ldap-auth');
+import casClientFactory = require('./lib/cas-client.js');
+import ldapClientFactory = require('./lib/ldap-client');
 
 import monitor_routes = require('./routes/monitor');
 import index_routes = require('./routes/index');
@@ -39,6 +43,20 @@ interface MongoCfg {
   port?: number | string;
   db?: string;
   options?: any;
+};
+
+// Authentication configuration
+interface AuthCfg {
+  cas?: string;
+  service?: string;
+  login_service?: string;
+};
+
+// LDAP configuration
+interface LdapCfg {
+  url?: string;
+  adminDn?: string;
+  adminPassword?: string;
 };
 
 // application singleton
@@ -102,6 +120,51 @@ async function start(): Promise<express.Application> {
   monitor.setComponentError('MongoDB', 'Never Connected');
 
   mongoose.connect(mongoUrl, mongoOptions);
+
+  // Authentication configuration
+  let [ authCfg, ldapCfg ] = await Promise.all([
+    <Promise<AuthCfg>> readConfigFile('auth.json'),
+    <Promise<LdapCfg>> readConfigFile('ad.json'),
+  ]);
+
+  // CAS client start
+  casClientFactory.create({
+    base_url: authCfg.cas,
+    service: authCfg.login_service,
+    version: 1.0,
+  });
+
+  // LDAP client start
+  let ldapClient = ldapClientFactory.create({
+    url: ldapCfg.url,
+    paging: true,
+    timeout: 15 * 1000,
+    reconnect: true,
+    bindDN: ldapCfg.adminDn,
+    bindCredentials: ldapCfg.adminPassword,
+  });
+
+  monitor.setComponentError('LDAP', 'Never Connected');
+
+  ldapClient.on('connect', function() {
+    monitor.setComponentOk('LDAP', 'Connected');
+    log('LDAP client connected');
+  });
+
+  ldapClient.on('timeout', function(message) {
+    monitor.setComponentError('LDAP', 'Timeout');
+    warn(message);
+  });
+
+  ldapClient.on('error', function(err) {
+    monitor.setComponentError('LDAP', err.message || 'ERROR');
+    error(err);
+  });
+
+  auth.ensureAuthcHandler = casLdapAuth.ensureAuthenticated({
+    ldap: ldapCfg,
+    auth: authCfg,
+  });
 
 
   let appCfg: AppCfg = await readConfigFile('app.json');
