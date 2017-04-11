@@ -7,6 +7,10 @@
  * Stub implementation that denies all requests
  */
 function ensureAuthenticated(req, res, next) {
+  module.exports.ensureAuthcHandler(req, res, next);
+}
+
+function ensureAuthcHandler(req, res) {
   return res.status(401).send('not authenticated');
 }
 
@@ -35,6 +39,7 @@ function verifyRole(role) {
 
 module.exports = {
   ensureAuthenticated: ensureAuthenticated,
+  ensureAuthcHandler: ensureAuthcHandler,
   sessionLocals: sessionLocals,
   verifyRole: verifyRole
 }
