@@ -217,6 +217,8 @@ async function start(): Promise<express.Application> {
   app.use(express.static(path.resolve(__dirname, '../public')));
   app.use(express.static(path.resolve(__dirname, '../bower_components')));
 
+  app.use(auth.sessionLocals);
+
   app.use('/monitor', monitor_routes);
   app.use('/', index_routes);
   app.use('/users', users_routes);
