@@ -17,7 +17,7 @@ var moment = require('moment');
 var fs = require('fs');
 var pending_photo = {};
 var options = {
-  root: __dirname + '/../user-photos/',
+  root: __dirname + '/../../user-photos/',
   maxAge: 30 * 24 * 3600 * 1000
 };
 
