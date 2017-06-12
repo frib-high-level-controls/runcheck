@@ -67,6 +67,22 @@ let log = console.log;
 let warn = console.warn;
 let error = console.error;
 
+// application lifecycle
+let state = 'stopped';
+
+// application activity
+let activeCount = 0;
+let activeLimit = 100;
+let activeStopped = Promise.resolve();
+
+function updateActivityStatus(): void {
+  if (activeCount <= activeLimit) {
+    monitor.setComponentOk('Activity', activeCount + ' <= ' + activeLimit);
+  } else {
+    monitor.setComponentError('Activity', activeCount + ' > ' + activeLimit);
+  }
+};
+
 // read configuration file in JSON format
 async function readConfigFile(name: string): Promise<object> {
   return new Promise(function (resolve, reject) {
@@ -80,15 +96,62 @@ async function readConfigFile(name: string): Promise<object> {
   });
 };
 
-// Asynchronously start the application
+// asynchronously start the application
 async function start(): Promise<express.Application> {
-  if (app) {
-    return app;
+  if (state !== 'stopped') {
+    throw new Error('Application must be in "stopped" state');
   }
 
+  let activeFinished: () => void;
+
+  state = 'starting';
   log('Application starting');
 
+  activeCount = 0;
+  activeStopped = new Promise<void>(function (resolve) {
+    activeFinished = resolve;
+  });
+
+  updateActivityStatus();
+
   app = express();
+
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (state !== 'started') {
+      res.status(503).end('application ' + state);
+      return;
+    }
+    res.on('finish', () => {
+      activeCount -= 1;
+      updateActivityStatus();
+      if (state === 'stopping' && activeCount <= 0) {
+        activeFinished();
+      }
+    });
+    activeCount += 1;
+    updateActivityStatus();
+    next();
+  });
+
+  try {
+    await doStart();
+  } catch (err) {
+    try {
+      await stop();
+    } catch (ierr) {
+      /* ignore */
+    }
+    throw err;
+  }
+
+  log('Application started');
+  state = 'started';
+  return app;
+};
+
+
+// asynchronously configure the application
+async function doStart(): Promise<void> {
   let env = app.get('env');
 
   // Connect to MongoDB
@@ -209,9 +272,6 @@ async function start(): Promise<express.Application> {
     cookie: {
       maxAge: appCfg.session_life || 28800000,
     },
-    logErrors: function(err) {
-      // log.error(err);
-    },
   }));
 
   app.use(express.static(path.resolve(__dirname, '../public')));
@@ -235,28 +295,44 @@ async function start(): Promise<express.Application> {
   });
 
   // error handlers
-  app.use(function (err, req, res, next) {
+  app.use(function (err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
     res.status(err.status || 500);
     res.render('error', {
       message: err.message,
       error: err,
     });
   });
-
-  log('Application started');
-
-  return app;
 };
 
-
-// Asynchronously start the application
+// asynchronously stop the application
 async function stop(): Promise<void> {
+  if (state !== 'started') {
+    throw new Error('Application must be in "started" state');
+  }
+
+  state = 'stopping';
+  log('Application stopping');
+
+  if (activeCount > 0) {
+    log('Waiting for active requests to stop');
+    await activeStopped;
+  }
+
+  try {
+    await doStop();
+  } finally {
+    log('Application stopped');
+    state = 'stopped';
+  }
+};
+
+// asynchronously disconnect the application
+async function doStop(): Promise<void> {
   log('Application stopping');
 
   // Disconnect MongoDB
   mongoose.disconnect();
 
-  log('Application stopped');
   return;
 }
 
