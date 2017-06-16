@@ -282,10 +282,10 @@ async function doStart(): Promise<void> {
   app.use('/status', status.router);
   app.use('/', index_routes);
   app.use('/users', users_routes);
-  app.use('/devices', devices_routes);
+  app.use('/devices', devices_routes.router);
   app.use('/slots', slots_routes);
   app.use('/slotgroups', slot_groups_routes);
-  app.use('/checklists', checklists_routes);
+  app.use('/checklists', checklists_routes.router);
 
   // catch 404 and forward to error handler
   app.use(function(req, res, next) {

@@ -1,165 +1,125 @@
-var express = require('express');
-var devices = express.Router();
-var auth = require('../lib/auth');
-var Device = require('../models/device').Device;
-var Slot = require('../models/slot').Slot;
-var DeviceSlot = require('../models/device-slot').DeviceSlot;
-var Checklist = require('../models/checklist').Checklist;
-var defaultDeviceChecklist = require('../models/checklist').defaultDeviceChecklist;
-var log = require('../lib/log');
-var reqUtils = require('../lib/req-utils');
-var debug = require('debug')('runcheck:devices');
-var _ = require('lodash');
-var moment = require('moment');
+/**
+ * Route handlers for devices.
+ */
+import _ = require('lodash');
+import debugging = require('debug');
+import express = require('express');
+import moment = require('moment');
 
-devices.get('/', auth.ensureAuthenticated, function (req, res) {
+import log = require('../lib/log');
+import auth = require('../lib/auth');
+
+import slot_model = require('../models/slot');
+import device_model = require('../models/device');
+import history_model = require('../models/history');
+import checklist_model = require('../models/checklist');
+// import device_slot_model = require('../models/device-slot');
+
+import models = require('../shared/models');
+import handlers = require('../shared/handlers');
+
+
+const debug = debugging('runcheck:devices');
+
+const catchAll = handlers.catchAll;
+const HttpStatus = handlers.HttpStatus;
+const RequestError = handlers.RequestError;
+
+const Slot = slot_model.Slot;
+const Device = device_model.Device;
+const History = history_model.History;
+// const DeviceSlot = deviceSlot.DeviceSlot;
+// const defaultDeviceChecklist = checklist.defaultDeviceChecklist;
+
+const Checklist = checklist_model.Checklist;
+
+export const router = express.Router();
+
+
+router.get('/', auth.ensureAuthenticated, (req, res) => {
   res.render('devices');
 });
 
 
-devices.get('/json', auth.ensureAuthenticated, function (req, res) {
-  Device.find(function (err, devices) {
-    if (err) {
-      return res.status(500).json({
-        error: {
-          status: err
-        }
-      });
-    }
-    return res.status(200).json(devices);
+router.get('/json', auth.ensureAuthenticated, handlers.catchAll(async (req, res) => {
+  let devices = await Device.find().lean();
+  res.status(200).json(devices);
+}));
+
+
+router.get('/:id', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let device = await Device.findById(req.params.id).exec();
+  if (!device) {
+    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
+  }
+
+  // TODO: To improve performance get updates while getting device.
+  await device.populate('__updates').execPopulate();
+
+  res.render('device', {
+    device: device,
+    moment: moment,
+    _: _,
   });
-});
+}));
 
 
-devices.get('/:id', auth.ensureAuthenticated, reqUtils.exist('id', Device), function (req, res) {
-  var device = req[req.params.id];
-  debug(device.installToDevice);
-  debug(device.installToSlot);
-  device.populate('__updates', function (pErr, newDevice) {
-    if (pErr) {
-      log.error(pErr);
-      return res.status(500).send(pErr.message);
+router.put('/:id/checklist/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let device = await Device.findById(req.params.id).exec();
+
+  if (!device) {
+    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
+  }
+
+  // if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
+  //   return Promise.reject({
+  //     error: new Error('User forbidden to create checklist'),
+  //     status: 403,
+  //     body: {
+  //       error: {
+  //         message: 'forbidden to create checklist',
+  //       }
+  //     }
+  //   });
+  // }
+
+  let checklist: checklist_model.Checklist | null;
+  if (device.checklist) {
+    checklist = await Checklist.findById(device.checklist).exec();
+    if (!checklist) {
+      throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
     }
-    return res.render('device', {
-      device: newDevice,
-      moment: moment,
-      _: _
-    });
-  });
-});
-
-
-devices.put('/:id/checklist/json', auth.ensureAuthenticated, function (req, res) {
-  Device.findById(req.params['id']).exec().catch(function (err) {
-    console.log('warn: Error retrieving Device (' + req.params['id'] + '): ' + err);
-    return Promise.reject({
-      error: err,
-      status: 404,
-      body: {
-        error: {
-          message: 'device not found'
-        }
-      }
-    });
-  })
-
-  .then(function (device) {
-    if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
-      return Promise.reject({
-        error: new Error('User forbidden to create checklist'),
-        status: 403,
-        body: {
-          error: {
-            message: 'forbidden to create checklist'
-          }
-        }
-      });
-    }
-    var p, checklist;
-    if (!_.isNil(device.checklist)) {
-      p = Checklist.findById(device.checklist).exec().catch(function (err) {
-        console.log('warn: Error retrieving Checklist (' + device.checklist + '): ' + err);
-        return Promise.reject({
-          error: err,
-          status: 500,
-          body: {
-            error: {
-              message: 'error retrieving checklist'
-            }
-          }
-        });
-      });
-      return Promise.all([ device, p ]);
-    }
-    checklist = new Checklist({
+  } else {
+    checklist = new Checklist(<checklist_model.Checklist> {
       target: device._id,
-      type: 'device'
+      type: 'device',
     });
-    p = checklist.save().catch(function (err) {
-      console.log('warn: Error saving checklist: ' + err);
-      return Promise.reject({
-        error: err,
-        status: 500,
-        body: {
-          error: {
-            message: 'error saving checklist'
-          }
-        }
-      });
-    });
-    return Promise.all([ device, p ]);
-  })
+    await checklist.save();
+  }
 
-  .then(function ([device, checklist]) {
-    if (device.checklist && device.checklist.equals(checklist._id)) {
-      return device;
-    }
+  if (!device.checklist || !device.checklist.equals(checklist._id)) {
     device.checklist = checklist._id;
-    return device.saveWithHistory(req.session.userid).catch(function (err) {
-      console.log('warn: Error saving device: ' + err);
-      return Promise.reject({
-        error: err,
-        status: 500,
-        body: {
-          error: {
-            message: 'error saving device'
-          }
-        }
-      });
-    });
-  })
-
-  .then(function (device) {
-    res.status(200).json(device)
-  })
-
-  .catch(function (err) {
-    var status = err.status || 500;
-    if (!err.body) {
-      console.log('warn: Responding to unhandled error');
-      console.log(err);
-      return res.status(status).json({
-        error: {
-          message: 'unknown error'
-        }
-      });
+    if (req.session && req.session.userid) {
+      await device.saveWithHistory(req.session.userid);
+    } else {
+      throw new RequestError('Session or username not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    return res.status(status).json(err.body);
-  });
-});
+  }
+
+  res.status(200).json(device);
+}));
 
 
-devices.get('/:id/json', auth.ensureAuthenticated, function (req, res) {
-  Device.findById(req.params['id'], function (err, device) {
-    if (err) {
-      log.error(err);
-      return res.status(500).send(err.message);
-    }
-    res.status(200).json(device);
-  });
-});
+router.get('/:id/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let device = await Device.findById(req.params.id).exec();
+  if (!device) {
+    throw new handlers.RequestError('Device not found', HttpStatus.NOT_FOUND);
+  }
 
+  res.status(200).json(device);
+}));
 
+/*
 devices.put('/:id/install-to-device', auth.ensureAuthenticated, reqUtils.exist('id', Device), reqUtils.hasAll('body', ['targetId']), reqUtils.exist('targetId', Device, '_id', 'body'), function (req, res) {
   var device = req[req.params['id']];
   var target = req[req.body['targetId']];
@@ -419,3 +379,4 @@ devices.put('/:id/install-to-slot/:toid/status', auth.ensureAuthenticated, reqUt
 });
 
 module.exports = devices;
+*/
