@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node ./bin/www",
     "grunt": "./node_modules/grunt/bin/grunt",
-    "bower": "./node_modules/bower/bin/bower"
+    "bower": "./node_modules/bower/bin/bower",
+    "pug": "./node_modules/.bin/pug"
   },
   "dependencies": {
     "body-parser": "^1.15.1",
@@ -46,6 +47,7 @@
     "load-grunt-tasks": "3.5.2",
     "mocha": "2.0.1",
     "power-assert": "1.4.1",
+    "pug-cli": "^1.0.0-alpha6",
     "pug-lint": "2.3.0",
     "pug-lint-config-clock": "2.0.0",
     "should": "4.1.0",

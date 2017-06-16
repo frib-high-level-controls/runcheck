@@ -21,10 +21,10 @@ module.exports = function (grunt) {
         stderr: false
       },
       template: {
-        command: 'pug <%= shell.templateSource %> -D -c --name-after-file -o <%= shell.templateOutput %>'
+        command: './node_modules/.bin/pug <%= shell.templateSource %> -D -c --name-after-file -o <%= shell.templateOutput %>'
       },
       puglint: {
-        command: './node_modules/pug-lint/bin/pug-lint ./views/*.pug ./views/client-side/*.pug'
+        command: './node_modules/.bin/pug-lint ./views/*.pug ./views/client-side/*.pug'
       }
     },
     ts: {
