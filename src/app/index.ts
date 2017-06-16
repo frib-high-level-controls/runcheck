@@ -47,16 +47,16 @@ interface MongoCfg {
 
 // Authentication configuration
 interface AuthCfg {
-  cas?: string;
-  service?: string;
-  login_service?: string;
+  cas: string;
+  service: string;
+  login_service: string;
 };
 
 // LDAP configuration
 interface LdapCfg {
-  url?: string;
-  adminDn?: string;
-  adminPassword?: string;
+  url: string;
+  adminDn: string;
+  adminPassword: string;
 };
 
 // application singleton
@@ -175,7 +175,7 @@ async function doStart(): Promise<void> {
     log('Mongoose default connection disconnected');
   });
 
-  mongoose.connection.on('error', function(err) {
+  mongoose.connection.on('error', function(err: any) {
     monitor.setComponentError('MongoDB', err.message || 'Unknown Error');
     log('Mongoose default connection error: ' + err);
   });
@@ -214,12 +214,12 @@ async function doStart(): Promise<void> {
     log('LDAP client connected');
   });
 
-  ldapClient.on('timeout', function(message) {
+  ldapClient.on('timeout', function(message: string) {
     monitor.setComponentError('LDAP', 'Timeout');
     warn(message);
   });
 
-  ldapClient.on('error', function(err) {
+  ldapClient.on('error', function(err: any) {
     monitor.setComponentError('LDAP', err.message || 'ERROR');
     error(err);
   });
