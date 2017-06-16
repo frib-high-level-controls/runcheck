@@ -50,6 +50,7 @@ logs/*
 !logs/README.md
 user-photos/*
 !user-photos/README.md
+!user-photos/__unknown__.jpg
 public/javascripts/template/*
 !public/javascripts/template/README.md
 

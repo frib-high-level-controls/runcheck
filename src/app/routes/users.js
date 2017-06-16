@@ -254,12 +254,15 @@ users.get('/:id/refresh', auth.ensureAuthenticated, auth.verifyRole('admin'), re
 users.get('/:id/photo', auth.ensureAuthenticated, function (req, res) {
   if (fs.existsSync(options.root + req.params.id + '.jpg')) {
     return res.sendFile(req.params.id + '.jpg', options);
-  } else if (pending_photo[req.params.id]) {
-    pending_photo[req.params.id].push(res);
   } else {
-    pending_photo[req.params.id] = [res];
-    fetch_photo_from_ad(req.params.id);
+    return res.sendFile('__unknown__.jpg', options);
   }
+  //else if (pending_photo[req.params.id]) {
+  //  pending_photo[req.params.id].push(res);
+  //} else {
+  //  pending_photo[req.params.id] = [res];
+  //  fetch_photo_from_ad(req.params.id);
+  //}
 });
 
 
