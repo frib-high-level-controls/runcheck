@@ -9,13 +9,13 @@ import morgan = require('morgan');
 import session = require('express-session');
 import mongoose = require('mongoose');
 
-import monitor = require('./shared/monitor');
+import handlers = require('./shared/handlers');
+import status = require('./shared/status');
 import auth = require('./lib/auth');
 import casLdapAuth = require('./lib/cas-ldap-auth');
 import casClientFactory = require('./lib/cas-client.js');
 import ldapClientFactory = require('./lib/ldap-client');
 
-import monitor_routes = require('./routes/monitor');
 import index_routes = require('./routes/index');
 import users_routes = require('./routes/users');
 import devices_routes = require('./routes/devices');
@@ -77,9 +77,9 @@ let activeStopped = Promise.resolve();
 
 function updateActivityStatus(): void {
   if (activeCount <= activeLimit) {
-    monitor.setComponentOk('Activity', activeCount + ' <= ' + activeLimit);
+    status.setComponentOk('Activity', activeCount + ' <= ' + activeLimit);
   } else {
-    monitor.setComponentError('Activity', activeCount + ' > ' + activeLimit);
+    status.setComponentError('Activity', activeCount + ' > ' + activeLimit);
   }
 };
 
@@ -166,21 +166,21 @@ async function doStart(): Promise<void> {
   mongoose.Promise = global.Promise;
 
   mongoose.connection.on('connected', function() {
-    monitor.setComponentOk('MongoDB', 'Connected');
+    status.setComponentOk('MongoDB', 'Connected');
     log('Mongoose default connection opened.');
   });
 
   mongoose.connection.on('disconnected', function() {
-    monitor.setComponentError('MongoDB', 'Disconnected');
+    status.setComponentError('MongoDB', 'Disconnected');
     log('Mongoose default connection disconnected');
   });
 
   mongoose.connection.on('error', function(err: any) {
-    monitor.setComponentError('MongoDB', err.message || 'Unknown Error');
+    status.setComponentError('MongoDB', err.message || 'Unknown Error');
     log('Mongoose default connection error: ' + err);
   });
 
-  monitor.setComponentError('MongoDB', 'Never Connected');
+  status.setComponentError('MongoDB', 'Never Connected');
 
   mongoose.connect(mongoUrl, mongoOptions);
 
@@ -207,20 +207,20 @@ async function doStart(): Promise<void> {
     bindCredentials: ldapCfg.adminPassword,
   });
 
-  monitor.setComponentError('LDAP', 'Never Connected');
+  status.setComponentError('LDAP', 'Never Connected');
 
   ldapClient.on('connect', function() {
-    monitor.setComponentOk('LDAP', 'Connected');
+    status.setComponentOk('LDAP', 'Connected');
     log('LDAP client connected');
   });
 
   ldapClient.on('timeout', function(message: string) {
-    monitor.setComponentError('LDAP', 'Timeout');
+    status.setComponentError('LDAP', 'Timeout');
     warn(message);
   });
 
   ldapClient.on('error', function(err: any) {
-    monitor.setComponentError('LDAP', err.message || 'ERROR');
+    status.setComponentError('LDAP', err.message || 'ERROR');
     error(err);
   });
 
@@ -279,7 +279,7 @@ async function doStart(): Promise<void> {
 
   app.use(auth.sessionLocals);
 
-  app.use('/monitor', monitor_routes);
+  app.use('/status', status.router);
   app.use('/', index_routes);
   app.use('/users', users_routes);
   app.use('/devices', devices_routes);
@@ -295,13 +295,7 @@ async function doStart(): Promise<void> {
   });
 
   // error handlers
-  app.use(function (err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
-    res.status(err.status || 500);
-    res.render('error', {
-      message: err.message,
-      error: err,
-    });
-  });
+  app.use(handlers.requestErrorHandler);
 };
 
 // asynchronously stop the application
