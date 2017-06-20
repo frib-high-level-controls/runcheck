@@ -199,8 +199,9 @@ async function doStart(): Promise<void> {
 
   // Redirect to CAS logout. CAS v3 uses 'service' parameter and
   // CAS v2 uses 'url' parameter to allow redirect back to service
-  // after logout is complete. but, this appears is broken on RubyCAS.
-  index_routes.redirectUrl = authCfg.cas + '/logout?service=' + encodeURIComponent(authCfg.service);
+  // after logout is complete. The specification does not require
+  // the 'gateway' parameter for logout, but RubyCAS needs it to redirect.
+  index_routes.redirectUrl = authCfg.cas + '/logout?gateway=true&service=' + encodeURIComponent(authCfg.service);
 
   // LDAP client start
   let ldapClient = ldapClientFactory.create({
