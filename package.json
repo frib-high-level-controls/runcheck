@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
-    "grunt": "./node_modules/grunt/bin/grunt",
-    "bower": "./node_modules/bower/bin/bower",
+    "start": "node ./bin/app",
+    "grunt": "./node_modules/.bin/grunt",
+    "bower": "./node_modules/.bin/bower",
     "pug": "./node_modules/.bin/pug"
   },
   "dependencies": {
