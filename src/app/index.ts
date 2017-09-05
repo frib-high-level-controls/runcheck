@@ -2,14 +2,16 @@
 import fs = require('fs');
 import path = require('path');
 
+import rc = require('rc');
 import bodyparser = require('body-parser');
 import express = require('express');
 import favicon = require('serve-favicon');
+import mongoose = require('mongoose');
 import morgan = require('morgan');
 import session = require('express-session');
-import mongoose = require('mongoose');
 
 import handlers = require('./shared/handlers');
+import logging = require('./shared/logging');
 import status = require('./shared/status');
 import auth = require('./lib/auth');
 import casLdapAuth = require('./lib/cas-ldap-auth');
@@ -24,48 +26,43 @@ import slot_groups_routes = require('./routes/slot-groups');
 import checklists_routes = require('./routes/checklists');
 
 
-// error interface
-interface StatusError extends Error {
-  status?: number;
-}
+// package metadata
+interface Package {
+  name?: {};
+  version?: {};
+};
 
 // application configuration
-interface AppCfg {
-  port?: string;
-  addr?: string;
-  session_life?: number;
-  session_secret?: string;
-};
-
-// MongoDB configuration
-interface MongoCfg {
-  address?: string;
-  port?: number | string;
-  db?: string;
-  options?: any;
-};
-
-// Authentication configuration
-interface AuthCfg {
-  cas: string;
-  service: string;
-  login_service: string;
-};
-
-// LDAP configuration
-interface LdapCfg {
-  url: string;
-  adminDn: string;
-  adminPassword: string;
+interface Config {
+  // these properties are provided by the 'rc' library
+  // and contain config file paths that have been read
+  // (see https://www.npmjs.com/package/rc)
+  config?: string;
+  configs?: string[];
+  app: {
+    port: {};
+    addr: {};
+    session_life: {};
+    session_secret: {};
+  };
+  mongo: {
+    user?: {};
+    pass?: {};
+    port: {};
+    addr: {};
+    db: {};
+    options: {};
+  };
 };
 
 // application singleton
 let app: express.Application;
 
 // application logging
-let log = console.log;
-let warn = console.warn;
-let error = console.error;
+let log = logging.log;
+let info = logging.info;
+let warn = logging.warn;
+let error = logging.error;
 
 // application lifecycle
 let state = 'stopped';
@@ -83,17 +80,40 @@ function updateActivityStatus(): void {
   }
 };
 
-// read configuration file in JSON format
-async function readConfigFile(name: string): Promise<object> {
-  return new Promise(function (resolve, reject) {
-    fs.readFile(path.resolve(path.resolve(__dirname, '../config', name)), 'utf8', function (err, data) {
+// read file with path resolution
+function readFile(...pathSegments: string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path.resolve(...pathSegments), (err, data) => {
       if (err) {
         reject(err);
         return;
       }
-      resolve(JSON.parse(data));
+      resolve(data);
     });
   });
+};
+
+// read the application name and version
+async function readNameVersion(): Promise<[string | undefined, string | undefined]> {
+  // first look for application name and version in the environment
+  let name = process.env.NODE_APP_NAME;
+  let version = process.env.NODE_APP_VERSION;
+  // second look for application name and verison in packge.json
+  if (!name || !version) {
+    try {
+      let data = await readFile(__dirname, '..', 'package.json');
+      let pkg: Package = JSON.parse(data.toString('UTF-8'));
+      if (!name && pkg && pkg.name) {
+        name = String(pkg.name);
+      }
+      if (!version && pkg && pkg.version) {
+        version = String(pkg.version);
+      }
+    } catch (ierr) {
+      // ignore //
+    }
+  }
+  return [name, version];
 };
 
 // asynchronously start the application
@@ -115,6 +135,10 @@ async function start(): Promise<express.Application> {
   updateActivityStatus();
 
   app = express();
+
+  let [name, version] = await readNameVersion();
+  app.set('name', name);
+  app.set('version', version);
 
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (state !== 'started') {
@@ -152,101 +176,77 @@ async function start(): Promise<express.Application> {
 
 // asynchronously configure the application
 async function doStart(): Promise<void> {
-  let env = app.get('env');
+  let env: {} | undefined = app.get('env');
+  let name: {} | undefined = app.get('name');
 
-  // Connect to MongoDB
-  let mongoCfg: MongoCfg = await readConfigFile('mongo.json');
+  let cfg: Config = {
+    app: {
+      port: '3000',
+      addr: 'localhost',
+      session_life: 28800000,
+      session_secret: 'secret',
+    },
+    mongo: {
+      port: '27017',
+      addr: 'localhost',
+      db: 'webapp-dev',
+      options: {
+        // see http://mongoosejs.com/docs/connections.html
+        useMongoClient: true,
+      },
+    },
+  };
 
-  let mongoUrl = 'mongodb://' + (mongoCfg.address || 'localhost')
-                              + ':' + (mongoCfg.port || '27017')
-                              + '/' + (mongoCfg.db || 'runcheck-dev');
+  if (name && (typeof name === 'string')) {
+    rc(name, cfg);
+    if (cfg.configs) {
+      for (let file of cfg.configs) {
+        log('Load configuration: %s', file);
+      }
+    }
+  }
 
-  let mongoOptions = mongoCfg.options || {};
+  app.set('port', String(cfg.app.port));
+  app.set('addr', String(cfg.app.addr));
+
+  // configure Mongoose (MongoDB)
+  let mongoUrl = 'mongodb://';
+  if (cfg.mongo.user) {
+    mongoUrl += encodeURIComponent(String(cfg.mongo.user));
+    if (cfg.mongo.pass) {
+      mongoUrl += ':' + encodeURIComponent(String(cfg.mongo.pass));
+    }
+    mongoUrl += '@';
+  }
+  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
 
   mongoose.Promise = global.Promise;
 
-  mongoose.connection.on('connected', function() {
+  mongoose.connection.on('connected', () => {
     status.setComponentOk('MongoDB', 'Connected');
     log('Mongoose default connection opened.');
   });
 
-  mongoose.connection.on('disconnected', function() {
+  mongoose.connection.on('disconnected', () => {
     status.setComponentError('MongoDB', 'Disconnected');
-    log('Mongoose default connection disconnected');
+    warn('Mongoose default connection closed');
   });
 
-  mongoose.connection.on('error', function(err: any) {
+  mongoose.connection.on('error', (err) => {
     status.setComponentError('MongoDB', err.message || 'Unknown Error');
-    log('Mongoose default connection error: ' + err);
+    error('Mongoose default connection error: %s', err);
   });
 
   status.setComponentError('MongoDB', 'Never Connected');
-
-  mongoose.connect(mongoUrl, mongoOptions);
-
-  // Authentication configuration
-  let [ authCfg, ldapCfg ] = await Promise.all([
-    <Promise<AuthCfg>> readConfigFile('auth.json'),
-    <Promise<LdapCfg>> readConfigFile('ad.json'),
-  ]);
-
-  // CAS client start
-  casClientFactory.create({
-    base_url: authCfg.cas,
-    service: authCfg.login_service,
-    version: 1.0,
-  });
-
-  // Redirect to CAS logout. CAS v3 uses 'service' parameter and
-  // CAS v2 uses 'url' parameter to allow redirect back to service
-  // after logout is complete. The specification does not require
-  // the 'gateway' parameter for logout, but RubyCAS needs it to redirect.
-  index_routes.redirectUrl = authCfg.cas + '/logout?gateway=true&service=' + encodeURIComponent(authCfg.service);
-
-  // LDAP client start
-  let ldapClient = ldapClientFactory.create({
-    url: ldapCfg.url,
-    paging: true,
-    timeout: 15 * 1000,
-    reconnect: true,
-    bindDN: ldapCfg.adminDn,
-    bindCredentials: ldapCfg.adminPassword,
-  });
-
-  status.setComponentError('LDAP', 'Never Connected');
-
-  ldapClient.on('connect', function() {
-    status.setComponentOk('LDAP', 'Connected');
-    log('LDAP client connected');
-  });
-
-  ldapClient.on('timeout', function(message: string) {
-    status.setComponentError('LDAP', 'Timeout');
-    warn(message);
-  });
-
-  ldapClient.on('error', function(err: any) {
-    status.setComponentError('LDAP', err.message || 'ERROR');
-    error(err);
-  });
-
-  auth.ensureAuthcHandler = casLdapAuth.ensureAuthenticated({
-    ldap: ldapCfg,
-    auth: authCfg,
-  });
-
-
-  let appCfg: AppCfg = await readConfigFile('app.json');
-
-  app.set('port', appCfg.port || '3000');
-  app.set('addr', appCfg.addr || 'localhost');
+  log('Mongoose default connection: %s', mongoUrl);
+  await mongoose.connect(mongoUrl, cfg.mongo.options);
 
   // view engine configuration
-  app.set('views', path.resolve(__dirname, '../views'));
+  app.set('views', path.resolve(__dirname, '..', 'views'));
   app.set('view engine', 'pug');
 
   // favicon configuration
-  app.use(favicon(path.resolve(__dirname, '../public', 'favicon.ico')));
+  app.use(favicon(path.resolve(__dirname, '..', 'public', 'favicon.ico')));
 
   // morgan configuration
   morgan.token('remote-user', function (req) {
@@ -274,16 +274,14 @@ async function doStart(): Promise<void> {
     store: new session.MemoryStore(),
     resave: false,
     saveUninitialized: false,
-    secret: appCfg.session_secret || 'secret',
+    secret: String(cfg.app.session_secret),
     cookie: {
-      maxAge: appCfg.session_life || 28800000,
+      maxAge: Number(cfg.app.session_life),
     },
   }));
 
-  app.use(express.static(path.resolve(__dirname, '../public')));
-  app.use(express.static(path.resolve(__dirname, '../bower_components')));
-
-  app.use(auth.sessionLocals);
+  app.use(express.static(path.resolve(__dirname, '..', 'public')));
+  app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
   app.use('/status', status.router);
   app.use('/', index_routes.router);
@@ -293,12 +291,8 @@ async function doStart(): Promise<void> {
   app.use('/slotgroups', slot_groups_routes);
   app.use('/checklists', checklists_routes.router);
 
-  // catch 404 and forward to error handler
-  app.use(function(req, res, next) {
-    let err: StatusError = new Error('Not Found');
-    err.status = 404;
-    next(err);
-  });
+  // no handler found for request (404)
+  app.use(handlers.notFoundHandler);
 
   // error handlers
   app.use(handlers.requestErrorHandler);
@@ -328,12 +322,13 @@ async function stop(): Promise<void> {
 
 // asynchronously disconnect the application
 async function doStop(): Promise<void> {
-  log('Application stopping');
-
-  // Disconnect MongoDB
-  mongoose.disconnect();
-
+  // disconnect Mongoose (MongoDB)
+  try {
+    await mongoose.disconnect();
+  } catch (err) {
+    warn('Mongoose disconnect failure: %s', err);
+  }
   return;
 }
 
-export { start, stop, log, warn, error };
+export { start, stop, log, error };

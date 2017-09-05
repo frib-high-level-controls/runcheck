@@ -6,6 +6,7 @@
     "start": "node ./bin/app",
     "grunt": "./node_modules/.bin/grunt",
     "bower": "./node_modules/.bin/bower",
+    "mocha": "./node_modules/.bin/mocha",
     "pug": "./node_modules/.bin/pug"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "mongoose": "^4.11.10",
     "morgan": "^1.7.0",
     "pug": "^2.0.0-rc.3",
+    "rc": "^1.2.1",
     "request": "2.73.0",
     "sanitize-caja": "0.1.3",
     "serve-favicon": "^2.3.0"
@@ -38,6 +40,7 @@
     "@types/lodash": "^4.14.74",
     "@types/mongoose": "^4.7.21",
     "@types/morgan": "^1.7.32",
+    "@types/rc": "^0.0.1",
     "@types/serve-favicon": "^2.2.29",
     "commander": "2.9.0",
     "eslint": "3.0.1",

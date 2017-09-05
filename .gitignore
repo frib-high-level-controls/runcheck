@@ -72,5 +72,9 @@ npm-debug.log
 # Ignore build directory
 /app/
 
+# Ignore test directory
+/test/app/
+/test/apptest/
+
 # Ignore configuration files
-/config/app.json
+/config/

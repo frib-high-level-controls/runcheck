@@ -10,17 +10,22 @@ import handlers = require('./handlers');
 
 type Status = 'ERROR' | 'OK';
 
-interface ComponentStatus {
+export interface ComponentStatus {
   status: Status;
   date: Date;
   name: string;
   message: string;
 }
 
-interface MonitorStatus {
+export interface ApplicationStatus {
   status: Status;
   uptime: number;
   components: ComponentStatus[];
+}
+
+export interface ApiApplicationStatus extends ApplicationStatus {
+  name: string;
+  version: string;
 }
 
 const catchAll = handlers.catchAll;
@@ -213,8 +218,8 @@ function setTestingError(message?: string) {
 };
 
 
-function getStatus(): MonitorStatus {
-  let status: MonitorStatus = {
+function getStatus(): ApplicationStatus {
+  let status: ApplicationStatus = {
     status: 'OK',
     uptime: process.uptime(),
     components: [],
@@ -253,12 +258,12 @@ function getComponent(name: string): ComponentStatus | undefined {
   }
 };
 
-function setComponentOk(name: string, message?: string): void {
+function setComponentOk(name: string, message?: string, ...param: any[]): void {
   for (let comp of components) {
     if (comp.name === name) {
       comp.status = 'OK';
       comp.date = new Date();
-      comp.message = message || 'OK';
+      comp.message = message ? util.format(message, ...param) : 'OK';
       return;
     }
   }
@@ -266,16 +271,16 @@ function setComponentOk(name: string, message?: string): void {
     status: 'OK',
     date: new Date(),
     name: name,
-    message: message || 'OK',
+    message: message ? util.format(message, ...param) : 'OK',
   });
 };
 
-function setComponentError(name: string, message?: string): void {
+function setComponentError(name: string, message?: string, ...param: any[]): void {
   for (let comp of components) {
     if (comp.name === name) {
       comp.status = 'ERROR';
       comp.date = new Date();
-      comp.message = message || 'ERROR';
+      comp.message = message ? util.format(message, ...param) : 'ERROR';
       return;
     }
   }
@@ -283,7 +288,7 @@ function setComponentError(name: string, message?: string): void {
     status: 'ERROR',
     date: new Date(),
     name: name,
-    message: message || 'ERROR',
+    message: message ? util.format(message, ...param) : 'ERROR',
   });
 };
 
@@ -291,7 +296,18 @@ function setComponentError(name: string, message?: string): void {
 
 const router = express.Router();
 
-function getHttpStatus(status: MonitorStatus): number {
+function getApiStatus(app: express.Application): ApiApplicationStatus {
+  let status = getStatus();
+  return {
+    status: status.status,
+    uptime: status.uptime,
+    components: status.components,
+    name: String(app.get('name') || ''),
+    version: String(app.get('version') || ''),
+  };
+};
+
+function getHttpStatus(status: ApplicationStatus): number {
   if (status.status !== 'OK') {
     return handlers.HttpStatus.INTERNAL_SERVER_ERROR;
   }
@@ -303,7 +319,7 @@ router.get('/', ensureAccepts('html'), catchAll(async (req: express.Request, res
   if (testingStatus.status !== 'OK') {
     testing = true;
   }
-  let status = getStatus();
+  let status = getApiStatus(req.app);
   res.status(getHttpStatus(status)).render('status', {
     testing: testing,
     status: status,
@@ -329,7 +345,7 @@ router.post('/', ensureAccepts('html'), catchAll(async (req: express.Request, re
 }));
 
 router.get('/json', ensureAccepts('json'), catchAll(async (req: express.Request, res: express.Response) => {
-  let status = getStatus();
+  let status = getApiStatus(req.app);
   res.status(getHttpStatus(status)).json(status);
 }));
 

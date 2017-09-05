@@ -5,6 +5,10 @@ import express = require('express');
 
 export import HttpStatus = require('http-status-codes');
 
+export interface HttpStatusError extends Error {
+  status: number;
+}
+
 export interface RequestPromiseHandler {
   (req: express.Request, res: express.Response, next?: express.NextFunction): PromiseLike<void>;
 }
@@ -22,9 +26,9 @@ export interface RequestErrorDetails {
 };
 
 const DEFAULT_ERROR_STATUS = HttpStatus.INTERNAL_SERVER_ERROR;
-const DEFAULT_ERROR_MESSAGE = 'Unknown request error';
+const DEFAULT_ERROR_MESSAGE = HttpStatus.getStatusText(DEFAULT_ERROR_STATUS);
 
-export class RequestError extends Error {
+export class RequestError extends Error implements HttpStatusError  {
 
   public status = DEFAULT_ERROR_STATUS;
   public details: RequestErrorDetails = { message: DEFAULT_ERROR_MESSAGE };
@@ -60,7 +64,7 @@ export class RequestError extends Error {
       this.details = details;
     } else {
       this.details = {
-        message: DEFAULT_ERROR_MESSAGE,
+        message: this.message,
       };
       return;
     }
@@ -83,11 +87,17 @@ export function ensureAccepts(...type: string[]): express.RequestHandler;
 export function ensureAccepts(type: any): express.RequestHandler {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!req.accepts(type)) {
-      next(new RequestError(HttpStatus.NOT_ACCEPTABLE, HttpStatus.getStatusText(HttpStatus.NOT_ACCEPTABLE)));
+      next(new RequestError(HttpStatus.getStatusText(HttpStatus.NOT_ACCEPTABLE), HttpStatus.NOT_ACCEPTABLE));
     }
     next();
   };
 };
+
+export function notFoundHandler(req: express.Request, res: express.Response, next: express.NextFunction) {
+  let status = HttpStatus.NOT_FOUND;
+  let message = HttpStatus.getStatusText(status);
+  next(new RequestError(message, status));
+}
 
 export function requestErrorHandler(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
   let status = HttpStatus.INTERNAL_SERVER_ERROR;

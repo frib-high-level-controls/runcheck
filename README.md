@@ -1,6 +1,11 @@
 # runcheck
 Check workflow before a run
 
+Description
+-----------
+This repostiory provides a template for new web application projects
+using [NodeJS](https://nodejs.org) (runtime), [Express](https://expressjs.com/) (routing),
+[Pug](https://pugjs.org) (templating) and [TypeScript](https://www.typescriptlang.org/) (language).
 
 ## Style, linter, and formatter
 
