@@ -1,6 +1,5 @@
 module.exports = function (grunt) {
 
-  require('load-grunt-tasks')(grunt);
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     eslint: {
@@ -28,13 +27,19 @@ module.exports = function (grunt) {
       }
     },
     ts: {
-            app: {
-                files: [{
-                    src: ['src/app/\*\*/\*.ts', 'src/app/**/*.js', '!src/app/.baseDir.ts'],
-                    dest: './app'
-                }],
-                tsconfig: 'src/app/tsconfig.json'
-            }
+      app: {
+        tsconfig: {
+           tsconfig: './src/app',
+           passThrough: true,
+        },
+        // The additional flags specified below seems like it should be equivalent
+        // to using the outDir option, but when the outDir option is used then the
+        // Typescript compiler fails for find the source files (grunt-ts v5.5.1).
+        //outDir: './app',
+        options: {
+            additionalFlags: '--outDir ./app'
+        },
+    },
         },
         tslint: {
             options: {
@@ -53,11 +58,13 @@ module.exports = function (grunt) {
   
   });
 
+  grunt.loadNpmTasks("grunt-shell");
+  grunt.loadNpmTasks("grunt-ts");
+  grunt.loadNpmTasks("grunt-tslint");
+
   grunt.registerTask('template', ['shell:template']);
   grunt.registerTask('test', ['mochaTest']);
   grunt.registerTask('puglint', ['shell:puglint']);
-  grunt.loadNpmTasks("grunt-ts");
-  grunt.loadNpmTasks("grunt-tslint");
 
   grunt.registerTask('default', ['puglint', 'eslint']);
 };
