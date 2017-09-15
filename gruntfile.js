@@ -55,16 +55,23 @@ module.exports = function(grunt) {
                     "src/app/**/*.ts"
                 ]
             }
+        },
+        clean: {
+            app: [ './app' ],
+            test: [ './test' ],
         }
     });
 
   grunt.loadNpmTasks("grunt-shell");
   grunt.loadNpmTasks("grunt-ts");
   grunt.loadNpmTasks("grunt-tslint");
+  grunt.loadNpmTasks("grunt-contrib-clean");
 
   grunt.registerTask('template', ['shell:template']);
   grunt.registerTask('test', ['mochaTest']);
   grunt.registerTask('puglint', ['shell:puglint']);
 
-  grunt.registerTask('default', ['puglint', 'eslint']);
+  grunt.registerTask("default", [
+    "ts:app"
+  ]);
 };
