@@ -13,12 +13,10 @@ import session = require('express-session');
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
 import status = require('./shared/status');
-import auth = require('./lib/auth');
-import casLdapAuth = require('./lib/cas-ldap-auth');
-import casClientFactory = require('./lib/cas-client.js');
-import ldapClientFactory = require('./lib/ldap-client');
+import auth = require('./shared/auth');
+import cfauth = require('./shared/cas-forg-auth');
+import forgapi = require('./shared/forgapi');
 
-import index_routes = require('./routes/index');
 import users_routes = require('./routes/users');
 import devices_routes = require('./routes/devices');
 import slots_routes = require('./routes/slots');
@@ -52,6 +50,16 @@ interface Config {
     addr: {};
     db: {};
     options: {};
+  };
+  cas: {
+    cas_url?: {};
+    service_url?: {};
+    append_path?: {};
+    version?: {};
+  };
+  forgapi: {
+    url?: {};
+    agentOptions?: {};
   };
 };
 
@@ -195,6 +203,12 @@ async function doStart(): Promise<void> {
         useMongoClient: true,
       },
     },
+    cas: {
+      // no defaults
+    },
+    forgapi: {
+      // no defaults
+    },
   };
 
   if (name && (typeof name === 'string')) {
@@ -241,6 +255,36 @@ async function doStart(): Promise<void> {
   log('Mongoose default connection: %s', mongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
+  // Authentication configuration
+  if (!cfg.forgapi.url) {
+    throw new Error('FORG base URL not configured');
+  }
+  log('FORG API base URL: %s', cfg.forgapi.url);
+
+  const forgClient = new forgapi.Client({
+    url: String(cfg.forgapi.url),
+    agentOptions: cfg.forgapi.agentOptions || {},
+  });
+
+  if (!cfg.cas.cas_url) {
+    throw new Error('CAS base URL not configured');
+  }
+  log('CAS base URL: %s', cfg.cas.cas_url);
+
+  if (!cfg.cas.service_url) {
+    throw new Error('CAS service URL not configured');
+  }
+  log('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
+
+  const cfAuthProvider = new cfauth.CasForgProvider(forgClient, {
+    casUrl: String(cfg.cas.cas_url),
+    casServiceUrl: String(cfg.cas.service_url),
+    casAppendPath: cfg.cas.append_path === true ? true : false,
+    casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
+  });
+
+  auth.setProvider(cfAuthProvider);
+
   // view engine configuration
   app.set('views', path.resolve(__dirname, '..', 'views'));
   app.set('view engine', 'pug');
@@ -280,11 +324,32 @@ async function doStart(): Promise<void> {
     },
   }));
 
+  app.use(cfAuthProvider.initialize());
+
+  // app.use(auth.sessionLocals);
   app.use(express.static(path.resolve(__dirname, '..', 'public')));
   app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
+  app.get('/', (req, res) => {
+    res.render('index');
+  });
+
+  app.get('/login', cfAuthProvider.authenticate(), (req, res) => {
+    if (req.query.bounce) {
+      res.redirect(req.query.bounce);
+      return;
+    }
+    res.redirect('/');
+  });
+
+  app.get('/logout', (req, res) => {
+    cfAuthProvider.logout(req);
+    const redirectUrl = cfAuthProvider.getCasLogoutUrl(true);
+    log('Redirect to CAS logout: %s', redirectUrl);
+    res.redirect(redirectUrl);
+  });
+
   app.use('/status', status.router);
-  app.use('/', index_routes.router);
   app.use('/users', users_routes);
   app.use('/devices', devices_routes.router);
   app.use('/slots', slots_routes);

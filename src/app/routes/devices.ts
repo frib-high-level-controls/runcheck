@@ -7,7 +7,7 @@ import express = require('express');
 import moment = require('moment');
 
 import log = require('../lib/log');
-import auth = require('../lib/auth');
+import * as auth from '../shared/auth';
 
 import slot_model = require('../models/slot');
 import device_model = require('../models/device');

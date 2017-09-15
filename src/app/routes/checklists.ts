@@ -6,7 +6,7 @@ import mongoose = require('mongoose');
 import debugging = require('debug');
 
 import log = require('../lib/log');
-import auth = require('../lib/auth');
+import auth = require('../shared/auth');
 import handlers = require('../shared/handlers');
 import models = require('../shared/models');
 

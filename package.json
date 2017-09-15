@@ -44,6 +44,7 @@
     "@types/morgan": "^1.7.32",
     "@types/passport": "^0.3.4",
     "@types/rc": "^0.0.1",
+    "@types/request": "^2.0.3",
     "@types/serve-favicon": "^2.2.29",
     "commander": "2.9.0",
     "eslint": "3.0.1",
