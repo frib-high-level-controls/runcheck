@@ -40,8 +40,21 @@ module.exports = function(grunt) {
         options: {
             additionalFlags: '--outDir ./app'
         },
-    },
+      },
+      tools: {
+        tsconfig: {
+            tsconfig: './src/tools',
+            passThrough: true,
         },
+        // The additional flags specified below seems like it should be equivalent
+        // to using the outDir option, but when the outDir option is used then the
+        // Typescript compiler fails for find the source files (grunt-ts v5.5.1).
+        //outDir: './app',
+        options: {
+            additionalFlags: '--outDir ./tools'
+        },
+      },
+    },
         tslint: {
             options: {
                 configuration: "tslint.json",
@@ -59,6 +72,7 @@ module.exports = function(grunt) {
         clean: {
             app: [ './app' ],
             test: [ './test' ],
+            tools: [ './tools' ],
         }
     });
 
