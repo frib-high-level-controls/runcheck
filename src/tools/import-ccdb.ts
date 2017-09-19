@@ -4,12 +4,35 @@ import readline = require('readline');
 
 import mongoose = require('mongoose');
 import mysql = require('mysql');
-import program = require('commander');
+import rc = require('rc');
 
 import dbg = require('debug');
 
 import slot = require('../app/models/slot');
 import device = require('../app/models/device');
+
+
+interface Config {
+  config?: string;
+  configs?: string[];
+  help?: {};
+  mongo: {
+    user?: {};
+    pass?: {};
+    port: {};
+    addr: {};
+    db: {};
+    options: {};
+  };
+  dryrun?: {};
+  host?: {};
+  user?: {};
+  database?: {};
+  areamgrs?: {[key: string]: {} };
+  deptmgrs?: {[key: string]: {} };
+  ascdepts?: {[key: string]: {} };
+};
+
 
 const debug = dbg('import-ccdb');
 
@@ -18,14 +41,13 @@ const Device = device.Device;
 
 mongoose.Promise = global.Promise;
 
-
 // Partially wrap the mysql library to use promises.
-let mysql_createConnection = function (options: any) {
+function mysql_createConnection(options: any) {
 
   let conn = mysql.createConnection(options);
 
   let connect = function() {
-    return new Promise(function(resolve,reject) {
+    return new Promise(function(resolve, reject) {
       conn.connect(function(err: any) {
         if (err) {
           reject(err);
@@ -73,40 +95,18 @@ let mysql_createConnection = function (options: any) {
 };
 
 
-let mongoose_connect = function(options: any) {
+async function mongoose_connect(cfg: Config): Promise<void> {
 
-  let mongoOptions: any = {
-    db: {
-      native_parser: true,
-    },
-    server: {
-      poolSize: 5,
-      socketOptions: {
-        connectTimeoutMS: 30000,
-        keepAlive: 1,
-      }
+  // configure Mongoose (MongoDB)
+  let mongoUrl = 'mongodb://';
+  if (cfg.mongo.user) {
+    mongoUrl += encodeURIComponent(String(cfg.mongo.user));
+    if (cfg.mongo.pass) {
+      mongoUrl += ':' + encodeURIComponent(String(cfg.mongo.pass));
     }
-  };
-
-  let mongoURL = 'mongodb://' + (options.address || 'localhost') + ':' + (options.port || '27017') + '/' + (options.db || 'runcheck');
-
-  if (options.user && options.pass) {
-    mongoOptions.user = options.user;
-    mongoOptions.pass = options.pass;
+    mongoUrl += '@';
   }
-
-  if (options.auth) {
-    mongoOptions.auth = options.auth;
-  }
-
-  return new Promise(function (resolve, reject) {
-    mongoose.connect(mongoURL, mongoOptions)
-      .then(function () {
-        resolve();
-      }, function (err) {
-        reject(err);
-      });
-  });
+  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
 
   // mongoose.connection.on('connected', function () {
   //   log.info('Mongoose default connection opened.');
@@ -119,22 +119,30 @@ let mongoose_connect = function(options: any) {
   // mongoose.connection.on('disconnected', function () {
   //   log.warn('Mongoose default connection disconnected');
   // });
+
+  return mongoose.connect(mongoUrl, cfg.mongo.options);
 };
 
 
-let mongoose_disconnect = function() {
-  return new Promise(function(resolve, reject) {
-    mongoose.disconnect()
-      .then(function() {
-        resolve();
-      }, function(err) {
-        reject(err);
-      });
+function mongoose_disconnect(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    mongoose.disconnect().then(resolve, reject);
   });
-}
+};
 
 
-// '{"meta":{"type":"SedsScalar_String","protocol":"SEDSv1","version":"1.0.0"},"data":{"value":"EML FARADAY CUP","representation":"EML FARADAY CUP"}}',
+// Example SEDS structure:
+// {
+//   "meta": {
+//     "type":"SedsScalar_String",
+//     "protocol":"SEDSv1",
+//     "version":"1.0.0"
+//   },
+//   "data": {
+//     "value":"EML FARADAY CUP",
+//     "representation":"EML FARADAY CUP"
+//   }
+// }
 let parseSEDS = function(seds: string) {
   if (!seds) {
     return;
@@ -163,28 +171,49 @@ let parseSEDS = function(seds: string) {
   throw new Error('SEDS data unsupported type: ' + data.meta.type);
 };
 
-// let departmentManagers = {
-//   'DepartmentManager-EE':'OWNER'
-// }
-
 (async function() {
 
-  program.version('0.0.1')
-    .option('--dryrun', 'only validate data from CCDB')
-    .option('-h, --host [ccdbhost]', 'host name of CCDB database', 'localhost')
-    .option('-u, --user [username]', 'user name for CCDB database')
-    .option('-d, --database [dbname]', 'database name for CCDB');
-    //.option('-m, --mongo', 'save data in defoult MongoDB.')
-    //.option('-o, --outfile [outfile]', 'save data in specified file.')
-    //.option('-c, --config [config]', 'the configuration json file')
-    //.arguments('<dataPath>')
-    //.action(function (dp) {
-    //  dataPath = dp;
-    //});
-  program.parse(process.argv);
+  let cfg: Config = {
+    mongo: {
+      port: '27017',
+      addr: 'localhost',
+      db: 'runcheck-dev',
+      options: {
+        // see http://mongoosejs.com/docs/connections.html
+        useMongoClient: true,
+      },
+    },
+    host: 'localhost',
+  };
 
-  if (!program.user) {
-    program.user = await new Promise(function(resolve) {
+  rc('import-ccdb', cfg);
+  if (cfg.configs) {
+    for (let file of cfg.configs) {
+      console.log('Load configuration: %s', file);
+    }
+  }
+
+  console.log(JSON.stringify(cfg, null, 4));
+
+  if (cfg.help) {
+    console.log(`Usage: import-ccdb [ options ]
+
+    Options
+      --help               display help information
+      --host  [ccdbhost]   host name of CCDB database (default: localhost)
+      --user [username]    user name for CCDB database
+      --database [dbname]  name of CCDB database 
+    `);
+    return;
+  }
+
+  if (!cfg.database) {
+    console.log('No CCDB database name specified');
+    return;
+  }
+
+  if (!cfg.user) {
+    cfg.user = await new Promise<string>(function(resolve) {
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -217,21 +246,21 @@ let parseSEDS = function(seds: string) {
     });
   });
 
-  console.log('Connecting to CCDB: mysql://%s@%s/%s', program.user, program.host, program.database);
+  console.log('Connecting to CCDB: mysql://%s@%s/%s', cfg.user, cfg.host, cfg.database);
 
   let connection = mysql_createConnection({
-    host     : program.host,
-    user     : program.user,
+    host     : cfg.host,
+    user     : cfg.user,
     password : password,
-    database : program.database,
-    //debug    : true,
+    database : cfg.database,
+    // debug    : true,
     ssl  : {
         // Use this non-default cipher because the server
         // does not support this clients default ciphers.
         ciphers: 'AES128-SHA',
         // The certificate is self-signed. Ignore.
         rejectUnauthorized: false,
-    }
+    },
   });
 
   try {
@@ -254,14 +283,15 @@ let parseSEDS = function(seds: string) {
   //   asm_slot: null,
   //   component_type: 10319 }
 
-  let rows, props;
-  //id, device, slot;
-
   let devices: { [key: string]: device.Device } = {};
   //let slots: { [key: string]: slot.Slot } = {};
 
+  let rows: {};
   try {
-    rows = await connection.query('SELECT d.id, d.description, d.serial_number, t.name from device AS d, component_type AS t WHERE d.component_type = t.id;', []);
+    rows = await connection.query(
+      `SELECT d.id, d.description, d.serial_number, t.name from device AS d, component_type AS t
+          WHERE d.component_type = t.id;`,
+      []);
   } catch (err) {
     console.log(err);
     return connection.end();
@@ -272,7 +302,7 @@ let parseSEDS = function(seds: string) {
     return connection.end();
   }
 
-  for (let ridx= 0; ridx < rows.length; ridx += 1) {
+  for (let ridx = 0; ridx < rows.length; ridx += 1) {
     let row = rows[ridx];
     let device = new Device();
     console.log('Importing device: %s (%s)', row.serial_number, row.description);
@@ -280,8 +310,12 @@ let parseSEDS = function(seds: string) {
     device.name = row.serial_number;
     device.deviceType = row.name;
 
+    let props: {};
     try {
-      let props = await connection.query('SELECT * from property AS p, device_property_value AS pv WHERE pv.property = p.id AND pv.device = ?;', [ row.id ]);
+      props = await connection.query(
+        `SELECT * from property AS p, device_property_value AS pv
+            WHERE pv.property = p.id AND pv.device = ?;`,
+        [ row.id ]);
     } catch (err) {
       console.log(err);
       return connection.end();
@@ -311,20 +345,24 @@ let parseSEDS = function(seds: string) {
     for (let pidx = 0; pidx < props.length; pidx += 1) {
       let prop = props[pidx];
 
-      //if (props[pidx].name === 'Alias') {
-      //  device.name = parseSEDS(props[pidx].prop_value)
-      //  console.log('  name = ' + device.name);
-      //  continue;
-      //}
+      if (props[pidx].name === 'Alias') {
+       device.fullname = parseSEDS(props[pidx].prop_value);
+       continue;
+      }
 
       if (prop.name === 'DepartmentManager') {
-        // TODO: convert the format
-        device.department = parseSEDS(prop.prop_value);
+        let value = parseSEDS(prop.prop_value);
+        if (cfg.deptmgrs && cfg.deptmgrs[value]) {
+          device.department = String(cfg.deptmgrs[value]);
+        }
         continue;
       }
 
       if (prop.name === 'AssociatedDepartment') {
-        device.department = parseSEDS(prop.prop_value)
+        let value = parseSEDS(prop.prop_value);
+        if (cfg.ascdepts && cfg.ascdepts[value]) {
+          device.department = String(cfg.ascdepts[value]);
+        }
         continue;
       }
     }
@@ -335,8 +373,8 @@ let parseSEDS = function(seds: string) {
       console.error(err);
       console.error(props);
       console.error(device);
-      continue;
-      //return connection.end();
+      connection.end();
+      return;
     }
 
     devices[row.id] = device;
@@ -437,19 +475,19 @@ let parseSEDS = function(seds: string) {
   //console.log('DONE');
   await connection.end();
 
-  if (program.dryrun) {
+  if (cfg.dryrun !== false && cfg.dryrun !== 'false') {
     console.log("DRYRUN DONE");
     return;
   }
 
   try {
-    await mongoose_connect(require('../config/mongo'));
-  } catch(err) {
+    await mongoose_connect(cfg);
+  } catch (err) {
     console.error(err);
     return;
   }
 
-  console.log('Connected to Runcheck');
+  console.log('Connected to Runcheck database');
 
   console.log('Clear Runcheck database');
   try {
@@ -463,7 +501,7 @@ let parseSEDS = function(seds: string) {
     if (devices.hasOwnProperty(id)) {
       console.log('Saving device: %s', devices[id].name);
       try {
-        await devices[id].save();
+        await devices[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
         console.error(err);
         return mongoose_disconnect();
