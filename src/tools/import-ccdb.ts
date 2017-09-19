@@ -36,6 +36,10 @@ interface Config {
 
 const debug = dbg('import-ccdb');
 
+const info = console.info;
+const warn = console.warn;
+const error = console.error;
+
 const Slot = slot.Slot;
 const Device = device.Device;
 
@@ -171,7 +175,7 @@ let parseSEDS = function(seds: string) {
   throw new Error('SEDS data unsupported type: ' + data.meta.type);
 };
 
-(async function() {
+async function main() {
 
   let cfg: Config = {
     mongo: {
@@ -189,16 +193,17 @@ let parseSEDS = function(seds: string) {
   rc('import-ccdb', cfg);
   if (cfg.configs) {
     for (let file of cfg.configs) {
-      console.log('Load configuration: %s', file);
+      info('Load configuration: %s', file);
     }
   }
 
-  console.log(JSON.stringify(cfg, null, 4));
+  info(JSON.stringify(cfg, null, 4));
+
 
   if (cfg.help) {
-    console.log(`Usage: import-ccdb [ options ]
+    info(`Usage: import-ccdb [ options ]
 
-    Options
+    Options  console.inf
       --help               display help information
       --host  [ccdbhost]   host name of CCDB database (default: localhost)
       --user [username]    user name for CCDB database
@@ -208,7 +213,7 @@ let parseSEDS = function(seds: string) {
   }
 
   if (!cfg.database) {
-    console.log('No CCDB database name specified');
+    warn('No CCDB database name specified');
     return;
   }
 
@@ -246,7 +251,7 @@ let parseSEDS = function(seds: string) {
     });
   });
 
-  console.log('Connecting to CCDB: mysql://%s@%s/%s', cfg.user, cfg.host, cfg.database);
+  info('Connecting to CCDB: mysql://%s@%s/%s', cfg.user, cfg.host, cfg.database);
 
   let connection = mysql_createConnection({
     host     : cfg.host,
@@ -266,11 +271,11 @@ let parseSEDS = function(seds: string) {
   try {
     await connection.connect();
   } catch (err) {
-    console.log(err);
+    error(err);
     return;
   }
 
-  console.log('Connected to CCDB');
+  info('Connected to CCDB');
 
   // RowDataPacket {
   //   id: 14051,
@@ -284,7 +289,7 @@ let parseSEDS = function(seds: string) {
   //   component_type: 10319 }
 
   let devices: { [key: string]: device.Device } = {};
-  //let slots: { [key: string]: slot.Slot } = {};
+  // let slots: { [key: string]: slot.Slot } = {};
 
   let rows: {};
   try {
@@ -293,19 +298,20 @@ let parseSEDS = function(seds: string) {
           WHERE d.component_type = t.id;`,
       []);
   } catch (err) {
-    console.log(err);
-    return connection.end();
+    error(err);
+    connection.end();
+    return;
   }
 
   if (!Array.isArray(rows)) {
-    console.log('Query result is not an array.');
-    return connection.end();
+    error('Query result is not an array.');
+    connection.end();
+    return;
   }
 
-  for (let ridx = 0; ridx < rows.length; ridx += 1) {
-    let row = rows[ridx];
+  for (let row of rows) {
     let device = new Device();
-    console.log('Importing device: %s (%s)', row.serial_number, row.description);
+    info('Importing device: %s (%s)', row.serial_number, row.description);
     device.name = row.description;
     device.name = row.serial_number;
     device.deviceType = row.name;
@@ -317,8 +323,9 @@ let parseSEDS = function(seds: string) {
             WHERE pv.property = p.id AND pv.device = ?;`,
         [ row.id ]);
     } catch (err) {
-      console.log(err);
-      return connection.end();
+      error(err);
+      connection.end();
+      return;
     }
 
     // RowDataPacket {
@@ -337,17 +344,15 @@ let parseSEDS = function(seds: string) {
     //   property: 134 }
 
     if (!Array.isArray(props)) {
-      console.log('Query result is not an array');
-      return connection.end();
+      error('Query result is not an array');
+      connection.end();
+      return;
     }
 
-
-    for (let pidx = 0; pidx < props.length; pidx += 1) {
-      let prop = props[pidx];
-
-      if (props[pidx].name === 'Alias') {
-       device.fullname = parseSEDS(props[pidx].prop_value);
-       continue;
+    for (let prop of props) {
+      if (prop.name === 'Alias') {
+        device.fullname = parseSEDS(prop.prop_value);
+        continue;
       }
 
       if (prop.name === 'DepartmentManager') {
@@ -476,20 +481,20 @@ let parseSEDS = function(seds: string) {
   await connection.end();
 
   if (cfg.dryrun !== false && cfg.dryrun !== 'false') {
-    console.log("DRYRUN DONE");
+    info('DRYRUN DONE');
     return;
   }
 
   try {
     await mongoose_connect(cfg);
   } catch (err) {
-    console.error(err);
+    error(err);
     return;
   }
 
-  console.log('Connected to Runcheck database');
+  info('Connected to Runcheck database');
 
-  console.log('Clear Runcheck database');
+  info('Clear Runcheck database');
   try {
     await mongoose.connection.db.dropDatabase();
   } catch (err) {
@@ -499,7 +504,7 @@ let parseSEDS = function(seds: string) {
 
   for (let id in devices) {
     if (devices.hasOwnProperty(id)) {
-      console.log('Saving device: %s', devices[id].name);
+      info('Saving device: %s', devices[id].name);
       try {
         await devices[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
@@ -523,5 +528,9 @@ let parseSEDS = function(seds: string) {
 
   await mongoose_disconnect();
 
-  console.log('DONE');
-})();
+  info('DONE');
+};
+
+main().catch((err) => {
+  error(err);
+});
