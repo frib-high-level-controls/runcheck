@@ -1,39 +1,44 @@
 
-var stream = require('stream');
-var readline = require('readline');
+import stream = require('stream');
+import readline = require('readline');
 
-var mongoose = require('mongoose');
-var program = require('commander');
-var co = require('co');
+import mongoose = require('mongoose');
+import mysql = require('mysql');
+import program = require('commander');
 
-var debug = require('debug')('import-ccdb')
+import dbg = require('debug');
 
-var Slot = require('../models/slot').Slot;
-var Device = require('../models/device').Device;
+import slot = require('../app/models/slot');
+import device = require('../app/models/device');
 
+const debug = dbg('import-ccdb');
+
+const Slot = slot.Slot;
+const Device = device.Device;
 
 mongoose.Promise = global.Promise;
 
 
 // Partially wrap the mysql library to use promises.
-var mysql_createConnection = function (options) {
-  var conn = require('mysql').createConnection(options);
+let mysql_createConnection = function (options: any) {
 
-  var connect = function() {
+  let conn = mysql.createConnection(options);
+
+  let connect = function() {
     return new Promise(function(resolve,reject) {
-      conn.connect(function(err) {
+      conn.connect(function(err: any) {
         if (err) {
           reject(err);
           return;
         }
         resolve();
-      })
+      });
     });
   };
 
-  var query = function(sqlString, values) {
-    return new Promise(function(resolve,reject) {
-      var cb = function(err, results, fields) {
+  let query = function(sqlString: string, values: string[]) {
+    return new Promise(function(resolve, reject) {
+      let cb = function(err: mysql.IError, results?: any, fields?: mysql.IFieldInfo[]) {
         if (err) {
           reject(err);
           return;
@@ -48,7 +53,7 @@ var mysql_createConnection = function (options) {
     });
   };
 
-  var end = function() {
+  let end = function() {
     return new Promise(function(resolve, reject) {
       conn.end(function(err) {
         if (err) {
@@ -56,34 +61,34 @@ var mysql_createConnection = function (options) {
           return;
         }
         resolve();
-      })
+      });
     });
-  }
+  };
 
   return {
     connect: connect,
     query: query,
-    end: end
-  }
+    end: end,
+  };
 };
 
 
-var mongoose_connect = function(options) {
+let mongoose_connect = function(options: any) {
 
-  var mongoOptions = {
+  let mongoOptions: any = {
     db: {
-      native_parser: true
+      native_parser: true,
     },
     server: {
       poolSize: 5,
       socketOptions: {
         connectTimeoutMS: 30000,
-        keepAlive: 1
+        keepAlive: 1,
       }
     }
   };
 
-  var mongoURL = 'mongodb://' + (options.address || 'localhost') + ':' + (options.port || '27017') + '/' + (options.db || 'runcheck');
+  let mongoURL = 'mongodb://' + (options.address || 'localhost') + ':' + (options.port || '27017') + '/' + (options.db || 'runcheck');
 
   if (options.user && options.pass) {
     mongoOptions.user = options.user;
@@ -94,7 +99,7 @@ var mongoose_connect = function(options) {
     mongoOptions.auth = options.auth;
   }
 
-  return new Promise(function (resolve,reject) {
+  return new Promise(function (resolve, reject) {
     mongoose.connect(mongoURL, mongoOptions)
       .then(function () {
         resolve();
@@ -117,11 +122,11 @@ var mongoose_connect = function(options) {
 };
 
 
-var mongoose_disconnect = function() {
-  return new Promise(function(resolve,reject) {
+let mongoose_disconnect = function() {
+  return new Promise(function(resolve, reject) {
     mongoose.disconnect()
       .then(function() {
-        resolve()
+        resolve();
       }, function(err) {
         reject(err);
       });
@@ -130,11 +135,11 @@ var mongoose_disconnect = function() {
 
 
 // '{"meta":{"type":"SedsScalar_String","protocol":"SEDSv1","version":"1.0.0"},"data":{"value":"EML FARADAY CUP","representation":"EML FARADAY CUP"}}',
-var parseSEDS = function(seds) {
+let parseSEDS = function(seds: string) {
   if (!seds) {
     return;
   }
-  var data = JSON.parse(seds);
+  let data = JSON.parse(seds);
   if (!data.meta) {
     throw new Error('SEDS data missing "meta" block');
   }
@@ -158,11 +163,11 @@ var parseSEDS = function(seds) {
   throw new Error('SEDS data unsupported type: ' + data.meta.type);
 };
 
-//var departmentManagers = {
-//  'DepartmentManager-EE':'OWNER'
-//}
+// let departmentManagers = {
+//   'DepartmentManager-EE':'OWNER'
+// }
 
-co(function*() {
+(async function() {
 
   program.version('0.0.1')
     .option('--dryrun', 'only validate data from CCDB')
@@ -179,11 +184,11 @@ co(function*() {
   program.parse(process.argv);
 
   if (!program.user) {
-    program.user = yield new Promise(function(resolve) {
+    program.user = await new Promise(function(resolve) {
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
-        terminal: true
+        terminal: true,
       });
       rl.question('Username: ', function(username) {
         resolve(username);
@@ -192,29 +197,29 @@ co(function*() {
     });
   }
 
-  var password = yield new Promise(function(resolve) {
+  let password = await new Promise(function(resolve) {
     const rl = readline.createInterface({
       input: process.stdin,
       output: new stream.Writable({
         write: function(chunk, encoding, callback) {
           callback();
-        }
+        },
       }),
-      terminal: true
+      terminal: true,
     });
     // Need to print the prompt because the output
     // stream of the readline interface is disabled.
     process.stdout.write('Password: ');
-    rl.question('', function(password) {
+    rl.question('', function(passwd) {
       process.stdout.write('\n');
-      resolve(password);
+      resolve(passwd);
       rl.close();
     });
   });
 
   console.log('Connecting to CCDB: mysql://%s@%s/%s', program.user, program.host, program.database);
 
-  var connection = mysql_createConnection({
+  let connection = mysql_createConnection({
     host     : program.host,
     user     : program.user,
     password : password,
@@ -223,16 +228,15 @@ co(function*() {
     ssl  : {
         // Use this non-default cipher because the server
         // does not support this clients default ciphers.
-        ciphers:'AES128-SHA',
+        ciphers: 'AES128-SHA',
         // The certificate is self-signed. Ignore.
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     }
   });
 
   try {
-    yield connection.connect();
-  }
-  catch(err) {
+    await connection.connect();
+  } catch (err) {
     console.log(err);
     return;
   }
@@ -250,25 +254,34 @@ co(function*() {
   //   asm_slot: null,
   //   component_type: 10319 }
 
-  var rows, row, props, prop, ridx, pidx, id, device, devices = {}, slot, slots = {};
+  let rows, props;
+  //id, device, slot;
+
+  let devices: { [key: string]: device.Device } = {};
+  //let slots: { [key: string]: slot.Slot } = {};
 
   try {
-    rows = yield connection.query('SELECT d.id, d.description, d.serial_number, t.name from device AS d, component_type AS t WHERE d.component_type = t.id;');
+    rows = await connection.query('SELECT d.id, d.description, d.serial_number, t.name from device AS d, component_type AS t WHERE d.component_type = t.id;', []);
   } catch (err) {
     console.log(err);
     return connection.end();
   }
 
-  for (var ridx=0; ridx<rows.length; ridx+=1) {
-    row = rows[ridx];
-    device = new Device();
+  if (!Array.isArray(rows)) {
+    console.log('Query result is not an array.');
+    return connection.end();
+  }
+
+  for (let ridx= 0; ridx < rows.length; ridx += 1) {
+    let row = rows[ridx];
+    let device = new Device();
     console.log('Importing device: %s (%s)', row.serial_number, row.description);
     device.name = row.description;
-    device.serialNo = row.serial_number;
-    device.type = row.name;
+    device.name = row.serial_number;
+    device.deviceType = row.name;
 
     try {
-      var props = yield connection.query('SELECT * from property AS p, device_property_value AS pv WHERE pv.property = p.id AND pv.device = ?;', [ row.id ]);
+      let props = await connection.query('SELECT * from property AS p, device_property_value AS pv WHERE pv.property = p.id AND pv.device = ?;', [ row.id ]);
     } catch (err) {
       console.log(err);
       return connection.end();
@@ -289,9 +302,14 @@ co(function*() {
     //   device: 14059,
     //   property: 134 }
 
+    if (!Array.isArray(props)) {
+      console.log('Query result is not an array');
+      return connection.end();
+    }
 
-    for (var pidx=0; pidx<props.length; pidx+=1) {
-      prop = props[pidx];
+
+    for (let pidx = 0; pidx < props.length; pidx += 1) {
+      let prop = props[pidx];
 
       //if (props[pidx].name === 'Alias') {
       //  device.name = parseSEDS(props[pidx].prop_value)
@@ -301,7 +319,7 @@ co(function*() {
 
       if (prop.name === 'DepartmentManager') {
         // TODO: convert the format
-        device.owner = parseSEDS(prop.prop_value);
+        device.department = parseSEDS(prop.prop_value);
         continue;
       }
 
@@ -312,7 +330,7 @@ co(function*() {
     }
 
     try {
-      yield device.validate();
+      await device.validate();
     } catch (err) {
       console.error(err);
       console.error(props);
@@ -342,72 +360,82 @@ co(function*() {
   // | component_type  | bigint(20)   | YES  | MUL | NULL    |       |
   // +-----------------+--------------+------+-----+---------+-------+
 
-  try {
-    rows = yield connection.query('SELECT s.id, s.name, s.description, t.name AS type from slot AS s, component_type AS t WHERE s.component_type = t.id;');
-  } catch (err) {
-    console.log(err);
-    return connection.end();
-  }
+  // try {
+  //   rows = await connection.query('SELECT s.id, s.name, s.description, t.name AS type from slot AS s, component_type AS t WHERE s.component_type = t.id;', []);
+  // } catch (err) {
+  //   console.log(err);
+  //   return connection.end();
+  // }
 
-  for (var ridx=0; ridx<rows.length; ridx+=1) {
-    row = rows[ridx];
-    if (row.type === '_GRP' || row.type === '_ROOT') {
-      console.log('Skipping slot: %s', row.name);
-      continue;
-    }
+  // if (!Array.isArray(rows)) {
+  //   console.log('Query result is not an array.');
+  //   return connection.end();
+  // }
 
-    console.log('Importing slot: %s', row.name);
-    slot = new Slot();
-    slot.name = row.name;
-    slot.deviceType = row.type;
+  // for (let ridx = 0; ridx < rows.length; ridx += 1) {
+  //   row = rows[ridx];
+  //   if (row.type === '_GRP' || row.type === '_ROOT') {
+  //     console.log('Skipping slot: %s', row.name);
+  //     continue;
+  //   }
 
-    try {
-      var props = yield connection.query('SELECT * from property AS p, slot_property_value AS pv WHERE pv.property = p.id AND pv.slot = ?;', [ row.id ]);
-    } catch (err) {
-      console.log(err);
-      return connection.end();
-    }
+  //   console.log('Importing slot: %s', row.name);
+  //   slot = new Slot();
+  //   slot.name = row.name;
+  //   slot.deviceType = row.type;
 
-    for (var pidx=0; pidx<props.length; pidx+=1) {
-      prop = props[pidx];
+  //   try {
+  //     let props = await connection.query('SELECT * from property AS p, slot_property_value AS pv WHERE pv.property = p.id AND pv.slot = ?;', [ row.id ]);
+  //   } catch (err) {
+  //     console.log(err);
+  //     return connection.end();
+  //   }
 
-      if (prop.name === 'AreaManager') {
-        // TODO: convert the format
-        slot.owner = parseSEDS(prop.prop_value);
-        continue;
-      }
+  //   if (!Array.isArray(props)) {
+  //     console.log('Query result is not an array');
+  //     return connection.end();
+  //   }
 
-      if (prop.name === 'AssociatedArea') {
-        slot.area = parseSEDS(prop.prop_value)
-        continue;
-      }
+  //   for (let pidx = 0; pidx < props.length; pidx += 1) {
+  //     prop = props[pidx];
 
-      if (prop.name === 'AssociatedDRR') {
-        // TODO: convert the format
-        slot.DRR = parseSEDS(prop.prop_value)
-        continue;
-      }
+  //     if (prop.name === 'AreaManager') {
+  //       // TODO: convert the format
+  //       slot.owner = parseSEDS(prop.prop_value);
+  //       continue;
+  //     }
 
-      if (prop.name === 'AssociatedARR') {
-        // TODO: convert the format
-        slot.ARR = parseSEDS(prop.prop_value)
-        continue;
-      }
-    }
+  //     if (prop.name === 'AssociatedArea') {
+  //       slot.area = parseSEDS(prop.prop_value)
+  //       continue;
+  //     }
 
-    try {
-      yield slot.validate();
-    } catch (err) {
-      console.error(err);
-      console.error(slot);
-      return connection.end();
-    }
+  //     if (prop.name === 'AssociatedDRR') {
+  //       // TODO: convert the format
+  //       slot.DRR = parseSEDS(prop.prop_value)
+  //       continue;
+  //     }
 
-    slots[row.id] = slot;
-  }
+  //     if (prop.name === 'AssociatedARR') {
+  //       // TODO: convert the format
+  //       slot.ARR = parseSEDS(prop.prop_value)
+  //       continue;
+  //     }
+  //   }
+
+  //   try {
+  //     await slot.validate();
+  //   } catch (err) {
+  //     console.error(err);
+  //     console.error(slot);
+  //     return connection.end();
+  //   }
+
+  //   slots[row.id] = slot;
+  // }
 
   //console.log('DONE');
-  yield connection.end();
+  await connection.end();
 
   if (program.dryrun) {
     console.log("DRYRUN DONE");
@@ -415,7 +443,7 @@ co(function*() {
   }
 
   try {
-    yield mongoose_connect(require('../config/mongo'));
+    await mongoose_connect(require('../config/mongo'));
   } catch(err) {
     console.error(err);
     return;
@@ -425,17 +453,17 @@ co(function*() {
 
   console.log('Clear Runcheck database');
   try {
-    yield mongoose.connection.db.dropDatabase();
+    await mongoose.connection.db.dropDatabase();
   } catch (err) {
     console.error(err);
     return mongoose_disconnect();
   }
 
-  for (id in devices) {
+  for (let id in devices) {
     if (devices.hasOwnProperty(id)) {
-      console.log('Saving device: %s', devices[id].serialNo);
+      console.log('Saving device: %s', devices[id].name);
       try {
-        yield devices[id].save();
+        await devices[id].save();
       } catch (err) {
         console.error(err);
         return mongoose_disconnect();
@@ -443,19 +471,19 @@ co(function*() {
     }
   }
 
-  for (id in slots) {
-    if (slots.hasOwnProperty(id)) {
-      console.log('Saving slot: %s', slots[id].name);
-      try {
-        yield slots[id].save();
-      } catch (err) {
-        console.error(err);
-        return mongoose_disconnect();
-      }
-    }
-  }
+  // for (let id in slots) {
+  //   if (slots.hasOwnProperty(id)) {
+  //     console.log('Saving slot: %s', slots[id].name);
+  //     try {
+  //       await slots[id].save();
+  //     } catch (err) {
+  //       console.error(err);
+  //       return mongoose_disconnect();
+  //     }
+  //   }
+  // }
 
-  yield mongoose_disconnect();
+  await mongoose_disconnect();
 
   console.log('DONE');
-});
+})();
