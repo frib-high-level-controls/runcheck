@@ -1,0 +1,10 @@
+{
+  "name": "runcheck-web",
+  "private": true,
+  "dependencies": {
+    "bootstrap": "^3.3.7",
+    "datatables": "^1.10.13",
+    "datatables-bootstrap": "0.0.1",
+    "font-awesome": "^4.7.0"
+  }
+}

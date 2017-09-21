@@ -1,49 +1,42 @@
 /**
  * Route handlers for devices.
  */
-import _ = require('lodash');
-import debugging = require('debug');
-import express = require('express');
-import moment = require('moment');
+import * as dbg from 'debug';
+import * as express from 'express';
+import * as _ from 'lodash';
+import * as moment from 'moment';
 
-import log = require('../lib/log');
 import * as auth from '../shared/auth';
+import * as logging from '../shared/logging';
 
-import slot_model = require('../models/slot');
-import device_model = require('../models/device');
-import history_model = require('../models/history');
-import checklist_model = require('../models/checklist');
-// import device_slot_model = require('../models/device-slot');
+import { Device } from '../models/device';
+import { Slot } from '../models/slot';
+import { Update } from '../shared/history';
 
-import models = require('../shared/models');
-import handlers = require('../shared/handlers');
+import { catchAll, HttpStatus, RequestError } from '../shared/handlers';
+import * as models from '../shared/models';
 
+const debug = dbg('runcheck:devices');
 
-const debug = debugging('runcheck:devices');
-
-const catchAll = handlers.catchAll;
-const HttpStatus = handlers.HttpStatus;
-const RequestError = handlers.RequestError;
-
-const Slot = slot_model.Slot;
-const Device = device_model.Device;
-const History = history_model.History;
-// const DeviceSlot = deviceSlot.DeviceSlot;
-// const defaultDeviceChecklist = checklist.defaultDeviceChecklist;
-
-const Checklist = checklist_model.Checklist;
 
 export const router = express.Router();
 
-
-router.get('/', auth.ensureAuthenticated, (req, res) => {
+router.get('/', (req, res) => {
   res.render('devices');
 });
 
-
-router.get('/json', auth.ensureAuthenticated, handlers.catchAll(async (req, res) => {
-  let devices = await Device.find().lean();
-  res.status(200).json(devices);
+router.get('/json', catchAll(async (req, res) => {
+  const devices = await Device.find();
+  let rows: webapi.DeviceTableRow[] =  [];
+  for (let device of devices) {
+    rows.push({
+      name: device.name,
+      desc: device.desc,
+      dept: device.dept,
+      deviceType: device.deviceType,
+    });
+  }
+  res.status(200).json(rows);
 }));
 
 
@@ -64,56 +57,56 @@ router.get('/:id', auth.ensureAuthenticated, catchAll(async (req, res) => {
 }));
 
 
-router.put('/:id/checklist/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let device = await Device.findById(req.params.id).exec();
+// router.put('/:id/checklist/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
+//   let device = await Device.findById(req.params.id).exec();
 
-  if (!device) {
-    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
-  }
+//   if (!device) {
+//     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
+//   }
 
-  // if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
-  //   return Promise.reject({
-  //     error: new Error('User forbidden to create checklist'),
-  //     status: 403,
-  //     body: {
-  //       error: {
-  //         message: 'forbidden to create checklist',
-  //       }
-  //     }
-  //   });
-  // }
+//   // if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
+//   //   return Promise.reject({
+//   //     error: new Error('User forbidden to create checklist'),
+//   //     status: 403,
+//   //     body: {
+//   //       error: {
+//   //         message: 'forbidden to create checklist',
+//   //       }
+//   //     }
+//   //   });
+//   // }
 
-  let checklist: checklist_model.Checklist | null;
-  if (device.checklist) {
-    checklist = await Checklist.findById(device.checklist).exec();
-    if (!checklist) {
-      throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
-    }
-  } else {
-    checklist = new Checklist(<checklist_model.Checklist> {
-      target: device._id,
-      type: 'device',
-    });
-    await checklist.save();
-  }
+//   let checklist: checklist_model.Checklist | null;
+//   if (device.checklist) {
+//     checklist = await Checklist.findById(device.checklist).exec();
+//     if (!checklist) {
+//       throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+//     }
+//   } else {
+//     checklist = new Checklist(<checklist_model.Checklist> {
+//       target: device._id,
+//       type: 'device',
+//     });
+//     await checklist.save();
+//   }
 
-  if (!device.checklist || !device.checklist.equals(checklist._id)) {
-    device.checklist = checklist._id;
-    if (req.session && req.session.userid) {
-      await device.saveWithHistory(req.session.userid);
-    } else {
-      throw new RequestError('Session or username not found', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
+//   if (!device.checklist || !device.checklist.equals(checklist._id)) {
+//     device.checklist = checklist._id;
+//     if (req.session && req.session.userid) {
+//       await device.saveWithHistory(req.session.userid);
+//     } else {
+//       throw new RequestError('Session or username not found', HttpStatus.INTERNAL_SERVER_ERROR);
+//     }
+//   }
 
-  res.status(200).json(device);
-}));
+//   res.status(200).json(device);
+// }));
 
 
 router.get('/:id/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
   let device = await Device.findById(req.params.id).exec();
   if (!device) {
-    throw new handlers.RequestError('Device not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
   res.status(200).json(device);

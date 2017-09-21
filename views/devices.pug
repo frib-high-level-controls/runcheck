@@ -1,7 +1,8 @@
 extends layout.pug
 
 block head
-  link(rel='stylesheet', href='/datatables/media/css/dataTables.bootstrap.min.css')
+  //- link(rel='stylesheet', href='/node_modules/datatables/media/css/jquery.dataTables.min.css')
+  link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
   title RunCheck devices
 
 
@@ -14,8 +15,6 @@ block content
 
 
 block js
-  script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
-  script(type='text/javascript', src='/datatables/media/js/dataTables.bootstrap.js')
-  script(type='text/javascript', src='/holderjs/holder.min.js')
-  script(type='text/javascript', src='/javascripts/table.js')
-  script(type='text/javascript', src='/javascripts/devices-table.js')
+  script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
+  script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/js/devices-table.js')

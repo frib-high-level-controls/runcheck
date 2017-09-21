@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "none",
+        "target": "es5",
+        "alwaysStrict": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "strictNullChecks": true,
+        "removeComments": false,
+        "preserveConstEnums": true,
+        "sourceMap": false
+    }
+}
