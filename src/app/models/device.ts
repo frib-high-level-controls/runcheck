@@ -1,115 +1,134 @@
 /**
- * Model to represent a physical device.
+ * Model to represent a physical entity.
  */
-import mongoose = require('mongoose');
+import * as mongoose from 'mongoose';
 
-import history = require('./history');
+import * as history from  '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
-export interface Device extends history.DocumentWithHistory<Device> {
-  serialNo: string;
+export interface IDevice {
   name: string;
-  type: string;
+  desc: string;
   dept: string;
-  owner: string;
-  checklist?: ObjectId;
+  deviceType: string;
+  checklistId?: ObjectId;
+};
+
+export interface Device extends IDevice, history.Document<Device> {
+  // no additional methods
 };
 
 const Schema = mongoose.Schema;
 
 const ObjectId = Schema.Types.ObjectId;
 
+// Device represents a physical entity
+//   name: unique machine readable name
+//   desc: descriptive human readable name
+//   dept: assocaiate department
+//   deviceType: standard type identifier
+//   checklistId: associated checklist (optional)
 const deviceSchema = new Schema({
-  serialNo: {
+  name: {
     type: String,
     index: true,
     unique: true,
+    required: true,
+    uppercase: true,
+    trim: true,
   },
-  name: {
+  desc: {
+    type: String,
+    default: '',
+  },
+  dept: {
     type: String,
     required: true,
   },
-  type: {
+  deviceType: {
     type: String,
     required: true,
   },
-  owner: {
-    type: String,
-    required: true,
+  checklistId: {
+    type: ObjectId,
+    // TODO: Make this dynamic
+    ref: 'Checklist',
   },
-  managed: {
-    type: Boolean,
-    default: true,
-  },
+  // owner: {
+  //   type: String,
+  //   required: true,
+  // },
+  // managed: {
+  //   type: Boolean,
+  //   default: true,
+  // },
   // area: {
   //   type: String,
   //   required: true
   // },
-  department: {
-    type: String,
-    required: true,
-  },
-  checklist: {
-    type: ObjectId,
-    default: null,
-  },
-  irrApproval: {
-    status: {
-      type: String,
-      default: '',
-    },
-    comment: {
-      type: String,
-      default: '',
-    },
-  },
-  checkedValue: {
-    type: Number,
-    default: 0,
-    min: 0,
-  },
-  totalValue: {
-    type: Number,
-    default: 0,
-    min: 0,
-  },
-  installToDevice: {
-    serialNo: {
-      type: String,
-      default: null,
-    },
-    id: {
-      type: String,
-      default: null,
-    },
-  },
-  installToSlot: {
-    name: {
-      type: String,
-      default: null,
-    },
-    id: {
-      type: String,
-      default: null,
-    },
-  },
-  /**
-   * 0: not installed
-   * 1: prepare to install
-   * 1.5: prepare installation checklist
-   * 2: approved to install
-   * 3: installed
-   */
-  status: {
-    type: Number,
-    default: 0,
-    enum: [0, 1, 1.5, 2, 3],
-  },
+  // irrApproval: {
+  //   status: {
+  //     type: String,
+  //     default: '',
+  //   },
+  //   comment: {
+  //     type: String,
+  //     default: '',
+  //   },
+  // },
+  // checkedValue: {
+  //   type: Number,
+  //   default: 0,
+  //   min: 0,
+  // },
+  // totalValue: {
+  //   type: Number,
+  //   default: 0,
+  //   min: 0,
+  // },
+  // installToDevice: {
+  //   serialNo: {
+  //     type: String,
+  //     default: null,
+  //   },
+  //   id: {
+  //     type: String,
+  //     default: null,
+  //   },
+  // },
+  // installToSlot: {
+  //   name: {
+  //     type: String,
+  //     default: null,
+  //   },
+  //   id: {
+  //     type: String,
+  //     default: null,
+  //   },
+  // },
+  // /**
+  //  * 0: not installed
+  //  * 1: prepare to install
+  //  * 1.5: prepare installation checklist
+  //  * 2: approved to install
+  //  * 3: installed
+  //  */
+  // status: {
+  //   type: Number,
+  //   default: 0,
+  //   enum: [0, 1, 1.5, 2, 3],
+  // },
 });
 
 deviceSchema.plugin(history.addHistory, {
-  watchAll: true,
+  pathsToWatch: [
+    'name',
+    'desc',
+    'dept',
+    'deviceType',
+    'checklistId',
+  ],
 });
 
 export const Device = mongoose.model<Device>('Device', deviceSchema);

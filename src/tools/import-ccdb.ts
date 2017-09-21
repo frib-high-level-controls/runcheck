@@ -13,8 +13,8 @@ import device = require('../app/models/device');
 
 
 interface Config {
-  config?: string;
   configs?: string[];
+  h?: {};
   help?: {};
   mongo: {
     user?: {};
@@ -200,14 +200,16 @@ async function main() {
   info(JSON.stringify(cfg, null, 4));
 
 
-  if (cfg.help) {
+  if (cfg.h || cfg.help) {
     info(`Usage: import-ccdb [ options ]
 
     Options  console.inf
       --help               display help information
-      --host  [ccdbhost]   host name of CCDB database (default: localhost)
+      --host [ccdbhost]    host name of CCDB database (default: localhost)
       --user [username]    user name for CCDB database
-      --database [dbname]  name of CCDB database 
+      --database [dbname]  name of CCDB database
+      --config [rcfile]    load configuration from rcfile
+      --dryrun [dryrun]    validate CCDB data (default: true)
     `);
     return;
   }
@@ -312,8 +314,8 @@ async function main() {
   for (let row of rows) {
     let device = new Device();
     info('Importing device: %s (%s)', row.serial_number, row.description);
-    device.name = row.description;
     device.name = row.serial_number;
+    device.desc = row.description;
     device.deviceType = row.name;
 
     let props: {};
@@ -351,14 +353,14 @@ async function main() {
 
     for (let prop of props) {
       if (prop.name === 'Alias') {
-        device.fullname = parseSEDS(prop.prop_value);
+        device.desc = parseSEDS(prop.prop_value);
         continue;
       }
 
       if (prop.name === 'DepartmentManager') {
         let value = parseSEDS(prop.prop_value);
         if (cfg.deptmgrs && cfg.deptmgrs[value]) {
-          device.department = String(cfg.deptmgrs[value]);
+          device.dept = String(cfg.deptmgrs[value]);
         }
         continue;
       }
@@ -366,7 +368,7 @@ async function main() {
       if (prop.name === 'AssociatedDepartment') {
         let value = parseSEDS(prop.prop_value);
         if (cfg.ascdepts && cfg.ascdepts[value]) {
-          device.department = String(cfg.ascdepts[value]);
+          device.dept = String(cfg.ascdepts[value]);
         }
         continue;
       }
