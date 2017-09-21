@@ -7,7 +7,8 @@
     "grunt": "./node_modules/.bin/grunt",
     "bower": "./node_modules/.bin/bower",
     "mocha": "./node_modules/.bin/mocha",
-    "pug": "./node_modules/.bin/pug"
+    "pug": "./node_modules/.bin/pug",
+    "postinstall": "cd ./public && npm install"
   },
   "dependencies": {
     "body-parser": "^1.15.1",
