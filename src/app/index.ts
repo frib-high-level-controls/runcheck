@@ -265,6 +265,8 @@ async function doStart(): Promise<void> {
     url: String(cfg.forgapi.url),
     agentOptions: cfg.forgapi.agentOptions || {},
   });
+  // Need the FORG base URL available to views
+  app.locals.forgurl = String(cfg.forgapi.url);
 
   if (!cfg.cas.cas_url) {
     throw new Error('CAS base URL not configured');
@@ -324,15 +326,12 @@ async function doStart(): Promise<void> {
     },
   }));
 
-  app.use(cfAuthProvider.initialize());
-
   // app.use(auth.sessionLocals);
   app.use(express.static(path.resolve(__dirname, '..', 'public')));
   app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
-  app.get('/', (req, res) => {
-    res.render('index');
-  });
+  // authentication handlers
+  app.use(cfAuthProvider.initialize());
 
   app.get('/login', cfAuthProvider.authenticate(), (req, res) => {
     if (req.query.bounce) {
@@ -347,6 +346,10 @@ async function doStart(): Promise<void> {
     const redirectUrl = cfAuthProvider.getCasLogoutUrl(true);
     log('Redirect to CAS logout: %s', redirectUrl);
     res.redirect(redirectUrl);
+  });
+
+  app.get('/', (req, res) => {
+    res.render('index');
   });
 
   app.use('/status', status.router);
