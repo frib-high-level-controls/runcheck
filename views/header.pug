@@ -21,16 +21,15 @@ header
             li
               a(href='/admin/', target='_blank') Admin
         ul.nav.navbar-nav.navbar-right
-          if (locals.session && locals.session.userid)
+          if (auth && auth.username)
             li
-              .user
-                img.img-responsive(src='/users/' + session.userid + '/photo', title=session.username)
+              img.img-responsive(style='height: 50px;' src=forgurl + '/api/v1/users/' + auth.username + '/photo', title=auth.username)
             li.dropdown
-              a.dropdown-toggle(href='#', data-toggle='dropdown') #{session.username}
+              a.dropdown-toggle(href='#', data-toggle='dropdown') #{auth.user.fullname ? auth.user.fullname : auth.username}
                 b.caret
               ul.dropdown-menu
-                li
-                  a(href='/users/' + locals.session.userid, target='_blank') Profile
+                //- li
+                //-  a(href=forgurl + '/users/' + auth.username, target='_blank') Profile
                 li
                   a(href='/logout') Log out
           else
