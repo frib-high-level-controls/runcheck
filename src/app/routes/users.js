@@ -3,10 +3,9 @@ var users = express.Router();
 var debug = require('debug')('runcheck:users');
 
 var ad = require('../../config/config').ad;
-var ldapClient = require('../lib/ldap-client');
 
 var User = require('../models/user').User;
-var auth = require('../lib/auth');
+var auth = require('../shared/auth');
 var authConfig = require('../../config/config').auth;
 var log = require('../lib/log');
 var reqUtils = require('../lib/req-utils');
@@ -175,7 +174,7 @@ users.get('/names/:name', auth.ensureAuthenticated, function (req, res) {
 });
 
 
-users.post('/', auth.ensureAuthenticated, auth.verifyRole('admin'), reqUtils.filter('body', ['name']), function (req, res) {
+users.post('/', auth.ensureAuthenticated, auth.ensureHasRole('admin'), reqUtils.filter('body', ['name']), function (req, res) {
   // check if already in db
   User.findOne({
     name: req.body.name
@@ -192,7 +191,7 @@ users.post('/', auth.ensureAuthenticated, auth.verifyRole('admin'), reqUtils.fil
 
 });
 
-users.get('/json', auth.ensureAuthenticated, auth.verifyRole('admin'), function (req, res) {
+users.get('/json', auth.ensureAuthenticated, auth.ensureHasRole('admin'), function (req, res) {
   User.find().exec(function (err, users) {
     if (err) {
       log.error(err);
@@ -220,7 +219,7 @@ users.get('/:id', auth.ensureAuthenticated, reqUtils.exist('id', User, 'adid'), 
   });
 });
 
-users.put('/:id', auth.ensureAuthenticated, auth.verifyRole('admin'), reqUtils.is('json'), reqUtils.filter('body', ['roles', 'expert']), reqUtils.sanitize('body'), reqUtils.exist('id', User, 'adid'), function (req, res) {
+users.put('/:id', auth.ensureAuthenticated, auth.ensureHasRole('admin'), reqUtils.is('json'), reqUtils.filter('body', ['roles', 'expert']), reqUtils.sanitize('body'), reqUtils.exist('id', User, 'adid'), function (req, res) {
   var user = req[req.params.id];
   user.set(req.body);
   user.saveWithHistory(req.session.userid, function (err, newUser) {
@@ -247,7 +246,7 @@ users.get('/:id/json', auth.ensureAuthenticated, reqUtils.exist('id', User, 'adi
   return res.json(req[req.params.id]);
 });
 
-users.get('/:id/refresh', auth.ensureAuthenticated, auth.verifyRole('admin'), reqUtils.exist('id', User, 'adid'), function (req, res) {
+users.get('/:id/refresh', auth.ensureAuthenticated, auth.ensureHasRole('admin'), reqUtils.exist('id', User, 'adid'), function (req, res) {
   updateUserProfile(req[req.params.id], res);
 });
 

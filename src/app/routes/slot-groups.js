@@ -1,6 +1,6 @@
 var express = require('express');
 var slotGroups = express.Router();
-var auth = require('../lib/auth');
+var auth = require('../shared/auth');
 var SlotGroup = require('../models/slot-group').SlotGroup;
 var Slot = require('../models/slot').Slot;
 var log = require('../lib/log');

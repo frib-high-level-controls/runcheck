@@ -1,5 +1,4 @@
 var ad = require('../../config/config').ad;
-var ldapClient = require('./ldap-client');
 
 var mongoose = require('mongoose');
 
