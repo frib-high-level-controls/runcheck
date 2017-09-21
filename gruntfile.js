@@ -54,6 +54,15 @@ module.exports = function(grunt) {
             additionalFlags: '--outDir ./tools'
         },
       },
+      web: {
+        tsconfig: {
+           tsconfig: './src/web/ts',
+           passThrough: true,
+        },
+        options: {
+            additionalFlags: '--outDir ./public/js'
+        },
+      },
     },
         tslint: {
             options: {
@@ -65,14 +74,14 @@ module.exports = function(grunt) {
             },
             files: {
                 src: [
-                    "src/app/**/*.ts"
+                    "src/**/*.ts"
                 ]
             }
         },
         clean: {
             app: [ './app' ],
-            test: [ './test' ],
             tools: [ './tools' ],
+            public: [ './public/js' ],
         }
     });
 
@@ -86,6 +95,7 @@ module.exports = function(grunt) {
   grunt.registerTask('puglint', ['shell:puglint']);
 
   grunt.registerTask("default", [
-    "ts:app"
+    "ts:app",
+    "ts:web",
   ]);
 };
