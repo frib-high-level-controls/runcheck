@@ -1,11 +1,11 @@
-/*  tslint:disable:no-reference */
+/**
+ * Devices table view
+ */
+
+// tslint:disable:no-reference
 /// <reference path="../../app/webapi.d.ts" />
 
-interface ColumnSettings extends DataTables.ColumnSettings {
-  autoWidth?: boolean;
-  searching?: boolean;
-  order?: boolean;
-};
+type ColumnSettings = datatablesutil.ColumnSettings;
 
 $(() => {
   const deviceColumns: ColumnSettings[] = [
@@ -39,9 +39,9 @@ $(() => {
       searching: true,
     }, {
       title: 'Checklist',
-      order: true,
+      //order: true,
       type: 'numeric',
-      autoWidth: false,
+      //autoWidth: false,
       width: '105px',
       data: (row: webapi.DeviceTableRow): string => {
         // return Table.progressBar(source.checkedValue, source.totalValue);
@@ -55,6 +55,7 @@ $(() => {
       url: '/devices/json',
       dataSrc: '',
     },
+    dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
     // initComplete: function () {
     //   Holder.run({
     //     images: '.user img'
@@ -76,7 +77,7 @@ $(() => {
       [0, 'asc'],
     ],
   });
-  //Table.addFilterFoot('#devices-table', deviceColumns);
+  DataTablesUtil.addFilterHead('#devices-table', deviceColumns);
   //Table.filterEvent();
   //Table.selectEvent();
 });
