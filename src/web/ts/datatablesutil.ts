@@ -4,9 +4,9 @@
 // tslint:disable:no-reference
 /// <reference path="./datatablesutil.d.ts" />
 
-let DataTablesUtil: datatablesutil.DataTablesUtil = (() => {
+abstract class DataTablesUtil {
 
-  function addFilterHead(tableQuery: string, columns: datatablesutil.ColumnSettings[]) {
+  public static addFilterHead(tableQuery: string, columns: datatablesutil.ColumnSettings[]) {
     let t = $(tableQuery);
     let tr = $('<tr/>').appendTo(t.find('thead'));
 
@@ -17,18 +17,16 @@ let DataTablesUtil: datatablesutil.DataTablesUtil = (() => {
                        style="width:80%;" autocomplete="off">`);
         // Need a regular (non-arrow) function to capture 'this' properly!
         // tslint:disable only-arrow-functions
-        th.on('keyup', 'input', function() {
-          let elem = this; // aids type inference to avoid cast
-          if (elem instanceof HTMLInputElement) {
-            t.DataTable().column(idx).search(elem.value).draw();
+        th.on('keyup', 'input', (evt) => {
+          if (evt.target instanceof HTMLInputElement) {
+            const input = $(evt.target).val();
+            if (typeof input === 'string') {
+              t.DataTable().column(idx).search(input).draw();
+            }
           }
         });
       }
     });
   };
 
-  return {
-    addFilterHead: addFilterHead,
-  };
-
-})();
+};

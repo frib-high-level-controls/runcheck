@@ -3,6 +3,8 @@
  */
 import * as mongoose from 'mongoose';
 
+import { Checklist } from './checklist';
+
 import * as history from  '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
@@ -12,7 +14,7 @@ export interface IDevice {
   desc: string;
   dept: string;
   deviceType: string;
-  checklistId?: ObjectId;
+  checklistId: ObjectId | null;
 };
 
 export interface Device extends IDevice, history.Document<Device> {
@@ -52,8 +54,8 @@ const deviceSchema = new Schema({
   },
   checklistId: {
     type: ObjectId,
-    // TODO: Make this dynamic
-    ref: 'Checklist',
+    ref: Checklist.modelName,
+    default: null,
   },
   // owner: {
   //   type: String,
@@ -131,4 +133,4 @@ deviceSchema.plugin(history.addHistory, {
   ],
 });
 
-export const Device = mongoose.model<Device>('Device', deviceSchema);
+export const Device = history.model<Device>('Device', deviceSchema);

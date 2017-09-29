@@ -1,0 +1,16 @@
+[
+  { "name":"EE",   "checklistId": null, "checklistType": "device-default", "order":0, "assignees": [ "USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG" ],     "mandatory": false, "required": true, "final": false },
+  { "name":"ME",   "checklistId": null, "checklistType": "device-default", "order":1, "assignees": [ "USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG" ],   "mandatory": false, "required": true, "final": false },
+  { "name":"CRYO", "checklistId": null, "checklistType": "device-default", "order":2, "assignees": [ "USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS" ], "mandatory": false, "required": true, "final": false },
+  { "name":"PHYS", "checklistId": null, "checklistType": "device-default", "order":3, "assignees": [ "USR:IKEGAMI#IFS:LAB.FRIB.ASD" ],           "mandatory": false, "required": true, "final": false },
+  { "name":"ESHQ", "checklistId": null, "checklistType": "device-default", "order":4, "assignees": [ "USR:FEYZI#IFS:LAB.FRIB.ASD" ],             "mandatory": false, "required": true, "final": false },
+  { "name":"DO",   "checklistId": null, "checklistType": "device-default", "order":5, "assignees": [ "VAR:DEPT_LEADER" ],                        "mandatory": true,  "required": true, "final": true  },
+
+  { "name":"DO",   "checklistId": null, "checklistType": "slot-default", "order":0, "assignees": [ "VAR:DEPT_LEADER" ],                        "mandatory": false, "required": true, "final": false },
+  { "name":"EE",   "checklistId": null, "checklistType": "slot-default", "order":1, "assignees": [ "USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG" ],     "mandatory": false, "required": true, "final": false },
+  { "name":"ME",   "checklistId": null, "checklistType": "slot-default", "order":2, "assignees": [ "USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG" ],   "mandatory": false, "required": true, "final": false },
+  { "name":"CRYO", "checklistId": null, "checklistType": "slot-default", "order":3, "assignees": [ "USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS" ], "mandatory": false, "required": true, "final": false },
+  { "name":"PHYS", "checklistId": null, "checklistType": "slot-default", "order":4, "assignees": [ "USR:IKEGAMI#IFS:LAB.FRIB.ASD" ],           "mandatory": false, "required": true, "final": false },
+  { "name":"ESHQ", "checklistId": null, "checklistType": "slot-default", "order":5, "assignees": [ "USR:FEYZI#IFS:LAB.FRIB.ASD" ],             "mandatory": false, "required": true, "final": false },
+  { "name":"AM",   "checklistId": null, "checklistType": "slot-default", "order":6, "assignees": [ "VAR:AREA_LEADER" ],                        "mandatory": true,  "required": true, "final": true  }
+]

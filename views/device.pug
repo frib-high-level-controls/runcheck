@@ -2,16 +2,16 @@ extends layout-history.pug
 
 block head
   link(rel='stylesheet', href='/stylesheets/typeaheadjs.css')
-  title RunCheck device
-    = ' '
-    = device.serialNo
+  title #{device.name} :: RunCheck
 
 block content
-  br
-  div(id = 'message')
-  .well(id = 'device-details')
-    include ./client-side/device-details.pug
-  .btn-toolbar
+  .container
+    div(id = 'message')
+    div(id = 'device-details')
+      h3 Device
+      include ./client-side/device-details.pug
+
+  //- .container.btn-toolbar
     if device.checklist
       button.btn.btn-space.btn-primary(id='device-add-checklist' disabled='disabled') Add Checklist
     else
@@ -21,8 +21,26 @@ block content
     button.btn.btn-space.btn-primary(id = 'install') Install
     button.btn.btn-space.btn-danger(id = 'set-not-installed') Set not installed
   br
-  - var notInstalled = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
-  .panel.panel-default(id = 'prepare-panel', class=notInstalled? '' : 'hidden')
+  .container
+    .row
+      .col-md-12
+        .panel.panel-default
+          .panel-heading.clearfix
+            .pull-left
+              h4 Checklist
+            .pull-right
+              h4.fa.fa-spinner.fa-spin.hidden#device-checklist-spin
+              button.btn.btn-primary.hidden#device-assign-checklist(disabled='disabled') Assign
+            //- .row
+              .col-md-4
+                h3
+                  | Checklist
+              .col-md-8.text-right
+                h3
+                  button.btn.btn-primary(id='device-assign-checklist' disabled='disabled') Assign
+          .panel-body.hidden#device-checklist-panel
+  //-- var notInstalled = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
+  //- .panel.panel-default(id = 'prepare-panel', class=notInstalled? '' : 'hidden')
     .panel-heading
       .btn-group
         button.btn.btn-space.btn-primary.dropdown-toggle(type='button', data-toggle='dropdown', aria-haspopup='true', aria-expanded='false')#preInstall
@@ -54,19 +72,27 @@ block content
         = ' '
         button.btn.btn-space.btn-primary(type='submit', value='device') Confirm
         button.btn.btn-space(type='reset') Cancel
-  .well
+//-  .well
     #irrChecklist
-block history
+//- block history
   each h in device.__updates.reverse()
     +change(h, moment)
 block js
   script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
   script(type='text/javascript', src='/javascripts/typeahead.js')
-  script(type='text/javascript', src='/javascripts/device-action.js')
+  script(type='text/javascript', src='/js/device-action.js')
   script(type='text/javascript', src='/javascripts/template/device-details.js')
-  script(type='text/javascript', src='/javascripts/checklist-helper.js')
+  script(type='text/javascript', src='/js/checklistutil.js')
   script(type='text/javascript', src='/javascripts/template/checklist-input.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
-  if device.checklist
-    script ChecklistHelper().render('#irrChecklist', '#{device.checklist}');
+
+  script(type='text/javascript')
+    | device = !{JSON.stringify(device)};
+
+  script(type='text/javascript', src='/js/auth.js')
+  script(type='text/javascript')
+    | AuthUtil.setUsername('#{auth.username}');
+    if auth.user && auth.user.roles
+      each role in auth.user.roles
+        | AuthUtil.addRole('#{role}');

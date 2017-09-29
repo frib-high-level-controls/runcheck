@@ -1,23 +1,25 @@
 header
-  .container-fluid.navbar-default.navbar-fixed-top
+  //- Not sure why the navbar-fixed-top class is needed?
+  nav.navbar.navbar-default.navbar-fixed-top
     .container-fluid
-      .navbar-header.navbar-right
+      .navbar-header
         button.navbar-toggle(type='button', data-toggle='collapse', data-target='.navbar-collapse')
           span.sr-only Toggle navigation
           span.icon-bar
           span.icon-bar
           span.icon-bar
+        a.navbar-brand(href='/') RunCheck
       .navbar-collapse.collapse
         ul.nav.navbar-nav
           li
             a(href='/devices/') Devices
-          li
+          //-li
             a(href='/slots/') Slots
-          li
+          //-li
             a(href='/slotgroups/') Slot groups
-          li
+          //-li
             a(href='/checklists/') Checklists
-          if (locals.session && locals.session.userid && locals.session.roles && locals.session.roles.admin)
+          //-if (locals.session && locals.session.userid && locals.session.roles && locals.session.roles.admin)
             li
               a(href='/admin/', target='_blank') Admin
         ul.nav.navbar-nav.navbar-right
@@ -36,4 +38,7 @@ header
             li
               i.fa.fa-user.fa-3x
             li
-              a(href='/login') Log in
+              if !originalUrl
+                a(href='/login') Log in
+              else
+                a(href='/login?bounce=' + encodeURIComponent(originalUrl)) Log in

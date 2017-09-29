@@ -3,114 +3,149 @@
  */
 import * as dbg from 'debug';
 import * as express from 'express';
-import * as _ from 'lodash';
 import * as moment from 'moment';
+import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
-import * as logging from '../shared/logging';
-
-import { Device } from '../models/device';
-import { Slot } from '../models/slot';
-import { Update } from '../shared/history';
-
-import { catchAll, HttpStatus, RequestError } from '../shared/handlers';
+import * as log from '../shared/logging';
 import * as models from '../shared/models';
+
+import {
+  Checklist,
+  IChecklist,
+} from '../models/checklist';
+
+import {
+  Device,
+} from '../models/device';
+
+import {
+  catchAll,
+  ensureAccepts,
+  format,
+  HttpStatus,
+  RequestError,
+} from '../shared/handlers';
+
 
 const debug = dbg('runcheck:devices');
 
-
 export const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.render('devices');
-});
-
-router.get('/json', catchAll(async (req, res) => {
-  const devices = await Device.find();
-  let rows: webapi.DeviceTableRow[] =  [];
-  for (let device of devices) {
-    rows.push({
-      name: device.name,
-      desc: device.desc,
-      dept: device.dept,
-      deviceType: device.deviceType,
-    });
-  }
-  res.status(200).json(rows);
+router.get('/', catchAll(async (req, res) => {
+  return format(res, {
+    'text/html': () => {
+      res.render('devices');
+    },
+    'application/json': async () => {
+      const rows: webapi.DeviceTableRow[] =  [];
+      const devices = await Device.find().exec();
+      for (let device of devices) {
+        rows.push({
+          name: device.name,
+          desc: device.desc,
+          dept: device.dept,
+          deviceType: device.deviceType,
+        });
+      }
+      res.json(<webapi.Data<webapi.DeviceTableRow[]>> {
+        data: rows,
+      });
+    },
+  });
 }));
 
+router.get('/:name', catchAll(async (req, res) => {
+  const name = String(req.params.name);
 
-router.get('/:id', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let device = await Device.findById(req.params.id).exec();
+  debug('Find Device (and history) with name: %s', name);
+  const device = await Device.findOneWithHistory({ name: name.toUpperCase() });
   if (!device) {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  // TODO: To improve performance get updates while getting device.
-  await device.populate('__updates').execPopulate();
+  const webDevice: webapi.Device = {
+    id: String(device.id),
+    name: device.name,
+    desc: device.desc,
+    dept: device.dept,
+    deviceType: device.deviceType,
+    checklistId: device.checklistId ? device.checklistId.toHexString() : null,
+  };
 
-  res.render('device', {
-    device: device,
-    moment: moment,
-    _: _,
+  return format(res, {
+    'text/html': () => {
+      res.render('device', {
+        device: webDevice,
+        moment: moment,
+      });
+    },
+    'application/json': () => {
+      res.json(<webapi.Data<webapi.Device>> {
+        data: webDevice,
+      });
+    },
   });
 }));
 
 
-// router.put('/:id/checklist/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-//   let device = await Device.findById(req.params.id).exec();
+router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
+  const id = String(req.params.id);
 
-//   if (!device) {
-//     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
-//   }
+  debug('Find Device with id: %s', id);
+  let device = await Device.findById(id).exec();
+  if (!device || !device.id || !device.checklistId) {
+    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+  }
 
-//   // if ((device.owner !== req.session.userid) && !req.session.roles[device.owner]) {
-//   //   return Promise.reject({
-//   //     error: new Error('User forbidden to create checklist'),
-//   //     status: 403,
-//   //     body: {
-//   //       error: {
-//   //         message: 'forbidden to create checklist',
-//   //       }
-//   //     }
-//   //   });
-//   // }
-
-//   let checklist: checklist_model.Checklist | null;
-//   if (device.checklist) {
-//     checklist = await Checklist.findById(device.checklist).exec();
-//     if (!checklist) {
-//       throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
-//     }
-//   } else {
-//     checklist = new Checklist(<checklist_model.Checklist> {
-//       target: device._id,
-//       type: 'device',
-//     });
-//     await checklist.save();
-//   }
-
-//   if (!device.checklist || !device.checklist.equals(checklist._id)) {
-//     device.checklist = checklist._id;
-//     if (req.session && req.session.userid) {
-//       await device.saveWithHistory(req.session.userid);
-//     } else {
-//       throw new RequestError('Session or username not found', HttpStatus.INTERNAL_SERVER_ERROR);
-//     }
-//   }
-
-//   res.status(200).json(device);
-// }));
+  res.json(<webapi.Data<string>> {
+    data: device.checklistId.toHexString(),
+  });
+}));
 
 
-router.get('/:id/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let device = await Device.findById(req.params.id).exec();
-  if (!device) {
+router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  const id = String(req.params.id);
+
+  debug('Find Device with id: %s', id);
+  let device = await Device.findById(id).exec();
+  if (!device || !device.id) {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  res.status(200).json(device);
+  const username = auth.getUsername(req);
+  const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
+  if (!username || !auth.hasAnyRole(req, ['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
+    throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
+  }
+
+  if (device.checklistId) {
+    debug('Device already has checklist id: %s', device.checklistId);
+    res.json({
+      data: device.checklistId.toHexString(),
+    });
+  }
+
+  const doc: IChecklist = {
+    checklistType: 'device-default',
+    targetType: models.getModelName(device),
+    targetId: device._id,
+  };
+
+  debug('Create new Checklist with type: %s', doc.checklistType);
+  const checklist = await Checklist.create(doc);
+
+  debug('Update Device with new checklist id: %s', checklist._id);
+  device.checklistId = models.ObjectId(checklist._id);
+  await device.saveWithHistory(username);
+
+  res.status(HttpStatus.CREATED).json(<webapi.Data<string>> {
+    data: device.checklistId.toHexString(),
+  });
 }));
+
+
+
 
 /*
 devices.put('/:id/install-to-device', auth.ensureAuthenticated, reqUtils.exist('id', Device), reqUtils.hasAll('body', ['targetId']), reqUtils.exist('targetId', Device, '_id', 'body'), function (req, res) {

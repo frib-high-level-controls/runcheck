@@ -7,10 +7,10 @@ form
         th.text-left.col-md-2 Subject
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
-        th.text-center.col-md-3 Assignee
+        th.text-left.col-md-3 Assignee
     tbody
       for item in items
-        tr.form-group.checklist-item
+        tr.form-group.checklist-item(id=item.id)
           td.text-left.form-control-static
             if inputs[item._id] && (inputs[item._id].__updates.length > 0)
               span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history
@@ -22,17 +22,17 @@ form
             .form-control-static.checklist-item-subject #{item.subject}
           td.text-center
             if item.mandatory || item.required
-              select.form-control
+              select.form-control(disabled='disabled')
                 if inputs[item._id] && inputs[item._id].value === 'N'
-                  option.checklist-item-value(selected) N
+                  option.checklist-item-value(selected='selected') N
                 else
                   option.checklist-item-value N
                 if inputs[item._id] && inputs[item._id].value === 'Y'
-                  option.checklist-item-value(selected) Y
+                  option.checklist-item-value(selected='selected') Y
                 else
                   option.checklist-item-value Y
                 if inputs[item._id] && inputs[item._id].value === 'YC'
-                  option.checklist-item-value(selected) YC
+                  option.checklist-item-value(selected='selected') YC
                 else
                   option.checklist-item-value YC
             else
@@ -40,12 +40,12 @@ form
           td.text-left
             if item.mandatory || item.required
               if inputs[item._id]
-                input.form-control.checklist-item-comment(type="text", value=inputs[item._id].comment)
+                input.form-control.checklist-item-comment(type='text', disabled='disabled', value=inputs[item._id].comment)
               else
-                input.form-control.checklist-item-comment(type="text")
+                input.form-control.checklist-item-comment(type='text', disabled='disabled')
             else
               | &nbsp;
-          td.text-center
+          td.text-left
             if item.assignee
               .form-control-static.checklist-item-assignee= item.assignee 
             else
@@ -67,6 +67,6 @@ form
               td.text-right.text-primary= moment(update.a).format('MMM D YYYY, h:mm:ss A')
   .row
     .col-xs-6.text-left
-      button.btn.btn-default.checklist-input-edit(type='button') Edit
+      button.btn.btn-default.checklist-input-edit(type='button', disabled='disabled') Edit
     .col-xs-6.text-right
-      button.btn.btn-primary.checklist-input-save(type="button") Save
+      button.btn.btn-primary.checklist-input-save(type='button', disabled='disabled') Save

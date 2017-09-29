@@ -95,7 +95,8 @@ module.exports = function(grunt) {
   grunt.registerTask('puglint', ['shell:puglint']);
 
   grunt.registerTask("default", [
-    "ts:app",
-    "ts:web",
+    'ts:app',
+    'ts:web',
+    'shell:template'
   ]);
 };

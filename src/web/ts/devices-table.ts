@@ -4,6 +4,7 @@
 
 // tslint:disable:no-reference
 /// <reference path="../../app/webapi.d.ts" />
+/// <reference path="./datatablesutil.d.ts" />
 
 type ColumnSettings = datatablesutil.ColumnSettings;
 
@@ -13,7 +14,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.DeviceTableRow): string => {
-        return String(row.name);
+        return `<a href="/devices/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -52,8 +53,9 @@ $(() => {
 
   $('#devices-table').DataTable({
     ajax: {
-      url: '/devices/json',
-      dataSrc: '',
+      url: '/devices',
+      dataType: 'json',
+      dataSrc: 'data',
     },
     dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
     // initComplete: function () {

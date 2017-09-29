@@ -1,98 +1,47 @@
 /**
  * Route handlers for checklists.
  */
-import express = require('express');
-import mongoose = require('mongoose');
-import debugging = require('debug');
+import * as dbg  from 'debug';
+import * as express from 'express';
+import * as mongoose from 'mongoose';
 
-import log = require('../lib/log');
-import auth = require('../shared/auth');
-import handlers = require('../shared/handlers');
-import models = require('../shared/models');
+import * as auth from '../shared/auth';
+import * as log from '../shared/logging';
+import * as models from '../shared/models';
 
-import checklist_model = require('../models/checklist');
+import {
+  catchAll,
+  ensureAccepts,
+  HttpStatus,
+  RequestError,
+} from '../shared/handlers';
 
+import {
+  Device,
+} from '../models/device';
 
-type ObjectId = models.ObjectId;
-
-type Checklist = checklist_model.Checklist;
-type ChecklistItem = checklist_model.ChecklistItem;
-type ChecklistItemCfg = checklist_model.ChecklistItemCfg;
-type ChecklistItemData = checklist_model.ChecklistItemData;
-
-interface ClientChecklist {
-  _id?: string;
-  target?: string;
-  type?: string;
-  items?: ChecklistItem[];
-  data?: ChecklistItemData[];
-};
-
-interface ClientChecklistItem {
-  _id?: string;
-  type?: string;
-  subject?: string;
-  checklist?: string;
-  order?: number;
-  assignee?: string;
-  required?: boolean;
-  mandatory?: boolean;
-  final?: boolean;
-}
-
-interface ClientChecklistItemData {
-  _id?: string;
-  checklist?: string;
-  item?: string;
-  value?: string;
-  comment?: string;
-  inputOn?: string;
-  inputBy?: string;
-};
+import {
+  Checklist,
+  CHECKLIST_VALUES,
+  ChecklistConfig,
+  ChecklistStatus,
+  ChecklistSubject,
+} from '../models/checklist';
 
 
-const debug = debugging('runcheck:checklists');
-
-export const router = express.Router();
-
-const catchAll = handlers.catchAll;
-const HttpStatus = handlers.HttpStatus;
-const RequestError = handlers.RequestError;
-
-const ObjectId = mongoose.Types.ObjectId;
-const Checklist = checklist_model.Checklist;
-const ChecklistItem = checklist_model.ChecklistItem;
-const ChecklistItemCfg = checklist_model.ChecklistItemCfg;
-const ChecklistItemData = checklist_model.ChecklistItemData;
-const checklistValues = checklist_model.checklistValues;
+const debug = dbg('runcheck:checklists');
 
 
-async function findChecklistById(id: string, lean: true): Promise<Object>;
-async function findChecklistById(id: string, lean?: false ): Promise<Checklist>;
-async function findChecklistById(id: string, lean?: boolean) {
-  let checklist: Checklist | Object | null;
-  if (lean) {
-    checklist = await Checklist.findById(id).lean(true).exec();
-  } else {
-    checklist = await Checklist.findById(id).exec();
-  }
-  if (!checklist) {
-    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
-  }
-  return checklist;
-};
-
-
-async function findItemsForChecklist(cl: Checklist): Promise<ChecklistItem[]> {
-  let query = ChecklistItem.find({
-    type: cl.type,
-    checklist: { $in: [null, cl._id ] },
+async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]> {
+  let query = ChecklistSubject.find({
+    checklistType: cl.checklistType,
+    checklistId: { $in: [null, cl._id] },
   });
-  let items = await query.exec();
+  let items = await query.sort('order').exec();
 
-  let prms = new Array<Promise<ChecklistItem>>();
+  let prms = new Array<Promise<void>>();
   for (let item of items) {
-    prms.push(item.populate('__updates').execPopulate());
+    prms.push(item.populateUpdates());
   }
   await Promise.all(prms);
 
@@ -100,15 +49,15 @@ async function findItemsForChecklist(cl: Checklist): Promise<ChecklistItem[]> {
 };
 
 
-async function findItemCfgsForChecklist(cl: Checklist): Promise<ChecklistItemCfg[]> {
-  let query = ChecklistItemCfg.find({
+async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
+  let query = ChecklistConfig.find({
     checklist: cl._id,
   });
   let cfgs = await query.exec();
 
-  let prms = new Array<Promise<ChecklistItemCfg>>();
+  let prms = new Array<Promise<void>>();
   for (let cfg of cfgs) {
-    prms.push(cfg.populate('__updates').execPopulate());
+    prms.push(cfg.populateUpdates());
   }
   await Promise.all(prms);
 
@@ -116,15 +65,15 @@ async function findItemCfgsForChecklist(cl: Checklist): Promise<ChecklistItemCfg
 };
 
 
-async function findItemDataForChecklist(cl: Checklist): Promise<ChecklistItemData[]> {
-  let query = ChecklistItemData.find({
+async function findChecklistStatuses(cl: Checklist): Promise<ChecklistStatus[]> {
+  let query = ChecklistStatus.find({
     checklist: cl._id,
   });
   let datas = await query.exec();
 
-  let prms = new Array<Promise<ChecklistItemData>>();
+  let prms = new Array<Promise<void>>();
   for (let data of datas) {
-    prms.push(data.populate('__updates').execPopulate());
+    prms.push(data.populateUpdates());
   }
   await Promise.all(prms);
 
@@ -132,42 +81,102 @@ async function findItemDataForChecklist(cl: Checklist): Promise<ChecklistItemDat
 };
 
 
-router.get('/:id/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let checklist = await findChecklistById(req.params.id);
 
-  let [items, cfgs, data ] = await Promise.all([
-    findItemsForChecklist(checklist),
-    findItemCfgsForChecklist(checklist),
-    findItemDataForChecklist(checklist),
+export const router = express.Router();
+
+router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
+  const id = String(req.params.id);
+
+  debug('Find Checklist with id: %s', id);
+  let checklist = await Checklist.findById(id);
+  if (!checklist || !checklist.id) {
+    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+  }
+
+  // Defer these results until they are needed later.
+  let deferred = Promise.all([
+    findChecklistSubjects(checklist),
+    findChecklistConfigs(checklist),
+    findChecklistStatuses(checklist),
   ]);
 
-  let cfgMap = new Map<string, ChecklistItemCfg>();
-  if (cfgs.length > 0) {
-    for (let cfg of cfgs) {
-      cfgMap.set(cfg.item.toHexString(), cfg);
+  let varRoleMap = new Map<string, string>();
+
+  if (checklist.targetType === Device.modelName) {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    for (let item of items) {
-      if (item.id) {
-        let cfg = cfgMap.get(item.id);
-        if (cfg) {
-          item.applyCfg(cfg);
+    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+  } else {
+    throw new RequestError('Target type not supported: ' + checklist.targetType);
+  }
+
+  let [subjects, configs, statuses ] = await deferred;
+
+  const webChecklist: webapi.Checklist = {
+    id: String(checklist.id),
+    targetId: checklist.targetId.toHexString(),
+    type: checklist.checklistType,
+    items: [],
+    data: [],
+  };
+
+  for (let subject of subjects) {
+    if (subject.id) {
+      for (let cfg of configs) {
+        if (cfg.subjectId.equals(subject._id)) {
+          subject.applyCfg(cfg);
+          break;
         }
       }
+
+      let assignees: string[] = [];
+      for (let assignee of subject.assignees) {
+        // TODO: use URL parser and handle fragment
+        let role = varRoleMap.get(assignee);
+        if (role) {
+          debug('Replace assignee: %s => %s', assignee, role);
+          assignees.push(role);
+        } else {
+          assignees.push(assignee);
+        }
+      }
+
+      webChecklist.items.push({
+        id: subject.id,
+        type: subject.ChecklistType,
+        checklistId: checklist.id,
+        order: subject.order,
+        subject: subject.name,
+        assignee: assignees,
+        required: subject.required,
+        mandatory: subject.mandatory,
+        final: subject.final,
+      });
     }
   }
 
-  let client: ClientChecklist = {
-    _id: checklist.id,
-    target: checklist.target.toHexString(),
-    type: checklist.type,
-    items: items,
-    data: data,
-  };
+  for (let status of statuses) {
+    if (status.id) {
+      webChecklist.data.push({
+        id: status.id,
+        checklistId: checklist.id,
+        itemId: status.subjectId.toHexString(),
+        value: status.value,
+        comment: status.comment,
+        inputBy: status.inputBy,
+        inputOn: String(status.inputOn),
+      });
+    }
+  }
 
-  res.status(200).json(client);
+  res.json(<webapi.Data<webapi.Checklist>> {
+    data: webChecklist,
+  });
 }));
 
-
+/*
 router.put('/:id/items/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
   // Ensures the session exists and saves type checks.
   if (!req.session) {
@@ -458,3 +467,4 @@ router.put('/:id/inputs/json', auth.ensureAuthenticated, catchAll(async (req, re
 
   res.status(200).json({});
 }));
+*/

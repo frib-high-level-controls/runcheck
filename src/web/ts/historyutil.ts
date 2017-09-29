@@ -1,47 +1,41 @@
-/******
+/**
  * The History object provides access to history-related functions
- *
- *
- *
- ******/
+ */
 /*global moment:false, changeTemplate:false*/
 
-var History = (function (parent, $) {
+/// <reference path="../../../node_modules/moment/moment.d.ts"/>
 
-  function renderHistory(updates, selector) {
+abstract class HistoryUtil {
+
+  public static renderHistory(updates: any, selector?: string) {
     selector = typeof selector === 'undefined' ? '#history' : selector;
     if (updates && updates.length > 0) {
       $(selector).empty();
-      updates.forEach(function (u) {
-        $(selector).prepend(changeTemplate({
+      updates.forEach(function (u: any) {
+      $(selector).prepend(changeTemplate({
           h: u,
-          moment: moment
+          //moment: moment,
         }));
       });
     }
-  }
+  };
 
-  function prependHistory(updates, selector) {
+  public static prependHistory(updates: any, selector?: string) {
     selector = typeof selector === 'undefined' ? '#history' : selector;
-    var changeIds = [];
+    let changeIds: any[] = [];
     $(selector).children('.change').each(function () {
-      changeIds.push($(this).prop('id'));
+        changeIds.push($(this).prop('id'));
     });
     if (updates && updates.length > 0) {
-      updates.forEach(function (u) {
+        updates.forEach(function (u: any) {
         if (changeIds.indexOf(u._id) === -1) {
           $(selector).prepend(changeTemplate({
             h: u,
-            moment: moment
+            //moment: moment,
           }));
         }
       });
     }
-  }
+  };
 
-  parent.renderHistory = renderHistory;
-  parent.prependHistory = prependHistory;
-
-  return parent;
-
-}(History || {}, jQuery));
+};

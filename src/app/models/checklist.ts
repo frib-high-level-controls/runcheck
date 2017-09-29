@@ -1,236 +1,92 @@
 /**
  * Model to represent a checklist (for device or slot).
  */
-import mongoose = require('mongoose');
-import debugging = require('debug');
+import * as dbg from 'debug';
+import * as mongoose from 'mongoose';
 
-import history = require('./history');
+import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
-type Document = mongoose.Document;
-
-type DocumentWithHistory<T extends DocumentWithHistory<T>> = history.DocumentWithHistory<T>;
-
-export interface ChecklistItem extends DocumentWithHistory<ChecklistItem> {
-  type: 'device' | 'beamline-slot' | 'safety-slot';
-  subject: string;
-  checklist: ObjectId;
+export interface IChecklistSubject {
+  checklistId: ObjectId | null;
+  ChecklistType: 'device-default' | 'slot-default';
+  name: string;
   order: number;
-  assignee: string;
+  final: boolean;
   required: boolean;
   mandatory: boolean;
-  final: boolean;
-  applyCfg(cfg: ChecklistItemCfg): void;
+  assignees: string[];
 };
 
-export interface ChecklistItemCfg extends DocumentWithHistory<ChecklistItemCfg> {
-  checklist: ObjectId;
-  item: ObjectId;
-  subject?: string;
-  assignee?: string;
+export interface ChecklistSubject extends IChecklistSubject, history.Document<ChecklistSubject> {
+  applyCfg(cfg: ChecklistConfig): void;
+};
+
+export interface IChecklistConfig extends history.Document<ChecklistConfig> {
+  checklistId: ObjectId;
+  subjectId: ObjectId;
+  name?: string;
   required?: boolean;
+  assignees?: string[];
 }
 
-export interface ChecklistItemData extends DocumentWithHistory<ChecklistItemData> {
-  checklist: ObjectId;
-  item: ObjectId;
+export interface ChecklistConfig extends IChecklistConfig, history.Document<ChecklistConfig> {
+  // no additional methods
+};
+
+export interface IChecklistStatus {
+  checklistId: ObjectId;
+  subjectId: ObjectId;
   value: string;
   comment: string;
   inputOn: Date;
   inputBy: string;
 };
 
-export interface Checklist extends Document {
-  target: ObjectId;
-  type: 'device' | 'beamline-slot' | 'safety-slot';
-}
+export interface ChecklistStatus extends IChecklistStatus, history.Document<ChecklistStatus> {
+  // no additional methods
+};
 
+export interface IChecklist {
+  checklistType: 'device-default' | 'slot-default';
+  targetType: string;
+  targetId: ObjectId;
+};
 
-const debug = debugging('runcheck:checklist');
+export interface Checklist extends IChecklist, mongoose.Document {
+  // no additional methods
+};
+
+const debug = dbg('runcheck:checklist');
 
 const Schema = mongoose.Schema;
 
 const ObjectId = Schema.Types.ObjectId;
 
-export const checklistValues = ['N', 'Y', 'YC'];
+export const CHECKLIST_VALUES = ['N', 'Y', 'YC'];
 
-export const checklistTypes = [ 'device', 'beamline-slot', 'safety-slot' ];
-
-
-// A checklistItem represents single item of a checklist:
-//   type: the checklist type to which this item belongs
-//   subject: name of the subject of this checklist item
-//   checklist: the specific checklist to which this item belongs
-//   order: the order in which this item should be rendered
-//   assignee: the role to which this item is assigned
-//   required: indicates if this item must be completed
-//   mandatory: indicates if this item must be required
-//   final: indicates of this item finalizes the checklist
-const checklistItemSchema = new Schema({
-  type: {
-    type: String,
-    required: true,
-    enum: checklistTypes,
-  },
-  subject: {
-    type: String,
-    required: true,
-  },
-  checklist: {
-    type: ObjectId,
-    default: null,
-  },
-  order: {
-    type: Number,
-    default: 0,
-  },
-  assignee: {
-    type: String,
-    default: '',
-  },
-  required: {
-    type: Boolean,
-    default: true,
-  },
-  mandatory: {
-    type: Boolean,
-    default: false,
-  },
-  final: {
-    type: Boolean,
-    default: false,
-  },
-});
+export const CHECKLIST_TYPES = ['device-default', 'slot-default'];
 
 
-checklistItemSchema.statics.applyCfg = function(item: ChecklistItem, cfg: ChecklistItemCfg) {
-  if (item && cfg) {
-    if (typeof cfg.subject === 'string') {
-      item.subject = cfg.subject;
-    }
-    if (typeof cfg.assignee === 'string') {
-      item.assignee = cfg.assignee;
-    }
-    if (typeof cfg.required === 'boolean') {
-      item.required = cfg.required;
-    }
-    if (Array.isArray(cfg.__updates)) {
-      if (item.__updates) {
-        item.__updates = (<ObjectId[]> item.__updates).concat(<ObjectId[]> cfg.__updates);
-      } else {
-        item.__updates =  (<ObjectId[]> cfg.__updates).slice();
-      }
-    }
-  }
-  return item;
-};
-
-checklistItemSchema.methods.applyCfg = function(cfg: ChecklistItemCfg) {
-  return checklistItemSchema.statics.applyCfg(this, cfg);
-};
-
-checklistItemSchema.plugin(history.addHistory, {
-  fieldsToWatch: ['subject'],
-});
-
-export const ChecklistItem = mongoose.model<ChecklistItem>('ChecklistItem', checklistItemSchema);
-
-
-
-// A checklistItemCfg is configuration for a checklist item.
-//   checklist: the checklist to which this configuration belongs
-//   item: the checklist item to which this configuration applies
-//   subject: alternative subject to override the item
-//   assignee: user id of person required to respond to this item
-//   required: indicate if the item must have a response
-const checklistItemCfgSchema = new Schema({
-  checklist: {
-    type: ObjectId,
-    required: true,
-  },
-  item: {
-    type: ObjectId,
-    required: true,
-  },
-  subject: {
-    type: String,
-    default: null,
-  },
-  assignee: {
-    type: String,
-    default: null,
-  },
-  required: {
-    type: Boolean,
-    default: null,
-  },
-});
-
-checklistItemCfgSchema.plugin(history.addHistory, {
-  fieldsToWatch: ['subject', 'assignee', 'required' ],
-});
-
-export const ChecklistItemCfg = mongoose.model<ChecklistItemCfg>('ChecklistItemCfg', checklistItemCfgSchema);
-
-
-
-
-// A checklistItemData is the response for a checklist item.
-//  checklist: the checklist to which this response belongs
-//  item: the checklist item to which this response applies
-//  value: the value of the input
-//  comment: extra information
-//  inputOn: date when the input was submitted
-//  inputBy: user id of the persion who submitted the input
-const checklistItemDataSchema = new Schema({
-  checklist: {
-    type: ObjectId,
-    required: true,
-  },
-  item: {
-    type: ObjectId,
-    required: true,
-  },
-  value: {
-    type: String,
-    required: true,
-    enum: checklistValues,
-  },
-  comment: {
-    type: String,
-    default: '',
-  },
-  inputOn: {
-    type: Date,
-    required: true,
-  },
-  inputBy: {
-    type: String,
-    required: true,
-  },
-});
-
-checklistItemDataSchema.plugin(history.addHistory, {
-  fieldsToWatch: ['value', 'comment']
-});
-
-export const ChecklistItemData = mongoose.model<ChecklistItemData>('ChecklistItemData', checklistItemDataSchema);
-
-
-
-// A checklist is a list of responses for various subjects
-//  target: the object to which this checklist belongs
+// A checklist is a list of responses for various subjects:
+//  targetType: the type of the object to which this checklist belongs
+//  targetId: the object to which this checklist belongs
 //  type: the type of this checklist
 const checklistSchema = new Schema({
-  target: {
-    type: ObjectId,
-    required: true,
-  },
-  type: {
+  checklistType: {
     type: String,
     required: true,
-    enum: checklistTypes,
+    enum: CHECKLIST_TYPES,
+  },
+  targetType: {
+    type: String,
+    required: true,
+  },
+  targetId: {
+    type: ObjectId,
+    refPath: 'targetType',
+    required: true,
   },
   // Consider adding checklist completion information from device
   // , checkedValue: {
@@ -251,3 +107,192 @@ const checklistSchema = new Schema({
 // });
 
 export const Checklist = mongoose.model<Checklist>('Checklist', checklistSchema);
+
+
+// A checklistSubject represents single item of a checklist:
+//   type: the checklist type to which this item belongs
+//   subject: name of the subject of this checklist item
+//   checklist: the specific checklist to which this item belongs
+//   order: the order in which this item should be rendered
+//   assignee: the roles to which this item is assigned
+//   required: indicates if this item must be completed
+//   mandatory: indicates if this item must be required
+//   final: indicates of this item finalizes the checklist
+const checklistSubjectSchema = new Schema({
+  checklistId: {
+    type: ObjectId,
+    ref: Checklist.modelName,
+    default: null,
+  },
+  checklistType: {
+    type: String,
+    required: true,
+    enum: CHECKLIST_TYPES,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  order: {
+    type: Number,
+    default: 0,
+  },
+  assignees: {
+    type: [String],
+    required: true,
+  },
+  required: {
+    type: Boolean,
+    required: true,
+  },
+  mandatory: {
+    type: Boolean,
+    required: true,
+  },
+  final: {
+    type: Boolean,
+    required: true,
+  },
+});
+
+
+checklistSubjectSchema.statics.applyCfg = function(sub: ChecklistSubject, cfg: ChecklistConfig) {
+  if (sub && cfg) {
+    if (typeof cfg.name === 'string') {
+      sub.name = cfg.name;
+    }
+    if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
+      sub.assignees = Array.from(cfg.assignees);
+    }
+    if (typeof cfg.required === 'boolean') {
+      sub.required = cfg.required;
+    }
+    if (cfg.history.updated > sub.history.updated) {
+      sub.history.updated = cfg.history.updated;
+    }
+    if (Array.isArray(cfg.history.updateIds)) {
+      if (Array.isArray(sub.history.updateIds)) {
+        sub.history.updateIds = sub.history.updateIds.concat(cfg.history.updateIds);
+      } else {
+        sub.history.updateIds = Array.from(cfg.history.updateIds);
+      }
+    }
+    if (Array.isArray(cfg.history.updates)) {
+      if (Array.isArray(sub.history.updates)) {
+        sub.history.updates = sub.history.updates.concat(cfg.history.updates);
+      } else {
+        sub.history.updates = Array.from(cfg.history.updates);
+      }
+    }
+  }
+  return sub;
+};
+
+checklistSubjectSchema.methods.applyCfg = function(cfg: ChecklistConfig) {
+  return checklistSubjectSchema.statics.applyCfg(this, cfg);
+};
+
+checklistSubjectSchema.plugin(history.addHistory, {
+  fieldsToWatch: [
+    'name',
+    'assignee',
+    'mandatory',
+    'required',
+  ],
+});
+
+export const ChecklistSubject = history.model<ChecklistSubject>('ChecklistSubject', checklistSubjectSchema);
+
+
+
+// A checklistConfig is configuration for a checklist subject:
+//   checklist: the checklist to which this configuration belongs
+//   subjectId: the checklist item to which this configuration applies
+//   name: alternative subject to override the item
+//   assignee: user id of person required to respond to this item
+//   required: indicate if the item must have a response
+const checklistConfigSchema = new Schema({
+  checklistId: {
+    type: ObjectId,
+    required: true,
+  },
+  subjectId: {
+    type: ObjectId,
+    ref: ChecklistSubject.modelName,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: false,
+  },
+  assignee: {
+    type: [String],
+    required: false,
+    // normal default is `[]`
+    default: undefined,
+  },
+  required: {
+    type: Boolean,
+    required: false,
+  },
+});
+
+checklistConfigSchema.plugin(history.addHistory, {
+  fieldsToWatch: [
+    'name',
+    'assignee',
+    'required',
+  ],
+});
+
+export const ChecklistConfig = history.model<ChecklistConfig>('ChecklistConfig', checklistConfigSchema);
+
+
+
+
+// A checklistStatus is the response for a checklist item:
+//  checklistId: the checklist to which this response belongs
+//  subjectId: the checklist item to which this response applies
+//  value: the value of the input
+//  comment: extra information
+//  inputOn: date when the input was submitted
+//  inputBy: user id of the persion who submitted the input
+const checklistStatusSchema = new Schema({
+  checklistId: {
+    type: ObjectId,
+    required: true,
+  },
+  subjectId: {
+    type: ObjectId,
+    ref: ChecklistSubject.modelName,
+    required: true,
+  },
+  value: {
+    type: String,
+    required: true,
+    enum: CHECKLIST_VALUES,
+  },
+  comment: {
+    type: String,
+    default: '',
+  },
+  inputOn: {
+    type: Date,
+    required: true,
+  },
+  inputBy: {
+    type: String,
+    required: true,
+  },
+});
+
+checklistStatusSchema.plugin(history.addHistory, {
+  fieldsToWatch: [
+    'value',
+    'comment',
+    'inputOn',
+    'inputBy',
+  ],
+});
+
+export const ChecklistStatus = history.model<ChecklistStatus>('ChecklistItemData', checklistStatusSchema);
