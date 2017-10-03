@@ -5,17 +5,70 @@
 abstract class ChecklistUtil {
 
   public static render(selector: string, checklistId: string, config?: boolean) {
-    $(function() {
-      let elem = $(selector).first();
-      ChecklistUtil.renderTo(elem, checklistId, config);
-    });
+    //$(function() {
+    let elem = $(selector).first();
+    // TODO: Catch ERROR!
+    ChecklistUtil.renderTo(elem, checklistId, config);
+    //});
+  }
+
+  protected static showMessage(msg: string) {
+    $('#cl-message').append(`
+      <div class="alert alert-danger">
+        <button class="close" data-dismiss="alert">x</button>
+        <span>${msg}</span>
+      </div>
+    `);
+  }
+
+  protected static async renderTo(element: JQuery<HTMLElement>, checklistId: string, config?: boolean) {
+    // show spinner to the user while checklist loads
+    element.off().html(`
+      <div class="text-center" style="font-size:24px;">
+        <span class="fa fa-spinner fa-spin"/>
+      </div>
+    `);
+
+    //$.get('/checklists/' + checklistId + '/json')
+    // if (typeof checklist !== 'string') {
+    //   if (config) {
+    //     renderConfigTemplate(element, checklist);
+    //   } else {
+    //     renderInputTemplate(element, checklist);
+    //   }
+    //   return;
+    // }
+    //$.get(document.location + '/checklist/json')
+    $.get('/checklists/' + checklistId)
+      .done(function(data: webapi.Data<webapi.Checklist>) {
+        if (config) {
+          ChecklistUtil.renderConfigTemplate(element, data.data);
+        } else {
+          ChecklistUtil.renderUpdateTemplate(element, data.data);
+        }
+      });
+
+    let data: webapi.Data<webapi.Checklist>;
+    try {
+      data = await $.get('/checklists/' + checklistId);
+    } catch (err) {
+      //TODO?
+      return;
+    }
+
+    if (config) {
+      ChecklistUtil.renderConfigTemplate(element, data.data);
+    } else {
+      ChecklistUtil.renderUpdateTemplate(element, data.data);
+    }
+
   }
 
   protected static renderConfigTemplate(elem: JQuery<HTMLElement>, checklist: webapi.Checklist) {
     let count = 0;
 
     elem.off().html(checklistConfigTemplate({
-      items: checklist.items,
+      items: checklist.subjects,
     }));
 
     elem.find('.checklist-item-add').click(function() {
@@ -35,8 +88,8 @@ abstract class ChecklistUtil {
       $(evt.target).parents('tr:first').remove();
     });
 
-    elem.on('click', '.checklist-config-cancel', function() {
-      ChecklistUtil.renderInputTemplate(elem, checklist);
+    elem.on('click', '.checklist-config-cancel', () => {
+      ChecklistUtil.renderUpdateTemplate(elem, checklist);
     });
 
     elem.find('.checklist-config-save').click(function (event) {
@@ -78,117 +131,114 @@ abstract class ChecklistUtil {
     // }
   };
 
-  protected static renderInputTemplate(elem: JQuery<HTMLElement>, checklist: webapi.Checklist) {
-    let inputs: { [key: string]: webapi.ChecklistItemData  } = {};
-    let history = {};
 
-    for (let idx = 0; idx < checklist.data.length; idx += 1) {
-      let input = checklist.data[idx];
-      //input.inputOn = new Date(input.inputOn);
-      inputs[input.itemId] = input;
+  // Render the view for updating Checklist status.
+  protected static renderUpdateTemplate(parent: JQuery<HTMLElement>, checklist: webapi.Checklist) {
+    //let history = {};
+
+    let statuses: { [key: string]: webapi.ChecklistStatus  } = {};
+    for (let status of checklist.statuses) {
+      statuses[status.subjectId] = status;
     }
 
-    elem.off().html(checklistInputTemplate({
-      items: checklist.items,
-      inputs: inputs,
+    // render the pre-compiled template
+    parent.off().html(checklistInputTemplate({
+      subjects: checklist.subjects,
+      statuses: statuses,
+      moment: moment,
     }));
 
-    for (let item of checklist.items) {
-      if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(item.assignee))) {
-        let sel = elem.find(`#${item.id} select`).removeAttr('disabled');
+    // enable controls as permitted
+    for (let subject of checklist.subjects) {
+      if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
+        let sel = parent.find(`#${subject.id} select`).removeAttr('disabled');
         if (sel.val() === 'YC') {
-          elem.find(`#${item.id} input`).removeAttr('disabled');
+          parent.find(`#${subject.id} input`).removeAttr('disabled');
         }
       }
     }
 
-    elem.find('.checklist-item select').each(function (idx, elm) {
-      $(elm).change(function (evt) {
-        console.log('CHANGE!');
-        elem.find('.checklist-input-save').removeAttr('disabled');
-      });
-    });
-
-    elem.on('click', '.checklist-item-show-history', function (evt) {
-      let btn = $(evt.target).toggleClass('hidden');
-      let history = btn.parents('tr:first').next('.checklist-item-history');
-      while (history.length) {
-        history = history.toggleClass('hidden').next('.checklist-item-history');
-      }
-      btn.siblings('.checklist-item-hide-history').toggleClass('hidden');
-    });
-
-    elem.on('click', '.checklist-item-hide-history', function (evt) {
-      let btn = $(evt.target).toggleClass('hidden');
-      let history = btn.parents('tr:first').next('.checklist-item-history');
-      while (history.length) {
-        history = history.toggleClass('hidden').next('.checklist-item-history');
-      }
-      btn.siblings('.checklist-item-show-history').toggleClass('hidden');
-    });
-
-
-
-    elem.find('.checklist-input-edit').click(function () {
-      ChecklistUtil.renderConfigTemplate(elem, checklist);
-    });
-
-    elem.find('.checklist-input-save').click(function (event) {
-      let inputs: any[] = [];
-      event.preventDefault();
-
-      elem.find('.checklist-item').each(function (i, e) {
-        let input = {
-          _id: $(e).find('.checklist-item-id').val(),
-          value: $(e).find('.checklist-item-value:checked').val(),
-          comment: $(e).find('.checklist-item-comment').val(),
-        };
-        inputs.push(input);
-      });
-
-      $.ajax({
-        //url: '/checklists/' + checklist.id + '/inputs/json',
-        url: 'inputs/json',
-        type: 'PUT',
-        data: JSON.stringify(inputs),
-        contentType: 'application/json;charset=UTF-8',
-        dataType: 'json',
-        success: function () {
-          ChecklistUtil.renderTo(elem, checklist.id);
-        },
-        error: function (req, status, err) {
-          alert(err);
-        },
-     });
-    });
-
-    // for (let idx = 0; idx < checklist.items.length; idx += 1) {
-    //   HistoryUtil.prependHistory(checklist.items[idx].history.__updates);
-    // }
-    // for (let idx = 0; idx < checklist.data.length; idx += 1) {
-    //   HistoryUtil.prependHistory(checklist.data[idx].history.updates);
-    // }
-  }
-
-  protected static renderTo(element: JQuery<HTMLElement>, checklistId: string, config?: boolean) {
-    element.off().html('<div class="text-center" style="font-size:24px;"><span class="fa fa-spinner fa-spin"/></div>');
-    //$.get('/checklists/' + checklistId + '/json')
-    // if (typeof checklist !== 'string') {
-    //   if (config) {
-    //     renderConfigTemplate(element, checklist);
-    //   } else {
-    //     renderInputTemplate(element, checklist);
-    //   }
-    //   return;
-    // }
-    //$.get(document.location + '/checklist/json')
-    $.get('/checklists/' + checklistId)
-      .done(function(data: webapi.Data<webapi.Checklist>) {
-        if (config) {
-          ChecklistUtil.renderConfigTemplate(element, data.data);
+    parent.find('.cl-subject-status-value').each((idx, elem) => {
+      $(elem).change((evt) => {
+        let value = $(evt.target);
+        if (value.val() === 'YC') {
+          value.parents('.cl-subject').find('.cl-subject-status-comment').removeAttr('disabled');
         } else {
-          ChecklistUtil.renderInputTemplate(element, data.data);
+          // Should the comment be cleared?
+          value.parents('.cl-subject').find('.cl-subject-status-comment').attr('disabled', 'disabled');
         }
+        parent.find('.cl-update-save').removeAttr('disabled');
       });
+    });
+
+    parent.on('click', '.cl-subject-show-history', (evt) => {
+      let btn = $(evt.target).toggleClass('hidden');
+      let history = btn.parents('tr:first').next('.cl-subject-history');
+      while (history.length) {
+        history = history.toggleClass('hidden').next('.cl-subject-history');
+      }
+      btn.siblings('.cl-subject-hide-history').toggleClass('hidden');
+    });
+
+    parent.on('click', '.cl-subject-hide-history', (evt) => {
+      let btn = $(evt.target).toggleClass('hidden');
+      let history = btn.parents('tr:first').next('.cl-subject-history');
+      while (history.length) {
+        history = history.toggleClass('hidden').next('.cl-subject-history');
+      }
+      btn.siblings('.cl-subject-show-history').toggleClass('hidden');
+    });
+
+    // elem.find('.checklist-input-edit').click(function () {
+    //   ChecklistUtil.renderConfigTemplate(elem, checklist);
+    // });
+
+    parent.find('.cl-update-save').click(async (event) => {
+      event.preventDefault();
+      (async () => {
+        let updates: any[] = [];
+
+        for (let subject of checklist.subjects) {
+          if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
+            let e = $(`#${subject.id}`);
+            if (e) {
+              updates.push({
+                value: $(e).find('.cl-subject-status-value').val(),
+                comment: $(e).find('.cl-subject-status-comment').val(),
+                subjectId: subject.id,
+              });
+            }
+          }
+        }
+
+        let data: webapi.Data<webapi.ChecklistStatus[]>;
+        try {
+          data = await $.ajax({
+            url: `/checklists/${checklist.id}/statuses`,
+            method: 'PUT',
+            dataType: 'json',
+            data: JSON.stringify({
+              data: updates,
+            }),
+            contentType: 'application/json;charset=UTF-8',
+          });
+        } catch (err) {
+          if (err.response.error && err.response.message) {
+            ChecklistUtil.showMessage(err.response.message);
+          }
+          throw err;
+        }
+
+        checklist.statuses = data.data;
+        ChecklistUtil.renderUpdateTemplate(parent, checklist);
+
+        // for (let idx = 0; idx < checklist.items.length; idx += 1) {
+        //   HistoryUtil.prependHistory(checklist.items[idx].history.__updates);
+        // }
+        // for (let idx = 0; idx < checklist.data.length; idx += 1) {
+        //   HistoryUtil.prependHistory(checklist.data[idx].history.updates);
+        // }
+      })().catch(console.log);
+    });
   }
 };

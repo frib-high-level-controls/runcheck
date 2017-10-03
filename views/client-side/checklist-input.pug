@@ -1,72 +1,76 @@
+#cl-message
 form
   table.table
     thead
       tr
-        th.text-left.col-md-1
-          span.btn.glyphicon.glyphicon-time
+        th.text-center.col-md-1
+          span.glyphicon.glyphicon-time
         th.text-left.col-md-2 Subject
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
         th.text-left.col-md-3 Assignee
     tbody
-      for item in items
-        tr.form-group.checklist-item(id=item.id)
+      for subject in subjects
+        - var status = statuses[subject.id]
+        tr.form-group.cl-subject(id=subject.id)
           td.text-left.form-control-static
-            if inputs[item._id] && (inputs[item._id].__updates.length > 0)
-              span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history
+            if status && (status.history.updates.length > 0)
+              span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history
             else
-              span.btn.glyphicon.glyphicon-triangle-right.checklist-item-show-history.hidden
-            span.btn.glyphicon.glyphicon-triangle-bottom.checklist-item-hide-history.hidden
+              span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history.hidden
+            span.btn.glyphicon.glyphicon-triangle-bottom.cl-subject-hide-history.hidden
           td.text-left
-            input.form-control.checklist-item-id(type='hidden', value=item._id)
-            .form-control-static.checklist-item-subject #{item.subject}
+            //-input.form-control.cl-subject-id(type='hidden', value=subject.id)
+            .form-control-static.cl-subject-subject #{subject.subject}
           td.text-center
-            if item.mandatory || item.required
-              select.form-control(disabled='disabled')
-                if inputs[item._id] && inputs[item._id].value === 'N'
-                  option.checklist-item-value(selected='selected') N
+            if subject.mandatory || subject.required
+              select.form-control.cl-subject-status-value(disabled='disabled')
+                if status && status.value === 'N'
+                  option(selected='selected') N
                 else
-                  option.checklist-item-value N
-                if inputs[item._id] && inputs[item._id].value === 'Y'
-                  option.checklist-item-value(selected='selected') Y
+                  option N
+                if status && status.value === 'Y'
+                  option(selected='selected') Y
                 else
-                  option.checklist-item-value Y
-                if inputs[item._id] && inputs[item._id].value === 'YC'
-                  option.checklist-item-value(selected='selected') YC
+                  option Y
+                if status && status.value === 'YC'
+                  option(selected='selected') YC
                 else
-                  option.checklist-item-value YC
+                  option YC
             else
-              .form-control-static.checklist-item-value N/A
+              .form-control-static.cl-subject-status-value N/A
           td.text-left
-            if item.mandatory || item.required
-              if inputs[item._id]
-                input.form-control.checklist-item-comment(type='text', disabled='disabled', value=inputs[item._id].comment)
+            if subject.mandatory || subject.required
+              if status
+                input.form-control.cl-subject-status-comment(type='text', disabled='disabled', value=status.comment)
               else
-                input.form-control.checklist-item-comment(type='text', disabled='disabled')
+                input.form-control.cl-subject-status-comment(type='text', disabled='disabled')
             else
               | &nbsp;
           td.text-left
-            if item.assignee
-              .form-control-static.checklist-item-assignee= item.assignee 
+            if subject.assignee
+              .form-control-static.cl-subject-assignee= subject.assignee 
             else
-              .form-control-static.checklist-item-assignee UNASSIGNED
-        if inputs[item._id] && (inputs[item._id].__updates.length > 0)
-          for update in inputs[item._id].__updates
-            tr.checklist-item-history.hidden
-              td.text-left.text-primary
-                span.like-btn.glyphicon.glyphicon-user
-              td.text-left.text-primary= update.b
-              - var value = 'NONE', comment = 'NONE';
-              for change in update.c
-                if change.p === 'value' && change.v
-                  - value = change.v
-                if change.p === 'comment' && change.v
-                  - comment = change.v
-              td.text-center.text-primary= value
-              td.text-left.text-primary= comment
-              td.text-right.text-primary= moment(update.a).format('MMM D YYYY, h:mm:ss A')
+              .form-control-static.cl-subject-assignee UNASSIGNED
+          if status && (status.history.updates.length > 0)
+            for update in status.history.updates.reverse()
+              tr.cl-subject-history.hidden
+                td.text-center.text-primary
+                  span.glyphicon.glyphicon-time
+                td.text-left.text-primary
+                  span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
+                - var value = 'NONE', comment = 'NONE';
+                for path in update.paths
+                  if path.name === 'value' && path.value
+                    - value = path.value
+                  if path.name === 'comment' && path.value
+                    - comment = path.value
+                td.text-center.text-primary= value
+                td.text-left.text-primary= comment
+                td.text-left.text-primary= update.by
+                
   .row
     .col-xs-6.text-left
-      button.btn.btn-default.checklist-input-edit(type='button', disabled='disabled') Edit
+      button.btn.btn-default.cl-update-edit(type='button', disabled='disabled') Edit
     .col-xs-6.text-right
-      button.btn.btn-primary.checklist-input-save(type='button', disabled='disabled') Save
+      button.btn.btn-primary.cl-update-save(type='button', disabled='disabled') Save

@@ -1,58 +1,6 @@
-/*global deviceDetailsTemplate: false, Typeahead: false*/
-
-/// <reference path="../../app/webapi.d.ts" />
-
 /**
- * render page
+ * Support user interaction on Device details view.
  */
-// function dataRender() {
-//     var idx, roles = { owner:false };
-//     if (device) {
-//       if (Array.isArray(device.owner)) {
-//         for (idx=0; idx<device.owner.length; idx+=1) {
-//           if ((session.userid === device.owner[idx]) || session.roles[device.owner[idx]]) {
-//             roles.owner = true;
-//             break;
-//           }
-//         }
-//       } else if ((session.userid === device.owner) || session.roles[device.owner]) {
-//           roles.owner = true;
-//       }
-//     }
-
-//     if (device.checklist) {
-//       $('#device-checklist-panel').removeClass('hidden')
-//       ChecklistHelper().render('#device-checklist', device.checklist);
-//     }
-
-//     //var role = 'AM';
-//     //var status = $('#dStatus').attr('name');
-//     disableButton(device.status, roles); // TODO: get the role
-//   }
-
-
-  /**
-   * disable buttons by status and role
-   * @param status
-   * @param role DO: device owner AM: area manger
-   */
-  // function disableButton(status, roles) {
-  //   //role = 'AM'; //TODO: confirm all the roles, and disable buttons by role.
-
-  //   //session.userid
-
-  //   console.log(roles);
-
-  //   if (status === 0) {
-  //     if (roles.owner) {
-  //       $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
-  //       $('#device-request-install').removeClass('hidden').removeAttr('disabled');
-  //     } else {
-  //       $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
-  //       $('#device-request-install').removeClass('hidden').attr('disabled', 'disabled');
-  //     }
-  //   }
-
 
   //   // $('#preInstall').removeAttr('disabled');
   //   // $('#approve-install').removeAttr('disabled');
@@ -112,7 +60,7 @@
   //     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   //   });
   // }
-  
+
   // function setNotInstalled() {
   //   var url =  window.location.pathname + '/';
   //   if ($('#dInstallToDevice a').length) {
@@ -123,7 +71,7 @@
   //     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>The device is now not installed. </div>');
   //     return;
   //   }
-  
+
   //   $.ajax({
   //     url: url,
   //     type: 'DELETE'
@@ -137,7 +85,7 @@
   //     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   //   });
   // }
-  
+
   // function setStatus(status) {
   //   var url =  window.location.pathname + '/';
   //   if ($('#dInstallToDevice a').length) {
@@ -149,7 +97,7 @@
   //     return;
   //   }
   //   url += '/status';
-  
+
   //   $.ajax({
   //     url: url,
   //     type: 'PUT',
@@ -167,95 +115,49 @@
   //     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
   //   });
   // }
-  
 
 
 
-
-let device: webapi.Device | undefined;
+let device: webapi.Device;
 
 $(() => {
 
-  function assignChecklist() {
-    if (!device) {
-      return;
-    }
-    $.ajax({
-      url: '/devices/' + device.id + '/checklistId',
-      dataType: 'json',
-      type: 'PUT',
-      //contentType: 'application/json',
-      //data: JSON.stringify({})
-    }).done(function (data: webapi.Data<string>) {
-      $('#device-checklist-panel').removeClass('hidden');
-      ChecklistUtil.render('#device-checklist-panel', data.data);
-    }).fail(function (err) {
-      $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + err.responseText + '</div>');
-    });
-  };
+  function showMessage(msg: string) {
+    $('#message').append(`
+      <div class="alert alert-danger">
+        <button class="close" data-dismiss="alert">x</button>
+        <span>${msg}</span>
+      </div>
+    `);
+  }
 
+  // ensure the device has been initialized
   if (!device) {
+    showMessage('Device not initialized');
     return;
   }
 
-  if (device.checklistId) {
-    $('#device-checklist-panel').removeClass('hidden');
-    ChecklistUtil.render('#device-checklist-panel', device.checklistId);
-  }
+  const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
 
-  const dept = 'GRP:' + device.dept + '#LEADER';
-
-  const perm = {
+  const perms = {
     assign: false,
   };
 
-  if (AuthUtil.hasAnyRole(['SYS:RUNCHECK', dept])) {
-    perm.assign = true;
+  if (AuthUtil.hasAnyRole(['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
+    perms.assign = true;
   }
 
-  // function dataRender() {
-  //   var idx, roles = { owner:false };
-  //   if (device) {
-  //     if (Array.isArray(device.owner)) {
-  //       for (idx = 0; idx < device.owner.length; idx += 1) {
-  //         if ((session.userid === device.owner[idx]) || session.roles[device.owner[idx]]) {
-  //           roles.owner = true;
-  //           break;
-  //         }
-  //       }
-  //     } else if ((session.userid === device.owner) || session.roles[device.owner]) {
-  //         roles.owner = true;
-  //     }
-  //   }
-
-  //   if (device.checklist) {
-  //     $('#device-checklist-panel').removeClass('hidden')
-  //     ChecklistHelper().render('#device-checklist', device.checklist);
-  //   }
-
-  //   //var role = 'AM';
-  //   //var status = $('#dStatus').attr('name');
-  //   disableButton(device.status, roles); // TODO: get the role
-  // };
-
-
-  // dataRender();
-
-
-  if (!device.checklistId) {
-    if (perm.assign) {
+  if (device.checklistId) {
+    // TODO: Show 'unassign' button if permitted.
+    $('#device-checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#device-checklist-panel', device.checklistId);
+  } else {
+    if (perms.assign) {
       $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
     } else {
       $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
     }
   }
-
-  //  else {
-  //   $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
-  //   $('#device-request-install').removeClass('hidden').attr('disabled', 'disabled');
-  // }
-
-
 
   // var selected = null;
 
@@ -352,14 +254,51 @@ $(() => {
     // //   setInstallTo(url, id);
     // // });
 
+  function catchAll<T>(cb: (evt: JQuery.Event<T>) => Promise<void>): (evt: JQuery.Event<T>) => void {
+    return (evt: JQuery.Event<T>) => {
+      // Promise.resolve(cb(evt)).catch();
 
-  $('#device-assign-checklist').click((evt) => {
+
+    };
+  }
+
+
+  $('#device-assign-checklist').click(async (evt) => {
+    // (async () => {
+    //   evt.preventDefault();
+
+      
+
+
+    // })();
+
+
+
     evt.preventDefault();
+
     $('#device-assign-checklist').addClass('hidden');
     $('#device-checklist-spin').removeClass('hidden');
-    assignChecklist();
-    //console.log("Assign Checklist")
+
+    let data: webapi.Data<string>;
+    try {
+      data = await $.get({
+         url: `/devices/${device.id}/checklistId`,
+         method: 'PUT',
+         dataType: 'json',
+      });
+    } catch (err) {
+      $('#device-checklist-spin').addClass('hidden');
+      $('#device-assign-checklist').removeClass('hidden');
+      showMessage(err.responseText);
+      return;
+    }
+
+    device.checklistId = data.data;
+    $('#device-checklist-spin').addClass('hidden');
+    $('#device-checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#device-checklist-panel', device.checklistId);
   });
+
 
     // $('#reject-install').click(function (e) {
     //   e.preventDefault();
@@ -386,5 +325,4 @@ $(() => {
     // //   $('#prepare-panel .slot,.device').addClass('hidden');
     // //   $('#prepare-title').text('');
     // // });
-
 });

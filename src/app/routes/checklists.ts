@@ -26,6 +26,7 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  IChecklistStatus,
 } from '../models/checklist';
 
 
@@ -51,7 +52,7 @@ async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]>
 
 async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
   let query = ChecklistConfig.find({
-    checklist: cl._id,
+    checklistId: cl._id,
   });
   let cfgs = await query.exec();
 
@@ -67,7 +68,7 @@ async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
 
 async function findChecklistStatuses(cl: Checklist): Promise<ChecklistStatus[]> {
   let query = ChecklistStatus.find({
-    checklist: cl._id,
+    checklistId: cl._id,
   });
   let datas = await query.exec();
 
@@ -113,13 +114,16 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   }
 
   let [subjects, configs, statuses ] = await deferred;
+  debug('Checklist subjects: %s', subjects.length);
+  debug('Checklist configs: %s', configs.length);
+  debug('Checklist statuses: %s', statuses.length);
 
   const webChecklist: webapi.Checklist = {
     id: String(checklist.id),
     targetId: checklist.targetId.toHexString(),
     type: checklist.checklistType,
-    items: [],
-    data: [],
+    subjects: [],
+    statuses: [],
   };
 
   for (let subject of subjects) {
@@ -143,9 +147,9 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
         }
       }
 
-      webChecklist.items.push({
+      webChecklist.subjects.push({
         id: subject.id,
-        type: subject.ChecklistType,
+        checklistType: subject.ChecklistType,
         checklistId: checklist.id,
         order: subject.order,
         subject: subject.name,
@@ -159,15 +163,35 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 
   for (let status of statuses) {
     if (status.id) {
-      webChecklist.data.push({
+      //let webUpdate
+      let webUpdates: webapi.Update[] = [];
+
+      if (status.history.updates) {
+        for (let update of status.history.updates) {
+          webUpdates.push({
+            at: String(update.at),
+            by: update.by,
+            paths: update.paths,
+          });
+        }
+      }
+
+      let webStatus = {
         id: status.id,
-        checklistId: checklist.id,
-        itemId: status.subjectId.toHexString(),
+        checklistId: status.checklistId.toHexString(),
+        subjectId: status.subjectId.toHexString(),
         value: status.value,
         comment: status.comment,
         inputBy: status.inputBy,
-        inputOn: String(status.inputOn),
-      });
+        inputOn: status.inputOn.toISOString(),
+        history: {
+          updatedAt: status.history.updatedAt.toISOString(),
+          updatedBy: status.history.updatedBy,
+          updates: webUpdates,
+        },
+      };
+
+      webChecklist.statuses.push(webStatus);
     }
   }
 
@@ -364,100 +388,134 @@ router.put('/:id/items/json', auth.ensureAuthenticated, catchAll(async (req, res
 
   res.status(200).json({});
 }));
+*/
 
+router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let id = String(req.params.id);
 
-router.put('/:id/inputs/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  // Ensures the session exists and saves type checks.
-  if (!req.session) {
-    throw new RequestError('Session not found');
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request.');
   }
 
-  if (!Array.isArray(req.body)) {
-    throw new RequestError('Invalid request data', HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+  if (!Array.isArray(req.body.data)) {
+    throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
   }
 
-  let checklist = await findChecklistById(req.params.id);
+  let checklist = await Checklist.findById(id).exec();
+  if (!checklist) {
+    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+  }
 
-  let [ items, cfgs, data ] = await Promise.all([
-    findItemsForChecklist(checklist),
-    findItemCfgsForChecklist(checklist),
-    findItemDataForChecklist(checklist),
+  let deferred = await Promise.all([
+    findChecklistSubjects(checklist),
+    findChecklistConfigs(checklist),
+    findChecklistStatuses(checklist),
   ]);
 
-  let cfgMap = new Map<string, ChecklistItemCfg>();
+  let varRoleMap = new Map<string, string>();
 
-  for (let cfg of cfgs) {
-    cfgMap.set(cfg.item.toHexString(), cfg);
+  if (checklist.targetType === Device.modelName) {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+  } else {
+    throw new RequestError('Target type not supported: ' + checklist.targetType);
   }
 
-  let itemMap = new Map<string, ChecklistItem>();
-  for (let item of items) {
-    if (item.id) {
-      itemMap.set(item.id, item);
-      let cfg = cfgMap.get(item.id);
-      if (cfg) {
-        item.applyCfg(cfg);
+  let [ subjects, configs, statuses ] = await deferred;
+
+  const configMap = new Map<string, ChecklistConfig>();
+  for (let config of configs) {
+    configMap.set(config.subjectId.toHexString(), config);
+  }
+
+  const subjectMap = new Map<string, ChecklistSubject>();
+  for (let subject of subjects) {
+    if (subject.id) {
+      subjectMap.set(subject.id, subject);
+      let config = configMap.get(subject.id);
+      if (config) {
+        subject.applyCfg(config);
       }
     }
-  }
 
-  let inputMap = new Map<string, ChecklistItemData>();
-  for (let input of data) {
-    inputMap.set(input.item.toHexString(), input);
-  }
-
-  let prms = new Array<Promise<ChecklistItemData>>();
-  for (let newInput of <ClientChecklistItemData[]> req.body) {
-    if (typeof newInput._id !== 'string') {
-      log.warn('Submitted checklist item data missing _id');
-      continue;
+    let assignees: string[] = [];
+    for (let assignee of subject.assignees) {
+      // TODO: use URL parser and handle fragment
+      let role = varRoleMap.get(assignee);
+      if (role) {
+        debug('Replace assignee: %s => %s', assignee, role);
+        assignees.push(role);
+      } else {
+        assignees.push(assignee);
+      }
     }
-    let item = itemMap.get(newInput._id);
-    let input = inputMap.get(newInput._id);
-    if (typeof newInput._id === 'string') {
-      if (item && (item.mandatory || item.required)) {
-        debug('Input permitted: value: "%s", comment:"%s"', newInput.value, newInput.comment);
-        // TODO: check authorization
-        if (input) {
-          if (newInput.value && (newInput.value !== input.value) && (checklistValues.indexOf(newInput.value) !== -1)) {
-            debug('Update input value: %s', newInput.value);
-            input.value = newInput.value;
-            input.inputOn = new Date();
-            input.inputBy = req.session.userid;
-          }
-          if ((newInput.comment !== input.comment) && (typeof newInput.comment === 'string')) {
-            debug('Update input comment: %s', newInput.comment);
-            input.comment = newInput.comment;
-            input.inputOn = new Date();
-            input.inputBy = req.session.userid;
-          }
+    subject.assignees = assignees;
+  }
 
-          if (input.isModified()) {
-            prms.push(input.saveWithHistory(req.session.userid).catch((err) => {
-              log.error('Error saving ChecklistItemData: %s', err);
-              return Promise.reject(err);
-            }));
-          }
-        } else {
-          debug('No existing input found');
-          debug(newInput.value !== 'N');
-          debug(newInput.value);
-          debug(checklistValues);
-          if (newInput.value && (newInput.value !== 'N') && (checklistValues.indexOf(newInput.value) !== -1)) {
-            debug('Crete input: value: %s, comment: %s', newInput.value, newInput.comment);
-            input = new ChecklistItemData({
-              item: item._id,
-              checklist: checklist._id,
-              value: newInput.value,
-              comment: newInput.comment,
-              inputOn: new Date(),
-              inputBy: req.session.userid,
-            });
-            prms.push(input.saveWithHistory(req.session.userid).catch((err) => {
-              log.error('Error saving ChecklistItemData: %s', err);
-              return Promise.reject(err);
-            }));
-          }
+  let statusMap = new Map<string, ChecklistStatus>();
+  for (let status of statuses) {
+    statusMap.set(status.subjectId.toHexString(), status);
+  }
+
+  let prms = new Array<Promise<ChecklistStatus>>();
+  for (let newStatus of <any[]> req.body.data) {
+    //if (typeof newStatus.subjectId !== 'string') {
+    //  log.warn('Submitted checklist item data missing _id');
+    //  continue;
+    //}
+    let subject = subjectMap.get(newStatus.subjectId);
+    let status = statusMap.get(newStatus.subjectId);
+
+
+    if (subject && (subject.mandatory || subject.required)) {
+      debug('Status submitted name: "%s", value: "%s", comment:"%s"', subject.name, newStatus.value, newStatus.comment);
+      if (!auth.hasAnyRole(req, [ 'SYS:RUNCHECK' ].concat(subject.assignees))) {
+        throw new RequestError('Not Permitted', HttpStatus.FORBIDDEN);
+      }
+
+      if (status) {
+        if (newStatus.value && (newStatus.value !== status.value) && (CHECKLIST_VALUES.includes(newStatus.value))) {
+          debug('Update status value: %s', newStatus.value);
+          status.value = newStatus.value;
+          status.inputOn = new Date();
+          status.inputBy = username;
+        }
+        if ((newStatus.comment !== status.comment) && (typeof newStatus.comment === 'string')) {
+          debug('Update status comment: %s', newStatus.comment);
+          status.comment = newStatus.comment;
+          status.inputOn = new Date();
+          status.inputBy = username;
+        }
+
+        if (status.isModified()) {
+          prms.push(status.saveWithHistory(username).catch((err) => {
+            log.error('Error saving ChecklistStatus: %s', err);
+            return Promise.reject(err);
+          }));
+        }
+      } else {
+        debug('Create new checklist status');
+        debug(newStatus.value !== 'N');
+        debug(newStatus.value);
+        debug(CHECKLIST_VALUES);
+        if (newStatus.value && (newStatus.value !== 'N') && (CHECKLIST_VALUES.includes(newStatus.value))) {
+          debug('Crete input: value: %s, comment: %s', newStatus.value, newStatus.comment);
+          status = new ChecklistStatus(<IChecklistStatus> {
+            subjectId: subject._id,
+            checklistId: checklist._id,
+            value: newStatus.value,
+            comment: newStatus.comment,
+            inputOn: new Date(),
+            inputBy: username,
+          });
+          prms.push(status.saveWithHistory(username).catch((err) => {
+            log.error('Error saving ChecklistStatus: %s', err);
+            return Promise.reject(err);
+          }));
         }
       }
     }
@@ -465,6 +523,42 @@ router.put('/:id/inputs/json', auth.ensureAuthenticated, catchAll(async (req, re
 
   await Promise.all(prms);
 
-  res.status(200).json({});
+  let data: webapi.ChecklistStatus[] = [];
+  for (let status of statuses) {
+    if (status.id) {
+      //let webUpdate
+      let webUpdates: webapi.Update[] = [];
+
+      if (status.history.updates) {
+        for (let update of status.history.updates) {
+          webUpdates.push({
+            at: String(update.at),
+            by: update.by,
+            paths: update.paths,
+          });
+        }
+      }
+
+      let webStatus = {
+        id: status.id,
+        checklistId: status.checklistId.toHexString(),
+        subjectId: status.subjectId.toHexString(),
+        value: status.value,
+        comment: status.comment,
+        inputBy: status.inputBy,
+        inputOn: status.inputOn.toISOString(),
+        history: {
+          updatedAt: status.history.updatedAt.toISOString(),
+          updatedBy: status.history.updatedBy,
+          updates: webUpdates,
+        },
+      };
+
+      data.push(webStatus);
+    }
+  }
+
+  res.json(<webapi.Data<webapi.ChecklistStatus[]>> {
+    data: data,
+  });
 }));
-*/

@@ -15,6 +15,21 @@ declare namespace webapi {
     }
   }
 
+  export interface Update {
+    at: string;
+    by: string;
+    paths: { 
+      name: string;
+      value: {};
+    }[]
+  }
+
+  export interface History {
+    updatedAt: string;
+    updatedBy: string;
+    updates: Update[];
+  }
+
   export interface DeviceTableRow {
     name: string;
     desc: string;
@@ -36,13 +51,13 @@ declare namespace webapi {
     id: string;
     targetId: string;
     type: string;
-    items: ChecklistItem[];
-    data: ChecklistItemData[];
+    subjects: ChecklistSubject[];
+    statuses: ChecklistStatus[];
   }
 
-  interface ChecklistItem {
+  interface ChecklistSubject {
     id: string;
-    type: string;
+    checklistType: string;
     subject: string;
     checklistId: string;
     order: number;
@@ -52,13 +67,14 @@ declare namespace webapi {
     final: boolean;
   }
 
-  interface ChecklistItemData {
+  interface ChecklistStatus {
     id: string;
     checklistId: string;
-    itemId: string;
-    value: {};
+    subjectId: string;
+    value: string;
     comment: string;
     inputOn: string;
     inputBy: string;
+    history: History;
   }
 }

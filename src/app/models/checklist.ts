@@ -167,11 +167,12 @@ checklistSubjectSchema.statics.applyCfg = function(sub: ChecklistSubject, cfg: C
     if (typeof cfg.required === 'boolean') {
       sub.required = cfg.required;
     }
-    if (cfg.history.updated > sub.history.updated) {
-      sub.history.updated = cfg.history.updated;
+    if (cfg.history.updatedAt > sub.history.updatedAt) {
+      sub.history.updatedAt = cfg.history.updatedAt;
+      sub.history.updatedBy = cfg.history.updatedBy;
     }
-    if (Array.isArray(cfg.history.updateIds)) {
-      if (Array.isArray(sub.history.updateIds)) {
+    if (cfg.history && Array.isArray(cfg.history.updateIds)) {
+      if (sub.history && Array.isArray(sub.history.updateIds)) {
         sub.history.updateIds = sub.history.updateIds.concat(cfg.history.updateIds);
       } else {
         sub.history.updateIds = Array.from(cfg.history.updateIds);
@@ -192,8 +193,8 @@ checklistSubjectSchema.methods.applyCfg = function(cfg: ChecklistConfig) {
   return checklistSubjectSchema.statics.applyCfg(this, cfg);
 };
 
-checklistSubjectSchema.plugin(history.addHistory, {
-  fieldsToWatch: [
+history.addHistory(checklistSubjectSchema, {
+  pathsToWatch: [
     'name',
     'assignee',
     'mandatory',
@@ -237,8 +238,8 @@ const checklistConfigSchema = new Schema({
   },
 });
 
-checklistConfigSchema.plugin(history.addHistory, {
-  fieldsToWatch: [
+history.addHistory(checklistConfigSchema, {
+  pathsToWatch: [
     'name',
     'assignee',
     'required',
@@ -286,8 +287,8 @@ const checklistStatusSchema = new Schema({
   },
 });
 
-checklistStatusSchema.plugin(history.addHistory, {
-  fieldsToWatch: [
+history.addHistory(checklistStatusSchema, {
+  pathsToWatch: [
     'value',
     'comment',
     'inputOn',
@@ -295,4 +296,4 @@ checklistStatusSchema.plugin(history.addHistory, {
   ],
 });
 
-export const ChecklistStatus = history.model<ChecklistStatus>('ChecklistItemData', checklistStatusSchema);
+export const ChecklistStatus = history.model<ChecklistStatus>('ChecklistStatus', checklistStatusSchema);
