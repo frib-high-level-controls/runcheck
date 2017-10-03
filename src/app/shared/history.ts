@@ -29,8 +29,9 @@ export interface IUpdate {
 
 export interface IHistory {
   history: {
-    updated: Date;
     updates?: Update[];
+    updatedAt: Date;
+    updatedBy: string;
     updateIds: ObjectId[];
   };
 }
@@ -106,11 +107,15 @@ const updateSchema = new Schema({
 });
 
 // Note the collection name is explicitly specified for this model.
-export const Update = mongoose.model<Update>('Update', updateSchema, 'History');
+export const Update = mongoose.model<Update>('Update', updateSchema, 'history');
 
 const historySchema = new Schema({
-  updated: {
+  updatedAt: {
     type: Date,
+    required: true,
+  },
+  updatedBy: {
+    type: String,
     required: true,
   },
   updateIds: [{
@@ -187,10 +192,7 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
   schema.add({
     history: {
       type: historySchema,
-      default: {
-        updated: new Date(0),
-        updateIds: [],
-      },
+      required: false,
     },
   });
 
@@ -202,9 +204,13 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
    *
    * @param  {String}  userid the user making this update
    */
-  schema.method('saveWithHistory', function (this: T, by: string): Promise<T> {
+  schema.method('saveWithHistory', function (this: T, updatedBy: string): Promise<T> {
+    if (!updatedBy) {
+      return Promise.reject(new Error('UpdatedBy argument is required'));
+    }
 
     if (!this.isModified()) {
+      debug('Document not modified, so just save the document');
       return this.save();
     }
 
@@ -232,11 +238,11 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
       return this.save();
     }
 
-    const updated = new Date();
+    const updatedAt = new Date();
 
     const doc: IUpdate = {
-      at: updated,
-      by: by,
+      at: updatedAt,
+      by: updatedBy,
       ref: models.getModelName(this),
       rid: this._id,
       paths: paths,
@@ -245,11 +251,13 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
     return Update.create(doc).then((update) => {
       debug('Update saved ID: %s', update.id);
       if (this.history) {
-        this.history.updated = updated;
+        this.history.updatedAt = updatedAt;
+        this.history.updatedBy = updatedBy;
         this.history.updateIds.push(update._id);
       } else {
         this.history = {
-          updated: updated,
+          updatedAt: updatedAt,
+          updatedBy: updatedBy,
           updateIds: [ update._id ],
         };
       }
@@ -264,7 +272,10 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
    * Populate the updates for this document.
    */
   schema.method('populateUpdates', function (this: T): Promise<void> {
-    return Update.find({ target: { $in: this.history.updateIds }}).exec().then((updates) => {
+    if (debug.enabled) {
+      debug('Populate update IDs: [%s]', this.history.updateIds.join(', '));
+    }
+    return Update.find({ _id: { $in: this.history.updateIds }}).exec().then((updates) => {
       const ordered: Update[] = [];
       for (let id of this.history.updateIds) {
         for (let update of updates) {
@@ -274,6 +285,7 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
           }
         }
       }
+      debug('Populate updates: %s', ordered.length);
       this.history.updates = ordered;
     });
   });
