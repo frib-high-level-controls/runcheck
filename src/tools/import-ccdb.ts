@@ -203,7 +203,7 @@ async function main() {
   if (cfg.h || cfg.help) {
     info(`Usage: import-ccdb [ options ]
 
-    Options  console.inf
+    Options
       --help               display help information
       --host [ccdbhost]    host name of CCDB database (default: localhost)
       --user [username]    user name for CCDB database
