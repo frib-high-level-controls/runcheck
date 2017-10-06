@@ -11,14 +11,14 @@ form
         th.text-left.col-md-4
           | Assignee
     tbody
-      for item in items
+      for subject in subjects
         include checklist-config-item.pug
       tr
         td(colspan='4')
-          button.btn.btn-primary.checklist-item-add(type='button')
+          button.btn.btn-primary.cl-subject-add(type='button')
             span.glyphicon.glyphicon-plus
   .row
     .col-xs-6.text-left
-       button.btn.btn-default.checklist-config-cancel(type='button') Cancel
+       button.btn.btn-default.cl-edit-cancel(type='button') Cancel
     .col-xs-6.text-right
-       button.btn.btn-primary.checklist-config-save(type="submit") Save
+       button.btn.btn-primary.cl-edit-save(type="submit") Save

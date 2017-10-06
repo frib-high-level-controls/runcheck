@@ -26,60 +26,62 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  IChecklistConfig,
   IChecklistStatus,
+  IChecklistSubject,
 } from '../models/checklist';
 
 
 const debug = dbg('runcheck:checklists');
 
 
-async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]> {
-  let query = ChecklistSubject.find({
-    checklistType: cl.checklistType,
-    checklistId: { $in: [null, cl._id] },
-  });
-  let items = await query.sort('order').exec();
+// async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]> {
+//   let query = ChecklistSubject.find({
+//     checklistType: cl.checklistType,
+//     checklistId: { $in: [null, cl._id] },
+//   });
+//   let items = await query.sort('order').exec();
 
-  let prms = new Array<Promise<void>>();
-  for (let item of items) {
-    prms.push(item.populateUpdates());
-  }
-  await Promise.all(prms);
+//   let prms = new Array<Promise<void>>();
+//   for (let item of items) {
+//     prms.push(item.populateUpdates());
+//   }
+//   await Promise.all(prms);
 
-  return items;
-};
-
-
-async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
-  let query = ChecklistConfig.find({
-    checklistId: cl._id,
-  });
-  let cfgs = await query.exec();
-
-  let prms = new Array<Promise<void>>();
-  for (let cfg of cfgs) {
-    prms.push(cfg.populateUpdates());
-  }
-  await Promise.all(prms);
-
-  return cfgs;
-};
+//   return items;
+// };
 
 
-async function findChecklistStatuses(cl: Checklist): Promise<ChecklistStatus[]> {
-  let query = ChecklistStatus.find({
-    checklistId: cl._id,
-  });
-  let datas = await query.exec();
+// async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
+//   let query = ChecklistConfig.find({
+//     checklistId: cl._id,
+//   });
+//   let cfgs = await query.exec();
 
-  let prms = new Array<Promise<void>>();
-  for (let data of datas) {
-    prms.push(data.populateUpdates());
-  }
-  await Promise.all(prms);
+//   let prms = new Array<Promise<void>>();
+//   for (let cfg of cfgs) {
+//     prms.push(cfg.populateUpdates());
+//   }
+//   await Promise.all(prms);
 
-  return datas;
-};
+//   return cfgs;
+// };
+
+
+// async function findChecklistStatuses(cl: Checklist): Promise<ChecklistStatus[]> {
+//   let query = ChecklistStatus.find({
+//     checklistId: cl._id,
+//   });
+//   let datas = await query.exec();
+
+//   let prms = new Array<Promise<void>>();
+//   for (let data of datas) {
+//     prms.push(data.populateUpdates());
+//   }
+//   await Promise.all(prms);
+
+//   return datas;
+// };
 
 
 
@@ -96,11 +98,22 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 
   // Defer these results until they are needed later.
   let deferred = Promise.all([
-    findChecklistSubjects(checklist),
-    findChecklistConfigs(checklist),
-    findChecklistStatuses(checklist),
+    //findChecklistSubjects(checklist),
+    ChecklistSubject.findWithHistory({
+      checklistType: checklist.checklistType,
+      checklistId: { $in: [null, checklist._id] },
+    }),
+    //findChecklistConfigs(checklist),
+    ChecklistConfig.findWithHistory({
+      checklistId : checklist._id,
+    }),
+    //findChecklistStatuses(checklist),
+    ChecklistStatus.findWithHistory({
+      checklistId : checklist._id,
+    }),
   ]);
 
+  let ownerRole = '';
   let varRoleMap = new Map<string, string>();
 
   if (checklist.targetType === Device.modelName) {
@@ -108,7 +121,8 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     if (!device || !device.id) {
       throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+    ownerRole = 'GRP:' + device.dept + '#LEADER';
+    varRoleMap.set('VAR:DEPT_LEADER', ownerRole);
   } else {
     throw new RequestError('Target type not supported: ' + checklist.targetType);
   }
@@ -122,6 +136,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     id: String(checklist.id),
     targetId: checklist.targetId.toHexString(),
     type: checklist.checklistType,
+    editable: auth.hasAnyRole(req, [ 'SYS:RUNCHECK', ownerRole ]),
     subjects: [],
     statuses: [],
   };
@@ -149,7 +164,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 
       webChecklist.subjects.push({
         id: subject.id,
-        checklistType: subject.ChecklistType,
+        checklistType: subject.checklistType,
         checklistId: checklist.id,
         order: subject.order,
         subject: subject.name,
@@ -164,11 +179,17 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   for (let status of statuses) {
     if (status.id) {
       //let webUpdate
-      let webUpdates: webapi.Update[] = [];
-
-      if (status.history.updates) {
-        for (let update of status.history.updates) {
-          webUpdates.push({
+      //let webHistory: webapi.History | undefined;
+      //let webUpdates: webapi.Update[] = [];
+      const h = status.history;
+      let webHistory: webapi.History = {
+        updates: [],
+        updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
+        updatedBy: h.updatedBy || '',
+      };
+      if (h.updates) {
+        for (let update of h.updates) {
+          webHistory.updates.push({
             at: String(update.at),
             by: update.by,
             paths: update.paths,
@@ -184,14 +205,10 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
         comment: status.comment,
         inputBy: status.inputBy,
         inputOn: status.inputOn.toISOString(),
-        history: {
-          updatedAt: status.history.updatedAt.toISOString(),
-          updatedBy: status.history.updatedBy,
-          updates: webUpdates,
-        },
+        history: webHistory,
       };
 
-      webChecklist.statuses.push(webStatus);
+      //webChecklist.statuses.push(webStatus);
     }
   }
 
@@ -200,130 +217,161 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   });
 }));
 
-/*
-router.put('/:id/items/json', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  // Ensures the session exists and saves type checks.
-  if (!req.session) {
-    throw new RequestError('Session not found', HttpStatus.INTERNAL_SERVER_ERROR);
+
+router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let id = String(req.params.id);
+
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request.');
   }
 
-  if (!Array.isArray(req.body)) {
-    throw new RequestError('Invalid request data', HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+  if (!Array.isArray(req.body.data)) {
+    throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
   }
 
-  let checklist = await findChecklistById(req.params.id);
-
-  let [items, cfgs ] = await Promise.all([
-    findItemsForChecklist(checklist),
-    findItemCfgsForChecklist(checklist),
-  ]);
+  let checklist = await Checklist.findById(id).exec();
+  if (!checklist) {
+    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+  }
 
   // A checklist is custom if it is associated with a checklist
-  function isCustom(item: ChecklistItem): boolean {
-    return item.checklist && (item.checklist.equals(checklist._id));
+  function isCustom(subject: ChecklistSubject): boolean {
+    if (!checklist || !subject.checklistId) {
+      return false;
+    }
+    return subject.checklistId.equals(checklist._id);
   }
 
-  let cfgMap = new Map<string, ChecklistItemCfg>();
-  for (let cfg of cfgs) {
-    if (cfg.item) {
-      cfgMap.set(cfg.item.toHexString(), cfg);
+  let deferred = Promise.all([
+    //findChecklistSubjects(checklist),
+    ChecklistSubject.findWithHistory({
+      checklistType: checklist.checklistType,
+      checklistId: { $in: [null, checklist._id] },
+    }),
+    //findChecklistConfigs(checklist),
+    ChecklistConfig.findWithHistory({
+      checklistId: checklist._id,
+    }),
+  ]);
+
+  let varRoleMap = new Map<string, string>();
+
+  if (checklist.targetType === Device.modelName) {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+  } else {
+    throw new RequestError('Target type not supported: ' + checklist.targetType);
+  }
+
+  let [subjects, configs ] = await deferred;
+
+  let cfgMap = new Map<string, ChecklistConfig>();
+  for (let config of configs) {
+    if (config.subjectId) {
+      cfgMap.set(config.subjectId.toHexString(), config);
     }
   }
 
-  let itemMap = new Map<string, ChecklistItem>();
-  for (let item of items) {
-    if (item.id) {
-      itemMap.set(item.id, item);
+  let subjectMap = new Map<string, ChecklistSubject>();
+  for (let subject of subjects) {
+    if (subject.id) {
+      subjectMap.set(subject.id, subject);
     }
   }
 
   let newItemSet = new Set<string>();
-  let itemPms = new Array<Promise<ChecklistItem> | ChecklistItem>();
-  let cfgPms = new Array<Promise<ChecklistItemCfg> | ChecklistItemCfg>();
-  for (let newItem of <ClientChecklistItem[]> req.body) {
-    if (typeof newItem._id !== 'string') {
+  let itemPms = new Array<Promise<ChecklistSubject>>();
+  let cfgPms = new Array<Promise<ChecklistConfig>>();
+  for (let newSubject of <webapi.ChecklistSubject[]> req.body.data) {
+    if (typeof newSubject.id !== 'string') {
       log.warn('Submitted checklist item missing _id');
       continue;
     }
-    newItemSet.add(newItem._id);
+    newItemSet.add(newSubject.id);
 
-    let item = itemMap.get(newItem._id);
-    let cfg = cfgMap.get(newItem._id);
-    if (item) {
-      itemPms.push(new ChecklistItem(item));
-      debug('Update ChecklistItem (%s) with subject: %s', item._id, item.subject);
+    let subject = subjectMap.get(newSubject.id);
+    let cfg = cfgMap.get(newSubject.id);
+    if (subject) {
+      itemPms.push(Promise.resolve(new ChecklistSubject(subject)));
+      debug('Update ChecklistItem (%s) with subject: %s', subject._id, subject.name);
     } else {
-      item = new ChecklistItem({
-        _id: ObjectId(),
-        type: checklist.type,
-        checklist: checklist._id,
-        subject: 'SUBJECT',
+      subject = new ChecklistSubject(<IChecklistSubject> {
+        //_id: models.generateId(),
+        checklistType: checklist.checklistType,
+        checklistId: models.ObjectId(checklist._id),
+        name: 'SUBJECT',
       });
 
-      if (typeof newItem.subject === 'string') {
-        item.subject = newItem.subject;
+      subject._id = models.generateId();
+
+      if (typeof newSubject.subject === 'string') {
+        subject.name = newSubject.subject;
       }
 
-      debug('Add new ChecklistItem (%s) with subject: %s', item._id, item.subject);
+      debug('Add new ChecklistItem (%s) with subject: %s', subject.id, subject.name);
 
-      let opts = {
-        userid: req.session.userid,
-        desc: 'Add checklist item',
-      };
+      // let opts = {
+      //   userid: username,
+      //   desc: 'Add checklist item',
+      // };
 
-      itemPms.push(item.saveWithHistory(opts).catch((err) => {
+      itemPms.push(subject.saveWithHistory(username).catch((err) => {
         log.error('Error saving new ChecklistItem: ' + err);
         return Promise.reject(err);
       }));
     }
 
-    if (isCustom(item)) {
-      if (typeof newItem.subject === 'string') {
-        if (cfg && (typeof cfg.subject === 'string')) {
-          if (cfg.subject !== newItem.subject) {
-            if (item.subject !== newItem.subject) {
-              cfg.subject = newItem.subject;
+    if (isCustom(subject)) {
+      if (typeof newSubject.subject === 'string') {
+        if (cfg && (typeof cfg.name === 'string')) {
+          if (cfg.name !== newSubject.subject) {
+            if (subject.name !== newSubject.subject) {
+              cfg.name = newSubject.subject;
             } else {
-              cfg.subject = undefined; // defer to item
+              cfg.name = undefined; // fallback to subject
             }
           }
         } else {
-          if (item.subject !== newItem.subject) {
+          if (subject.name !== newSubject.subject) {
             if (!cfg) {
-              cfg = new ChecklistItemCfg({
-                item: item._id,
-                type: checklist.type,
-                checklist: checklist._id,
+              cfg = new ChecklistConfig(<IChecklistConfig> {
+                subjectId: models.ObjectId(subject._id),
+                checklistType: checklist.checklistType,
+                checklistId: models.ObjectId(checklist._id),
               });
             }
-            cfg.subject = newItem.subject;
+            cfg.name = newSubject.subject;
           }
         }
       } else {
-        log.error('warn: ChecklistItem property, "subject", expecting type String');
+        log.error('warn: ChecklistSubject property, "name", expecting type String');
       }
     }
 
-    if (!item.mandatory) {
-      if (typeof newItem.required === 'boolean') {
+    if (!subject.mandatory) {
+      if (typeof newSubject.required === 'boolean') {
         if (cfg && (typeof cfg.required === 'boolean')) {
-          if (cfg.required !== newItem.required) {
-            if (item.required !== newItem.required) {
-              cfg.required = newItem.required;
+          if (cfg.required !== newSubject.required) {
+            if (subject.required !== newSubject.required) {
+              cfg.required = newSubject.required;
             } else {
               cfg.required = undefined; // defer to item
             }
           }
         } else {
-          if (item.required !== newItem.required) {
+          if (subject.required !== newSubject.required) {
             if (!cfg) {
-              cfg = new ChecklistItemCfg({
-                item: item._id,
-                type: checklist.type,
-                checklist: checklist._id,
+              cfg = new ChecklistConfig(<IChecklistConfig> {
+                subjectId: models.ObjectId(subject._id),
+                checklistType: checklist.checklistType,
+                checklistId: models.ObjectId(checklist._id),
               });
             }
-            cfg.required = newItem.required;
+            cfg.required = newSubject.required;
           }
         }
       } else {
@@ -331,56 +379,56 @@ router.put('/:id/items/json', auth.ensureAuthenticated, catchAll(async (req, res
       }
     }
 
-    if (typeof newItem.assignee === 'string') {
-      if (cfg && (typeof cfg.assignee === 'string')) {
-        if (cfg.assignee !== newItem.assignee) {
-          if (item.assignee !== newItem.assignee) {
-            cfg.assignee = newItem.assignee;
-          } else {
-            cfg.assignee = undefined; // defer to item
-          }
-        }
-      } else {
-        if (item.assignee !== newItem.assignee) {
-          if (!cfg) {
-            cfg = new ChecklistItemCfg({
-              item: item._id,
-              type: checklist.type,
-              checklist: checklist._id,
-            });
-          }
-          cfg.assignee = newItem.assignee;
-        }
-      }
-    } else {
-      log.error('warn: ChecklistItem property, "assignee", expecting String');
-    }
+    // if (typeof newSubject.assignee === 'string') {
+    //   if (cfg && (typeof cfg.assignee === 'string')) {
+    //     if (cfg.assignee !== newSubject.assignee) {
+    //       if (item.assignee !== newSubject.assignee) {
+    //         cfg.assignee = newSubject.assignee;
+    //       } else {
+    //         cfg.assignee = undefined; // defer to item
+    //       }
+    //     }
+    //   } else {
+    //     if (item.assignee !== newItem.assignee) {
+    //       if (!cfg) {
+    //         cfg = new ChecklistItemCfg({
+    //           item: item._id,
+    //           type: checklist.type,
+    //           checklist: checklist._id,
+    //         });
+    //       }
+    //       cfg.assignee = newSubject.assignee;
+    //     }
+    //   }
+    // } else {
+    //   log.error('warn: ChecklistItem property, "assignee", expecting String');
+    // }
 
     if (cfg) {
       if (cfg.isModified()) {
         debug('save ChecklistItemCfg: %s', cfg._id);
-        let opts = {
-          userid: req.session.userid,
-          desc: 'Update checklist item',
-        };
-        cfgPms.push(cfg.saveWithHistory(opts).catch((err) => {
+        // let opts = {
+        //   userid: req.session.userid,
+        //   desc: 'Update checklist item',
+        // };
+        cfgPms.push(cfg.saveWithHistory(username).catch((err) => {
           log.error('warn: Error saving ChecklistItemCfg (%s): %s', cfg ? cfg._id : 'undefined', err);
           return Promise.reject(err);
         }));
       } else {
-        cfgPms.push(cfg);
+        cfgPms.push(Promise.resolve(cfg));
       }
     }
   }
 
-  let rmItemPms = new Array<Promise<ChecklistItem>>();
-  for (let item of items) {
-    if (isCustom(item) && !newItemSet.has(item._id)) {
-      rmItemPms.push(item.remove().catch((err) => {
-        log.error('warn: Error removing ChecklistItem (%s):', item._id, err);
+  let rmItemPms = new Array<Promise<ChecklistSubject>>();
+  for (let subject of subjects) {
+    if (isCustom(subject) && !newItemSet.has(subject._id)) {
+      rmItemPms.push(subject.remove().catch((err) => {
+        log.error('warn: Error removing ChecklistItem (%s):', subject.id, err);
         return Promise.reject(err);
       }));
-      debug('Remove ChecklistItem: %s', item._id);
+      debug('Remove ChecklistItem: %s', subject.id);
     }
   }
 
@@ -388,7 +436,7 @@ router.put('/:id/items/json', auth.ensureAuthenticated, catchAll(async (req, res
 
   res.status(200).json({});
 }));
-*/
+
 
 router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
   let id = String(req.params.id);
@@ -407,10 +455,20 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
     throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
   }
 
-  let deferred = await Promise.all([
-    findChecklistSubjects(checklist),
-    findChecklistConfigs(checklist),
-    findChecklistStatuses(checklist),
+  let deferred = Promise.all([
+    //findChecklistSubjects(checklist),
+    ChecklistSubject.findWithHistory({
+      checklistType: checklist.checklistType,
+      checklistId: { $in: [null, checklist._id] },
+    }),
+    //findChecklistConfigs(checklist),
+    ChecklistConfig.findWithHistory({
+      checklistId : checklist._id,
+    }),
+    //findChecklistStatuses(checklist),
+    ChecklistStatus.findWithHistory({
+      checklistId : checklist._id,
+    }),
   ]);
 
   let varRoleMap = new Map<string, string>();
@@ -524,20 +582,65 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
   await Promise.all(prms);
 
   let data: webapi.ChecklistStatus[] = [];
+  // for (let status of statuses) {
+  //   if (status.id) {
+  //     //let webUpdate
+  //     let webUpdates: webapi.Update[] = [];
+
+  //     if (status.history.updates) {
+  //       for (let update of status.history.updates) {
+  //         webUpdates.push({
+  //           at: String(update.at),
+  //           by: update.by,
+  //           paths: update.paths,
+  //         });
+  //       }
+  //     }
+
+  //     let webStatus = {
+  //       id: status.id,
+  //       checklistId: status.checklistId.toHexString(),
+  //       subjectId: status.subjectId.toHexString(),
+  //       value: status.value,
+  //       comment: status.comment,
+  //       inputBy: status.inputBy,
+  //       inputOn: status.inputOn.toISOString(),
+  //       history: {
+  //         updatedAt: status.history.updatedAt.toISOString(),
+  //         updatedBy: status.history.updatedBy,
+  //         updates: webUpdates,
+  //       },
+  //     };
+
+  //     data.push(webStatus);
+  //   }
+  // }
+
   for (let status of statuses) {
     if (status.id) {
       //let webUpdate
-      let webUpdates: webapi.Update[] = [];
+      //let webHistory: webapi.History;
+      //let webUpdates: webapi.Update[] = [];
 
-      if (status.history.updates) {
+
+      //if (status.history) {
+      let webHistory: webapi.History = {
+        updates: [],
+        updatedAt: status.history.updatedAt ? status.history.updatedAt.toISOString() : '',
+        updatedBy: status.history.updatedBy || '',
+      };
+
+      if ( status.history.updates) {
         for (let update of status.history.updates) {
-          webUpdates.push({
+          webHistory.updates.push({
             at: String(update.at),
             by: update.by,
             paths: update.paths,
           });
         }
       }
+
+      //}
 
       let webStatus = {
         id: status.id,
@@ -547,16 +650,15 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
         comment: status.comment,
         inputBy: status.inputBy,
         inputOn: status.inputOn.toISOString(),
-        history: {
-          updatedAt: status.history.updatedAt.toISOString(),
-          updatedBy: status.history.updatedBy,
-          updates: webUpdates,
-        },
+        history: webHistory,
       };
 
-      data.push(webStatus);
+      data.push(<any> webStatus);
+      //webChecklist.statuses.push(webStatus);
     }
+
   }
+
 
   res.json(<webapi.Data<webapi.ChecklistStatus[]>> {
     data: data,

@@ -42,7 +42,7 @@ abstract class ChecklistUtil {
     $.get('/checklists/' + checklistId)
       .done(function(data: webapi.Data<webapi.Checklist>) {
         if (config) {
-          ChecklistUtil.renderConfigTemplate(element, data.data);
+          ChecklistUtil.renderEditTemplate(element, data.data);
         } else {
           ChecklistUtil.renderUpdateTemplate(element, data.data);
         }
@@ -57,65 +57,69 @@ abstract class ChecklistUtil {
     }
 
     if (config) {
-      ChecklistUtil.renderConfigTemplate(element, data.data);
+      ChecklistUtil.renderEditTemplate(element, data.data);
     } else {
       ChecklistUtil.renderUpdateTemplate(element, data.data);
     }
 
   }
 
-  protected static renderConfigTemplate(elem: JQuery<HTMLElement>, checklist: webapi.Checklist) {
+  protected static renderEditTemplate(parent: JQuery<HTMLElement>, checklist: webapi.Checklist) {
     let count = 0;
 
-    elem.off().html(checklistConfigTemplate({
-      items: checklist.subjects,
+    parent.off().html(checklistConfigTemplate({
+      subjects: checklist.subjects,
     }));
 
-    elem.find('.checklist-item-add').click(function() {
+    parent.find('.cl-subject-add').click(function() {
       count += 1;
 
       $(this).parents('tr').before(checklistConfigItemTemplate({
-        item: {
+        subject: {
           subject: 'Custom' + count,
           required: true,
           mandatory: true,
           custom: true,
+          assignee: [],
         },
       }));
     });
 
-    elem.on('click', '.checklist-item-remove', (evt) => {
+    parent.on('click', '.cl-subject-remove', (evt) => {
       $(evt.target).parents('tr:first').remove();
     });
 
-    elem.on('click', '.checklist-config-cancel', () => {
-      ChecklistUtil.renderUpdateTemplate(elem, checklist);
+    parent.on('click', '.cl-edit-cancel', () => {
+      ChecklistUtil.renderUpdateTemplate(parent, checklist);
     });
 
-    elem.find('.checklist-config-save').click(function (event) {
+    parent.find('.cl-edit-save').click(function (event) {
       let items: any[] = [];
       event.preventDefault();
-      elem.find('.checklist-item').each(function (i, e) {
+      parent.find('.cl-subject').each(function (i, e) {
         let item = {
         //item._id = $(e).find('.checklist-item-id').val();
-          subject: ($(e).find('input.checklist-item-subject').val()
-                    || $(e).find('.checklist-item-subject').text()),
-          assignee: ($(e).find('input.checklist-item-assignee').val()
-                      || $(e).find('.checklist-item-assignee').text()),
-          required: ($(e).find('.checklist-item-required:checked').length > 0),
+          id: $(e).find('input.cl-subject-id').val(),
+          subject: ($(e).find('input.cl-subject-name').val()
+                    || $(e).find('.cl-subject-name').text()),
+          assignee: [ ($(e).find('input.cl-subject-assignee').val()
+                      || $(e).find('.cl-subject-assignee').text()) ],
+          required: ($(e).find('.cl-subject-required:checked').length > 0),
         };
         items.push(item);
       });
       console.log(items);
       $.ajax({
-        url: '/checklists/' + checklist.id + '/items/json',
+        url: '/checklists/' + checklist.id + '/subjects',
         // url: 'checklist/json',
-        type: 'PUT',
-        data: JSON.stringify(items),
+        method: 'PUT',
+        data: JSON.stringify({
+          data: items,
+        }),
         contentType: 'application/json;charset=UTF-8',
         dataType: 'json',
         success: function () {
-          ChecklistUtil.renderTo(elem, checklist.id);
+          ChecklistUtil.renderTo(parent, checklist.id);
         },
         error: function (req, status, err) {
           alert(err);
@@ -158,6 +162,10 @@ abstract class ChecklistUtil {
       }
     }
 
+    if (checklist.editable) {
+      parent.find('.cl-update-edit').removeAttr('disabled');
+    }
+
     parent.find('.cl-subject-status-value').each((idx, elem) => {
       $(elem).change((evt) => {
         let value = $(evt.target);
@@ -189,9 +197,9 @@ abstract class ChecklistUtil {
       btn.siblings('.cl-subject-show-history').toggleClass('hidden');
     });
 
-    // elem.find('.checklist-input-edit').click(function () {
-    //   ChecklistUtil.renderConfigTemplate(elem, checklist);
-    // });
+    parent.on('click', '.cl-update-edit', (evt) => {
+      ChecklistUtil.renderEditTemplate(parent, checklist);
+    });
 
     parent.find('.cl-update-save').click(async (event) => {
       event.preventDefault();

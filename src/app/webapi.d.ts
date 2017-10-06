@@ -25,9 +25,9 @@ declare namespace webapi {
   }
 
   export interface History {
+    updates: Update[];
     updatedAt: string;
     updatedBy: string;
-    updates: Update[];
   }
 
   export interface DeviceTableRow {
@@ -51,6 +51,7 @@ declare namespace webapi {
     id: string;
     targetId: string;
     type: string;
+    editable: boolean;
     subjects: ChecklistSubject[];
     statuses: ChecklistStatus[];
   }

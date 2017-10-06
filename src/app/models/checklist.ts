@@ -10,7 +10,7 @@ type ObjectId = mongoose.Types.ObjectId;
 
 export interface IChecklistSubject {
   checklistId: ObjectId | null;
-  ChecklistType: 'device-default' | 'slot-default';
+  checklistType: 'device-default' | 'slot-default';
   name: string;
   order: number;
   final: boolean;
@@ -23,7 +23,7 @@ export interface ChecklistSubject extends IChecklistSubject, history.Document<Ch
   applyCfg(cfg: ChecklistConfig): void;
 };
 
-export interface IChecklistConfig extends history.Document<ChecklistConfig> {
+export interface IChecklistConfig {
   checklistId: ObjectId;
   subjectId: ObjectId;
   name?: string;
@@ -167,9 +167,11 @@ checklistSubjectSchema.statics.applyCfg = function(sub: ChecklistSubject, cfg: C
     if (typeof cfg.required === 'boolean') {
       sub.required = cfg.required;
     }
-    if (cfg.history.updatedAt > sub.history.updatedAt) {
-      sub.history.updatedAt = cfg.history.updatedAt;
-      sub.history.updatedBy = cfg.history.updatedBy;
+    if (cfg.history.updatedAt) {
+      if (!sub.history.updatedAt || cfg.history.updatedAt > sub.history.updatedAt) {
+        sub.history.updatedAt = cfg.history.updatedAt;
+        sub.history.updatedBy = cfg.history.updatedBy;
+      }
     }
     if (cfg.history && Array.isArray(cfg.history.updateIds)) {
       if (sub.history && Array.isArray(sub.history.updateIds)) {
