@@ -30,6 +30,7 @@ interface Config {
   database?: {};
   areamgrs?: {[key: string]: {} };
   deptmgrs?: {[key: string]: {} };
+  ascareas?: {[key: string]: {} };
   ascdepts?: {[key: string]: {} };
 };
 
@@ -291,7 +292,7 @@ async function main() {
   //   component_type: 10319 }
 
   let devices: { [key: string]: device.Device } = {};
-  // let slots: { [key: string]: slot.Slot } = {};
+  let slots: { [key: string]: slot.Slot } = {};
 
   let rows: {};
   try {
@@ -405,81 +406,120 @@ async function main() {
   // | component_type  | bigint(20)   | YES  | MUL | NULL    |       |
   // +-----------------+--------------+------+-----+---------+-------+
 
-  // try {
-  //   rows = await connection.query('SELECT s.id, s.name, s.description, t.name AS type from slot AS s, component_type AS t WHERE s.component_type = t.id;', []);
-  // } catch (err) {
-  //   console.log(err);
-  //   return connection.end();
-  // }
+  try {
+    rows = await connection.query(
+      `SELECT s.id, s.name, s.description, t.name AS type from slot AS s, component_type AS t
+        WHERE s.component_type = t.id;`,
+      []);
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
 
-  // if (!Array.isArray(rows)) {
-  //   console.log('Query result is not an array.');
-  //   return connection.end();
-  // }
+  if (!Array.isArray(rows)) {
+    error('Query result is not an array.');
+    connection.end();
+    return;
+  }
 
-  // for (let ridx = 0; ridx < rows.length; ridx += 1) {
-  //   row = rows[ridx];
-  //   if (row.type === '_GRP' || row.type === '_ROOT') {
-  //     console.log('Skipping slot: %s', row.name);
-  //     continue;
-  //   }
+  for (let row of rows) {
+    if (row.type === '_GRP' || row.type === '_ROOT') {
+      info('Skipping slot: %s', row.name);
+      continue;
+    }
 
-  //   console.log('Importing slot: %s', row.name);
-  //   slot = new Slot();
-  //   slot.name = row.name;
-  //   slot.deviceType = row.type;
+    info('Importing slot: %s', row.name);
+    let slot = new Slot();
+    slot.name = row.name;
+    slot.deviceType = row.type;
 
-  //   try {
-  //     let props = await connection.query('SELECT * from property AS p, slot_property_value AS pv WHERE pv.property = p.id AND pv.slot = ?;', [ row.id ]);
-  //   } catch (err) {
-  //     console.log(err);
-  //     return connection.end();
-  //   }
+    let props = {};
+    try {
+      props = await connection.query(
+        `SELECT * from property AS p, slot_property_value AS pv
+          WHERE pv.property = p.id AND pv.slot = ?;`,
+        [ row.id ]);
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
 
-  //   if (!Array.isArray(props)) {
-  //     console.log('Query result is not an array');
-  //     return connection.end();
-  //   }
+    if (!Array.isArray(props)) {
+      error('Query result is not an array');
+      connection.end();
+      return;
+    }
 
-  //   for (let pidx = 0; pidx < props.length; pidx += 1) {
-  //     prop = props[pidx];
+    for (let prop of props) {
 
-  //     if (prop.name === 'AreaManager') {
-  //       // TODO: convert the format
-  //       slot.owner = parseSEDS(prop.prop_value);
-  //       continue;
-  //     }
+      if (prop.name === 'AreaManager') {
+        let value = parseSEDS(prop.prop_value);
+        if (value) {
+          if (cfg.areamgrs && cfg.areamgrs[value]) {
+            slot.area = String(cfg.areamgrs[value]);
+          }
+        } else {
+          info(`AreaManager not specified: using 'AREA??'`);
+          slot.area = 'AREA??';
+        }
+        continue;
+      }
 
-  //     if (prop.name === 'AssociatedArea') {
-  //       slot.area = parseSEDS(prop.prop_value)
-  //       continue;
-  //     }
+      if (prop.name === 'AssociatedArea') {
+        let value = parseSEDS(prop.prop_value);
+        if (value) {
+          if (cfg.ascareas && cfg.ascareas[value]) {
+            slot.area = String(cfg.ascareas[value]);
+          }
+        } else {
+          info(`AssociatedArea not specified: using 'AREA??'`);
+          slot.area = 'AREA??';
+        }
+        continue;
+      }
 
-  //     if (prop.name === 'AssociatedDRR') {
-  //       // TODO: convert the format
-  //       slot.DRR = parseSEDS(prop.prop_value)
-  //       continue;
-  //     }
+      if (prop.name === 'LevelOfCare') {
+        slot.LOC = parseSEDS(prop.prop_value).toLowerCase();
+      }
 
-  //     if (prop.name === 'AssociatedARR') {
-  //       // TODO: convert the format
-  //       slot.ARR = parseSEDS(prop.prop_value)
-  //       continue;
-  //     }
-  //   }
+      if (prop.name === 'AssociatedDRR') {
+        let value = parseSEDS(prop.prop_value);
+        if (value) {
+          slot.DRR = String(value);
+        } else {
+          info(`AssociatedDRR not specified: using 'DRR??'`);
+          slot.DRR = 'DRR??';
+        }
+        continue;
+      }
 
-  //   try {
-  //     await slot.validate();
-  //   } catch (err) {
-  //     console.error(err);
-  //     console.error(slot);
-  //     return connection.end();
-  //   }
+      if (prop.name === 'AssociatedARR') {
+        let value = parseSEDS(prop.prop_value);
+        if (value) {
+          slot.ARR = String(value);
+        } else {
+          info(`AssociatedARR not specified: using 'ARR??'`);
+          slot.ARR = 'ARR??';
+        }
+        continue;
+      }
+    }
 
-  //   slots[row.id] = slot;
-  // }
+    try {
+      await slot.validate();
+    } catch (err) {
+      error(err);
+      error(props);
+      error(slot);
+      connection.end();
+      return;
+    }
 
-  //console.log('DONE');
+    slots[row.id] = slot;
+  }
+
   await connection.end();
 
   if (cfg.dryrun !== false && cfg.dryrun !== 'false') {
@@ -498,7 +538,9 @@ async function main() {
 
   info('Clear Runcheck database');
   try {
-    await mongoose.connection.db.dropDatabase();
+    // await mongoose.connection.db.dropDatabase();
+    await Device.collection.drop();
+    await Slot.collection.drop();
   } catch (err) {
     console.error(err);
     return mongoose_disconnect();
@@ -516,17 +558,17 @@ async function main() {
     }
   }
 
-  // for (let id in slots) {
-  //   if (slots.hasOwnProperty(id)) {
-  //     console.log('Saving slot: %s', slots[id].name);
-  //     try {
-  //       await slots[id].save();
-  //     } catch (err) {
-  //       console.error(err);
-  //       return mongoose_disconnect();
-  //     }
-  //   }
-  // }
+  for (let id in slots) {
+    if (slots.hasOwnProperty(id)) {
+      info('Saving slot: %s', slots[id].name);
+      try {
+        await slots[id].saveWithHistory('SYS:IMPORTCCDB');
+      } catch (err) {
+        console.error(err);
+        return mongoose_disconnect();
+      }
+    }
+  }
 
   await mongoose_disconnect();
 
