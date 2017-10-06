@@ -37,11 +37,32 @@ declare namespace webapi {
     deviceType: string;
   }
 
+  export interface SlotTableRow {
+    id: string;
+    name: string;
+    desc: string;
+    area: string;
+    loc: string; 
+    drr: string;
+    arr: string;
+    deviceType: string;
+  }
+
   export interface Device {
     id: string,
     name: string;
     desc: string;
     dept: string;
+    deviceType: string;
+    checklistId: string | null;
+    //updates: {}
+  }
+
+  export interface Slot {
+    id: string,
+    name: string;
+    desc: string;
+    area: string;
     deviceType: string;
     checklistId: string | null;
     //updates: {}

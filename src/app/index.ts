@@ -356,7 +356,7 @@ async function doStart(): Promise<void> {
   app.use('/status', status.router);
   app.use('/users', users_routes);
   app.use('/devices', devices_routes.router);
-  app.use('/slots', slots_routes);
+  app.use('/slots', slots_routes.router);
   app.use('/slotgroups', slot_groups_routes);
   app.use('/checklists', checklists_routes.router);
 
