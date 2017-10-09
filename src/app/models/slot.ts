@@ -4,7 +4,7 @@
 import * as mongoose from 'mongoose';
 
 import { Checklist } from './checklist';
-//var SlotGroup = require('../models/slot-group').SlotGroup;
+// var SlotGroup = require('../models/slot-group').SlotGroup;
 
 import * as history from '../shared/history';
 
@@ -16,23 +16,23 @@ export interface ISlot {
   area: string;
   deviceType: string;
   checklistId: ObjectId | null;
-  LOC: 'low' | 'medium' | 'high';
-  ARR: string;
-  DRR: string;
+  careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  arr: string;
+  drr: string;
 };
 
 export interface Slot extends ISlot, history.Document<Slot> {
   // no additional methods
 };
 
-const LOC_VALUES = [ 'low', 'medium', 'high' ];
+const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
 
 const Schema = mongoose.Schema;
 const ObjectId = Schema.Types.ObjectId;
 
 const slotSchema = new Schema({
   //system: String,
-  subsystem: String,
+  //subsystem: String,
   //deviceNaming: String,// mapping to 'Device' column in slot excel file
   //beamlinePosition: Number,// Beam line position (dm)
   name: {
@@ -60,16 +60,16 @@ const slotSchema = new Schema({
     ref: Checklist.modelName,
     default: null,
   },
-  LOC: {
+  careLevel: {
     type: String,
-    default: LOC_VALUES[0],
-    enum: LOC_VALUES,
+    default: CARE_LEVELS[0],
+    enum: CARE_LEVELS,
   },
-  ARR: {
+  arr: {
     type: String,
     required: true,
   },
-  DRR: {
+  drr: {
     type: String,
     required: true,
   },
@@ -124,9 +124,9 @@ history.addHistory(slotSchema, {
     'area',
     'deviceType',
     'checklistId',
-    'LOC',
-    'DRR',
-    'ARR',
+    'careLevel',
+    'drr',
+    'arr',
   ],
 });
 

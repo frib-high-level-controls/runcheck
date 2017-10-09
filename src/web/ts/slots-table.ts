@@ -1,59 +1,67 @@
 /**
  * Slots table view
  */
-// / <reference path="./datatablesutil.d.ts" />
 
-//type ColumnSettings = datatablesutil.ColumnSettings;
+// Base URL for FORG service
+let forgurl: string | undefined;
 
 $(() => {
-  const slotColumns: ColumnSettings[] = [
-    // {
-    //   title: 'Details',
-    //   data: '_id',
-    //   render: function (data) {
-    //     return '<a href="' + '/slots/' + data + '" target="_blank" data-toggle="tooltip" title="go to the slot details"><i class="fa fa-list-alt fa-2x"></i></a>';
-    //   },
-    //   //order: false
-    // },
+  const slotColumns: datatablesutil.ColumnSettings[] = [
     {
       title: 'Name',
-      defaultContent: 'unknown',
-      data: 'name',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        return `<a href="/slots/${row.name}">${row.name}</a>`;
+      },
       searching: true,
     }, {
       title: 'Type',
-      defaultContent: 'unknown',
-      data: 'deviceType',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        return row.deviceType || 'Unknown';
+      },
       searching: true,
     },
- // var ownerColumn = Table.personColumn('Owner', 'owner');
+    // var ownerColumn = Table.personColumn('Owner', 'owner');
     {
       title: 'Area',
-      defaultContent: 'unknown',
-      data: 'area',
+      data: <any> null, // 'area',
+      render: (row: webapi.SlotTableRow) => {
+        if (forgurl && row.area) {
+          return `<a href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
+        } else {
+          return row.area || 'Unknown';
+        }
+      },
       searching: true,
     }, {
       title: 'Level of care',
-      defaultContent: 'unknown',
-      data: 'loc',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        return row.careLevel || 'Unknown';
+      },
       searching: true,
     }, {
       title: 'DRR',
-      defaultContent: 'unknown',
-      data: 'drr',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        return row.drr || 'Unknown';
+      },
       searching: true,
     }, {
       title: 'ARR',
-      defaultContent: 'unknown',
-      data: 'arr',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        return row.arr || 'Unknown';
+      },
       searching: true,
     }, {
       title: 'Checklist',
-      //order: true,
+      // order: true,
       type: 'numeric',
-      //autoWidth: false,
+      // autoWidth: false,
       width: '105px',
-      data: (row: webapi.DeviceTableRow): string => {
+      data: (row: webapi.SlotTableRow): string => {
         // return Table.progressBar(source.checkedValue, source.totalValue);
         return 'N/A';
       },
@@ -75,7 +83,6 @@ $(() => {
     //   },
     //   //order: false
     // },
-
   ];
 
 //   var statusMap = {0: 'Device not installed',
@@ -85,7 +92,7 @@ $(() => {
 //     3: 'AM approved',
 //     4:'DRR approved'
 //   };
-  
+
 //   var approvelStatusColumn = {
 //     title: 'Approved status',
 //     data: 'status',
@@ -94,14 +101,14 @@ $(() => {
 //     },
 //     searching: true
 //   };
-  
+
 //   var machineModeColumn = {
 //     title: 'Associated machine mode(s)',
 //     defaultContent: 'None',
 //     data: 'machineMode',
 //     searching: true
 //   };
-  
+
 //   var checkedProgressColumn = {
 //     title: 'Device checklist',
 //     order: true,
@@ -112,7 +119,7 @@ $(() => {
 //       return Table.progressBar( source.ReadinessCheckedValue, source.ReadinessTotalValue);
 //     }
 //   };
-  
+
 //   var DRRProgressColumn = {
 //     title: 'DRR checklist',
 //     order: true,
@@ -123,7 +130,7 @@ $(() => {
 //       return Table.progressBar( source.DRRCheckedValue, source.DRRTotalValue);
 //     }
 //   };
-  
+
 //   var ARRProgressColumn = {
 //     title: 'ARR checklist',
 //     order: true,
@@ -134,9 +141,7 @@ $(() => {
 //       return Table.progressBar( source.ARRCheckedValue, source.ARRTotalValue);
 //     }
 //   };
-  // slot columns end
-  
-//   var slotColumns = [Table.selectColumn, detailsColum, nameColumn, ownerColumn, areaColumn, levelColumn, deviceTypeColumn, locationColumn, deviceColumn, approvelStatusColumn, machineModeColumn, checkedProgressColumn, DRRProgressColumn, ARRProgressColumn];
+
 
   $('#slots-table').DataTable({
     ajax: {
@@ -144,17 +149,18 @@ $(() => {
       dataType: 'json',
       dataSrc: 'data',
     },
+    dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
     // initComplete: function () {
-    // Holder.run({
-    //     images: '.user img'
-    // });
+    //   Holder.run({
+    //       images: '.user img'
+    //   });
     // },
     autoWidth: true,
     processing: true,
     pageLength: 25,
     lengthMenu: [
-    [10, 25, 50, 100, -1],
-    [10, 25, 50, 100, 'All'],
+      [10, 25, 50, 100, -1],
+      [10, 25, 50, 100, 'All'],
     ],
     language: {
       loadingRecords: 'Loading Slots...',
@@ -167,34 +173,34 @@ $(() => {
   });
   DataTablesUtil.addFilterHead('#slots-table', slotColumns);
 
-    // $('#spec-slots-table').DataTable({
-    //   ajax: {
-    //     url: window.location.pathname +'/slots',
-    //     dataSrc: ''
-    //   },
-    //   initComplete: function () {
-    //     Holder.run({
-    //       images: '.user img'
-    //     });
-    //   },
-    //   autoWidth: true,
-    //   processing: true,
-    //   pageLength: 10,
-    //   lengthMenu: [
-    //     [10, 50, 100, -1],
-    //     [10, 50, 100, 'All']
-    //   ],
-    //   oLanguage: {
-    //     loadingRecords: 'Please wait - loading data from the server ...'
-    //   },
-    //   deferRender: true,
-    //   columns: slotColumns,
-    //   order: [
-    //     [2, 'asc']
-    //   ]
-    // });
-    // Table.addFilterFoot('#spec-slots-table', slotColumns);
+  // $('#spec-slots-table').DataTable({
+  //   ajax: {
+  //     url: window.location.pathname +'/slots',
+  //     dataSrc: ''
+  //   },
+  //   initComplete: function () {
+  //     Holder.run({
+  //       images: '.user img'
+  //     });
+  //   },
+  //   autoWidth: true,
+  //   processing: true,
+  //   pageLength: 10,
+  //   lengthMenu: [
+  //     [10, 50, 100, -1],
+  //     [10, 50, 100, 'All']
+  //   ],
+  //   oLanguage: {
+  //     loadingRecords: 'Please wait - loading data from the server ...'
+  //   },
+  //   deferRender: true,
+  //   columns: slotColumns,
+  //   order: [
+  //     [2, 'asc']
+  //   ]
+  // });
+  // Table.addFilterFoot('#spec-slots-table', slotColumns);
 
-    // Table.filterEvent();
-    // Table.selectEvent();
+  // Table.filterEvent();
+  // Table.selectEvent();
 });

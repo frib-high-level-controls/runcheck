@@ -481,16 +481,16 @@ async function main() {
       }
 
       if (prop.name === 'LevelOfCare') {
-        slot.LOC = parseSEDS(prop.prop_value).toLowerCase();
+        slot.careLevel = parseSEDS(prop.prop_value).toUpperCase();
       }
 
       if (prop.name === 'AssociatedDRR') {
         let value = parseSEDS(prop.prop_value);
         if (value) {
-          slot.DRR = String(value);
+          slot.drr = String(value);
         } else {
           info(`AssociatedDRR not specified: using 'DRR??'`);
-          slot.DRR = 'DRR??';
+          slot.drr = 'DRR??';
         }
         continue;
       }
@@ -498,10 +498,10 @@ async function main() {
       if (prop.name === 'AssociatedARR') {
         let value = parseSEDS(prop.prop_value);
         if (value) {
-          slot.ARR = String(value);
+          slot.arr = String(value);
         } else {
           info(`AssociatedARR not specified: using 'ARR??'`);
-          slot.ARR = 'ARR??';
+          slot.arr = 'ARR??';
         }
         continue;
       }

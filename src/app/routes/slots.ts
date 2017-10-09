@@ -44,9 +44,9 @@ router.get('/', catchAll(async (req, res) => {
           desc: slot.desc,
           area: slot.area,
           deviceType: slot.deviceType,
-          loc: slot.LOC,
-          drr: slot.DRR,
-          arr: slot.ARR,
+          careLevel: slot.careLevel,
+          drr: slot.drr,
+          arr: slot.arr,
         });
       }
       res.json(<webapi.Data<webapi.SlotTableRow[]>> {

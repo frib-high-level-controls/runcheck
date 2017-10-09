@@ -42,10 +42,10 @@ declare namespace webapi {
     name: string;
     desc: string;
     area: string;
-    loc: string; 
+    deviceType: string;
+    careLevel: string; 
     drr: string;
     arr: string;
-    deviceType: string;
   }
 
   export interface Device {
