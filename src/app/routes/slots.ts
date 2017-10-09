@@ -104,12 +104,15 @@ router.get('/:name', catchAll( async (req, res) => {
     area: slot.area,
     deviceType: slot.deviceType,
     checklistId: slot.checklistId ? slot.checklistId.toHexString() : null,
+    careLevel: slot.careLevel,
+    drr: slot.drr,
+    arr: slot.arr,
   };
 
   return format(res, {
     'text/html': () => {
-      res.render('slots', {
-        device: apiSlot,
+      res.render('slot', {
+        slot: apiSlot,
         moment: moment,
       });
     },

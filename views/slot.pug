@@ -1,20 +1,56 @@
 extends layout-history.pug
 
 block head
-  title RunCheck slot
-    = ' '
-    = slot.name
+  title #{slot.name} :: RunCheck
 
 block content
-  br
-  #message
-    #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+  .container
+    #message
+    //-#modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
       .modal-dialog
         .modal-content
           .modal-header
             h3#modalLabel
           .modal-footer
-  .panel.panel-default
+    #slot-details
+      h3 Slot
+      .row
+        .col-md-6
+          table.table
+            thead
+              tr
+                th Name
+                th= slot.name
+            tbody
+              tr
+                th Type
+                td= slot.deviceType
+              tr
+                th Area
+                td= slot.area
+              tr
+                th Level of Care
+                td= slot.careLevel
+              tr
+                th DRR
+                td= slot.drr
+              tr
+                th ARR
+                td= slot.arr
+          hr
+  br
+  .container
+    .row
+      .col-md-12
+        .panel.panel-default
+          .panel-heading.clearfix
+            .pull-left
+              h4 Checklist
+            .pull-right
+              h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
+              button.btn.btn-primary.hidden#checklist-assign(disabled='disabled') Assign
+          .panel-body.hidden#checklist-panel
+  //-.panel.panel-default
     .panel-heading
       strong Basic Infomation
     .panel-body
@@ -52,8 +88,8 @@ block content
                   a&attributes(deviceUrl) #{slot.device.serialNo}
               else
                 td#device N/A
-      button#list-slot.btn.btn-default.fa.fa-chevron-down(aria-hidden='true',title='show more details') more
-      .row
+      //-button#list-slot.btn.btn-default.fa.fa-chevron-down(aria-hidden='true',title='show more details') more
+      //-.row
         .col-md-6.col-md-offset-3
           .table-responsive
             table.table
@@ -115,17 +151,21 @@ block content
                 tr
                   th Sub-system
                   td= slot.subsystem
-  button.btn.btn-space.btn-primary#DO-approve DO Approve
-  button.btn.btn-space.btn-primary#AM-approve AM Approve
-  button.btn.btn-space.btn-primary#DRR-approve DRR Approve
+  //-button.btn.btn-space.btn-primary#DO-approve DO Approve
+  //-button.btn.btn-space.btn-primary#AM-approve AM Approve
+  //-button.btn.btn-space.btn-primary#DRR-approve DRR Approve
+  //-br
   br
-  br
-  .panel.panel-default
+  //-.panel.panel-default
     .panel-heading
       strong Checklist
     .panel-body
-block history
+//- block history
   each h in slot.__updates.reverse()
     +change(h, moment)
 block js
-  script(type='text/javascript', src='/javascripts/slot-action.js')
+  script(type='text/javascript', src='/js/slot-action.js')
+  script(type='text/javascript', src='/js/checklistutil.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-input.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')

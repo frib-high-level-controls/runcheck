@@ -65,6 +65,9 @@ declare namespace webapi {
     area: string;
     deviceType: string;
     checklistId: string | null;
+    careLevel: string;
+    arr: string;
+    drr: string;
     //updates: {}
   }
 
