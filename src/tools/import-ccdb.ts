@@ -51,9 +51,9 @@ function mysql_createConnection(options: any) {
 
   let conn = mysql.createConnection(options);
 
-  let connect = function() {
-    return new Promise(function(resolve, reject) {
-      conn.connect(function(err: any) {
+  function connect() {
+    return new Promise((resolve, reject) => {
+      conn.connect((err: any) => {
         if (err) {
           reject(err);
           return;
@@ -61,11 +61,11 @@ function mysql_createConnection(options: any) {
         resolve();
       });
     });
-  };
+  }
 
-  let query = function(sqlString: string, values: string[]) {
-    return new Promise(function(resolve, reject) {
-      let cb = function(err: mysql.IError, results?: any, fields?: mysql.IFieldInfo[]) {
+  function query(sqlString: string, values: string[]) {
+    return new Promise((resolve, reject) => {
+      let cb = (err: mysql.IError, results?: any, fields?: mysql.IFieldInfo[]) => {
         if (err) {
           reject(err);
           return;
@@ -78,11 +78,11 @@ function mysql_createConnection(options: any) {
         conn.query(sqlString, cb);
       }
     });
-  };
+  }
 
-  let end = function() {
-    return new Promise(function(resolve, reject) {
-      conn.end(function(err) {
+  function end() {
+    return new Promise((resolve, reject) => {
+      conn.end((err) => {
         if (err) {
           reject(err);
           return;
@@ -90,7 +90,7 @@ function mysql_createConnection(options: any) {
         resolve();
       });
     });
-  };
+  }
 
   return {
     connect: connect,
@@ -148,7 +148,7 @@ function mongoose_disconnect(): Promise<void> {
 //     "representation":"EML FARADAY CUP"
 //   }
 // }
-let parseSEDS = function(seds: string) {
+function parseSEDS(seds: string) {
   if (!seds) {
     return;
   }
@@ -221,24 +221,24 @@ async function main() {
   }
 
   if (!cfg.user) {
-    cfg.user = await new Promise<string>(function(resolve) {
+    cfg.user = await new Promise<string>((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
         terminal: true,
       });
-      rl.question('Username: ', function(username) {
+      rl.question('Username: ', (username) => {
         resolve(username);
         rl.close();
       });
     });
   }
 
-  let password = await new Promise(function(resolve) {
+  let password = await new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: new stream.Writable({
-        write: function(chunk, encoding, callback) {
+        write: (chunk, encoding, callback) => {
           callback();
         },
       }),
@@ -247,7 +247,7 @@ async function main() {
     // Need to print the prompt because the output
     // stream of the readline interface is disabled.
     process.stdout.write('Password: ');
-    rl.question('', function(passwd) {
+    rl.question('', (passwd) => {
       process.stdout.write('\n');
       resolve(passwd);
       rl.close();
