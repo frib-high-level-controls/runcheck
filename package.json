@@ -33,7 +33,8 @@
     "rc": "^1.2.1",
     "request": "^2.81.0",
     "sanitize-caja": "0.1.3",
-    "serve-favicon": "^2.3.0"
+    "serve-favicon": "^2.3.0",
+    "uri-js": "^3.0.2"
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.5",
