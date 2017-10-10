@@ -57,18 +57,26 @@ form
               tr.cl-subject-history.hidden
                 td.text-center.text-primary
                   span.glyphicon.glyphicon-time
-                td.text-left.text-primary
+                //-td.text-left.text-primary
                   span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
-                - var value = 'NONE', comment = 'NONE';
+                - var value = 'NONE', comment = 'NONE', inputBy = 'UNKNOWN', inputOn = 'UNKNOWN';
                 for path in update.paths
                   if path.name === 'value' && path.value
                     - value = path.value
                   if path.name === 'comment' && path.value
                     - comment = path.value
-                td.text-center.text-primary= value
-                td.text-left.text-primary= comment
-                td.text-left.text-primary= update.by
-                
+                  if path.name === 'inputBy' && path.value
+                    - inputBy = path.value
+                  if path.name === 'inputOn' && path.value
+                    - inputOn = path.value
+                td.text-left.text-primary
+                  span(data-toggle='tooltip' title=moment(inputOn).format('MMM D YYYY, h:mm:ss A'))= moment(inputOn).fromNow()
+                td.text-center.text-primary
+                  span= value
+                td.text-left.text-primary
+                  span= comment
+                td.text-left.text-primary
+                  span= inputBy
   .row
     .col-xs-6.text-left
       button.btn.btn-default.cl-update-edit(type='button', disabled='disabled') Edit
