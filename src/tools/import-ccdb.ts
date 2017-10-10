@@ -2,14 +2,33 @@
 import stream = require('stream');
 import readline = require('readline');
 
+import dbg = require('debug');
 import mongoose = require('mongoose');
 import mysql = require('mysql');
 import rc = require('rc');
 
-import dbg = require('debug');
+import {
+  ObjectId,
+} from '../app/shared/models';
 
-import slot = require('../app/models/slot');
-import device = require('../app/models/device');
+import {
+  ISlot,
+  Slot,
+} from '../app/models/slot';
+
+import {
+  Device,
+  IDevice,
+} from '../app/models/device';
+
+import {
+  Checklist,
+  ChecklistConfig,
+  ChecklistStatus,
+  IChecklist,
+  IChecklistConfig,
+  IChecklistStatus,
+} from '../app/models/checklist';
 
 
 interface Config {
@@ -32,6 +51,7 @@ interface Config {
   deptmgrs?: {[key: string]: {} };
   ascareas?: {[key: string]: {} };
   ascdepts?: {[key: string]: {} };
+  processes?: {[key: string]: {} };
 };
 
 
@@ -40,9 +60,6 @@ const debug = dbg('import-ccdb');
 const info = console.info;
 const warn = console.warn;
 const error = console.error;
-
-const Slot = slot.Slot;
-const Device = device.Device;
 
 mongoose.Promise = global.Promise;
 
@@ -291,8 +308,24 @@ async function main() {
   //   asm_slot: null,
   //   component_type: 10319 }
 
-  let devices: { [key: string]: device.Device } = {};
-  let slots: { [key: string]: slot.Slot } = {};
+  // Import Device data
+
+  let devices: { [key: string]: Device } = {};
+
+  // mysql> desc device;
+  // +----------------+--------------+------+-----+---------+-------+
+  // | Field          | Type         | Null | Key | Default | Extra |
+  // +----------------+--------------+------+-----+---------+-------+
+  // | id             | bigint(20)   | NO   | PRI | NULL    |       |
+  // | description    | varchar(255) | YES  |     | NULL    |       |
+  // | modified_at    | datetime     | YES  |     | NULL    |       |
+  // | modified_by    | varchar(255) | YES  |     | NULL    |       |
+  // | serial_number  | varchar(255) | YES  | UNI | NULL    |       |
+  // | version        | bigint(20)   | YES  |     | NULL    |       |
+  // | asm_parent     | bigint(20)   | YES  | MUL | NULL    |       |
+  // | asm_slot       | bigint(20)   | YES  | MUL | NULL    |       |
+  // | component_type | bigint(20)   | YES  | MUL | NULL    |       |
+  // +----------------+--------------+------+-----+---------+-------+
 
   let rows: {};
   try {
@@ -385,8 +418,12 @@ async function main() {
       return;
     }
 
-    devices[row.id] = device;
+    devices[row.serial_number] = device;
   }
+
+  // Import device data
+
+  let slots: { [key: string]: Slot } = {};
 
   // mysql> desc slot;
   // +-----------------+--------------+------+-----+---------+-------+
@@ -517,8 +554,371 @@ async function main() {
       return;
     }
 
-    slots[row.id] = slot;
+    slots[row.name] = slot;
   }
+
+  // Import Checklist Data
+
+  // mysql> desc cl_checklist;
+  // +--------------+--------------+------+-----+---------+-------+
+  // | Field        | Type         | Null | Key | Default | Extra |
+  // +--------------+--------------+------+-----+---------+-------+
+  // | id           | bigint(20)   | NO   | PRI | NULL    |       |
+  // | default_list | tinyint(1)   | YES  |     | 0       |       |
+  // | description  | varchar(255) | YES  |     | NULL    |       |
+  // | for_devices  | tinyint(1)   | YES  |     | 0       |       |
+  // | modified_at  | datetime     | YES  |     | NULL    |       |
+  // | modified_by  | varchar(255) | YES  |     | NULL    |       |
+  // | name         | varchar(255) | YES  | UNI | NULL    |       |
+  // | version      | bigint(20)   | YES  |     | NULL    |       |
+  // +--------------+--------------+------+-----+---------+-------+
+
+  // mysql> select * from  cl_checklist;
+  // +-------+--------------+------------------+-------------+---------------------+-------------+------------------+---------+
+  // | id    | default_list | description      | for_devices | modified_at         | modified_by | name             | version |
+  // +-------+--------------+------------------+-------------+---------------------+-------------+------------------+---------+
+  // | 27556 |            1 | Slot Checklist   |           0 | 2016-07-29 06:22:02 | NULL        | Slot-Checklist   |       1 |
+  // | 27557 |            1 | Device checklist |           1 | 2016-07-29 06:22:16 | NULL        | Device-Checklist |       1 |
+  // +-------+--------------+------------------+-------------+---------------------+-------------+------------------+---------+
+
+  // mysql> desc cl_process;
+  // +-------------+--------------+------+-----+---------+-------+
+  // | Field       | Type         | Null | Key | Default | Extra |
+  // +-------------+--------------+------+-----+---------+-------+
+  // | id          | bigint(20)   | NO   | PRI | NULL    |       |
+  // | description | varchar(255) | YES  |     | NULL    |       |
+  // | loc         | varchar(255) | YES  |     | NULL    |       |
+  // | modified_at | datetime     | YES  |     | NULL    |       |
+  // | modified_by | varchar(255) | YES  |     | NULL    |       |
+  // | name        | varchar(255) | YES  | UNI | NULL    |       |
+  // | version     | bigint(20)   | YES  |     | NULL    |       |
+  // +-------------+--------------+------+-----+---------+-------+
+
+  // mysql> select * from cl_process;
+  // +-------+------------------------------+------+---------------------+-------------+-----------+---------+
+  // | id    | description                  | loc  | modified_at         | modified_by | name      | version |
+  // +-------+------------------------------+------+---------------------+-------------+-----------+---------+
+  // | 27548 | Device Owner Signoff         | NONE | 2016-07-29 06:19:07 | NULL        | DO-OK     |       2 |
+  // | 27549 | Electrical Inspection        | NONE | 2016-07-29 06:19:37 | NULL        | EE-OK     |       1 |
+  // | 27550 | Mechanical Inspection        | NONE | 2016-07-29 06:20:08 | NULL        | ME-OK     |       1 |
+  // | 27551 | Cryogenics Inspection        | NONE | 2016-07-29 06:20:22 | NULL        | Cryo-OK   |       1 |
+  // | 27552 | Controls Inspection          | NONE | 2016-07-29 06:20:32 | NULL        | Ctrls-OK  |       1 |
+  // | 27553 | Physics Inspection           | NONE | 2016-07-29 06:20:58 | NULL        | Phys-OK   |       1 |
+  // | 27554 | Safety Inspection            | NONE | 2016-07-29 06:21:14 | NULL        | Safety-OK |       2 |
+  // | 27555 | Area Manager Signoff         | NONE | 2016-07-29 06:21:26 | NULL        | AM-OK     |       1 |
+  // | 27592 | Device Readiness Review      | NONE | 2016-07-29 06:39:43 | NULL        | DRR       |       1 |
+  // | 27593 | Accelerator Readiness Review | NONE | 2016-07-29 06:39:52 | NULL        | ARR       |       1 |
+  // +-------+------------------------------+------+---------------------+-------------+-----------+---------+
+
+  // mysql> desc cl_status_option;
+  // +---------------+--------------+------+-----+---------+-------+
+  // | Field         | Type         | Null | Key | Default | Extra |
+  // +---------------+--------------+------+-----+---------+-------+
+  // | id            | bigint(20)   | NO   | PRI | NULL    |       |
+  // | comment_req   | tinyint(1)   | YES  |     | 0       |       |
+  // | completed     | tinyint(1)   | YES  |     | 0       |       |
+  // | description   | varchar(255) | YES  |     | NULL    |       |
+  // | logical_value | tinyint(1)   | YES  |     | 0       |       |
+  // | modified_at   | datetime     | YES  |     | NULL    |       |
+  // | modified_by   | varchar(255) | YES  |     | NULL    |       |
+  // | name          | varchar(255) | YES  |     | NULL    |       |
+  // | version       | bigint(20)   | YES  |     | NULL    |       |
+  // | weight        | int(11)      | YES  |     | NULL    |       |
+  // | checklist     | bigint(20)   | YES  | MUL | NULL    |       |
+  // +---------------+--------------+------+-----+---------+-------+
+
+  // mysql> select * from cl_status_option;
+  // +-------+-------------+-----------+-------------------+---------------+---------------------+-------------+------+---------+--------+-----------+
+  // | id    | comment_req | completed | description       | logical_value | modified_at         | modified_by | name | version | weight | checklist |
+  // +-------+-------------+-----------+-------------------+---------------+---------------------+-------------+------+---------+--------+-----------+
+  // | 27558 |           0 |         1 | Yes               |             1 | 2016-07-29 06:22:48 | NULL        | Y    |       1 |      1 |     27556 |
+  // | 27559 |           1 |         1 | Yes with Comments |             1 | 2016-07-29 06:23:23 | NULL        | YC   |       1 |      0 |     27556 |
+  // | 27560 |           0 |         0 | No                |             0 | 2016-07-29 06:23:48 | NULL        | N    |       1 |      0 |     27556 |
+  // | 27561 |           0 |         1 | Yes               |             1 | 2016-07-29 06:24:05 | NULL        | Y    |       1 |      1 |     27557 |
+  // | 27562 |           1 |         1 | Yes with Comments |             1 | 2016-07-29 06:24:23 | NULL        | YC   |       1 |      0 |     27557 |
+  // | 27563 |           0 |         0 | No                |             0 | 2016-07-29 06:24:44 | NULL        | N    |       1 |      0 |     27557 |
+  // +-------+-------------+-----------+-------------------+---------------+---------------------+-------------+------+---------+--------+-----------+
+
+
+  // mysql> desc cl_checklist_field;
+  // +----------------+--------------+------+-----+---------+-------+
+  // | Field          | Type         | Null | Key | Default | Extra |
+  // +----------------+--------------+------+-----+---------+-------+
+  // | id             | bigint(20)   | NO   | PRI | NULL    |       |
+  // | modified_at    | datetime     | YES  |     | NULL    |       |
+  // | modified_by    | varchar(255) | YES  |     | NULL    |       |
+  // | optional       | tinyint(1)   | YES  |     | 0       |       |
+  // | position       | int(11)      | YES  |     | NULL    |       |
+  // | summary_proc   | tinyint(1)   | YES  |     | 0       |       |
+  // | version        | bigint(20)   | YES  |     | NULL    |       |
+  // | checklist      | bigint(20)   | YES  | MUL | NULL    |       |
+  // | default_status | bigint(20)   | YES  | MUL | NULL    |       |
+  // | process        | bigint(20)   | YES  | MUL | NULL    |       |
+  // | sme            | bigint(20)   | YES  | MUL | NULL    |       |
+  // +----------------+--------------+------+-----+---------+-------+
+
+  // mysql> desc cl_assignment;
+  // +-------------+--------------+------+-----+---------+-------+
+  // | Field       | Type         | Null | Key | Default | Extra |
+  // +-------------+--------------+------+-----+---------+-------+
+  // | id          | bigint(20)   | NO   | PRI | NULL    |       |
+  // | modified_at | datetime     | YES  |     | NULL    |       |
+  // | modified_by | varchar(255) | YES  |     | NULL    |       |
+  // | version     | bigint(20)   | YES  |     | NULL    |       |
+  // | checklist   | bigint(20)   | YES  | MUL | NULL    |       |
+  // | device      | bigint(20)   | YES  | MUL | NULL    |       |
+  // | requestor   | bigint(20)   | YES  | MUL | NULL    |       |
+  // | slot        | bigint(20)   | YES  | MUL | NULL    |       |
+  // | slot_group  | bigint(20)   | YES  | MUL | NULL    |       |
+  // +-------------+--------------+------+-----+---------+-------+
+
+  // mysql> desc  cl_proc_status;
+  // +--------------+--------------+------+-----+---------+-------+
+  // | Field        | Type         | Null | Key | Default | Extra |
+  // +--------------+--------------+------+-----+---------+-------+
+  // | id           | bigint(20)   | NO   | PRI | NULL    |       |
+  // | comment      | varchar(255) | YES  |     | NULL    |       |
+  // | modified_at  | datetime     | YES  |     | NULL    |       |
+  // | modified_by  | varchar(255) | YES  |     | NULL    |       |
+  // | version      | bigint(20)   | YES  |     | NULL    |       |
+  // | assigned_sme | bigint(20)   | YES  | MUL | NULL    |       |
+  // | assignment   | bigint(20)   | YES  | MUL | NULL    |       |
+  // | field        | bigint(20)   | YES  | MUL | NULL    |       |
+  // | status       | bigint(20)   | YES  | MUL | NULL    |       |
+  // +--------------+--------------+------+-----+---------+-------+
+
+
+  let checklists: {[key: string]: Checklist} = {};
+
+  try {
+    rows = await connection.query(
+      `SELECT d.serial_number, a.id as assignment_id
+        FROM device AS d, cl_assignment AS a
+        WHERE d.id = a.device;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    let device = devices[row.serial_number];
+    if (!device) {
+      error('Device not found for checklist: %s', row.serial_number);
+      connection.end();
+      return;
+    }
+
+    info('Import Checklist for Device: %s', device.name);
+    let cl = new Checklist(<IChecklist> {
+      targetId: device._id,
+      targetType: Device.modelName,
+      checklistType: 'device-default',
+    });
+
+    device.checklistId = cl._id;
+
+    try {
+      await device.validate();
+      await cl.validate();
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+
+    checklists[row.assignment_id] = cl;
+  }
+
+  try {
+    rows = await connection.query(
+      `SELECT s.name, a.id AS assignment_id
+        FROM slot AS s, cl_assignment AS a
+        WHERE s.id = a.slot;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    let slot = slots[row.name];
+    if (!slot) {
+      error('Slot not found for checklist: %s', row.name);
+      connection.end();
+      return;
+    }
+
+    info('Import Checklist for Slot: %s', slot.name);
+    let cl = new Checklist(<IChecklist> {
+      targetId: slot._id,
+      targetType: Slot.modelName,
+      checklistType: 'slot-default',
+    });
+
+    slot.checklistId = cl._id;
+
+    try {
+      await slot.validate();
+      await cl.validate();
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+
+    checklists[row.assignment_id] = cl;
+  }
+
+  let authUsers: {[key: string]: string | undefined} = {};
+
+  try {
+    rows = await connection.query(
+      `SELECT u.id, u.user_id FROM auth_user AS u`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    debug('Auth User: %s: %s', row.id, row.user_id);
+    authUsers[row.id] = row.user_id;
+  }
+
+
+  let clStatusOptions: {[key: string]: string | undefined} = {};
+
+  try {
+    rows = await connection.query(
+      `SELECT o.id AS statusOptionId, o.name FROM cl_status_option AS o`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    debug('CL Status Option: %s: %s', row.statusOptionId, row.name);
+    clStatusOptions[row.statusOptionId] = row.name;
+  }
+
+
+  let configs: ChecklistConfig[] = [];
+  let statuses: ChecklistStatus[] = [];
+
+  for (let clAssignmentId in checklists) {
+    if (!checklists.hasOwnProperty(clAssignmentId)) {
+      continue;
+    }
+
+    let cl = checklists[clAssignmentId];
+
+    try {
+      rows = await connection.query(
+        `SELECT p.name AS process, s.status, s.comment, s.assigned_sme, s.modified_by, s.modified_at
+          FROM cl_checklist_field AS f, cl_process AS p, cl_proc_status AS s
+          WHERE s.assignment = ? AND s.field = f.id AND f.process = p.id;`,
+        [ clAssignmentId ],
+      );
+      if (!Array.isArray(rows)) {
+        throw new Error('Query result is not an array');
+      }
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+    debug('Rows: %s', rows.length);
+
+    for (let row of rows) {
+      let subjectName: string | undefined;
+      if (cfg.processes && cfg.processes[row.process]) {
+        subjectName = String(cfg.processes[row.process]);
+      } else {
+        error('Subject not found for checklist process: %s', row.process);
+        connection.end();
+        return;
+      }
+
+      let config: ChecklistConfig | undefined;
+      let status: ChecklistStatus | undefined;
+
+      let assignedUserId = authUsers[row.assigned_sme];
+      debug('CL Assigned SME: %s, for process: %s', assignedUserId || null, row.process);
+      if (assignedUserId) {
+        // Process has Assigned SME
+        config = new ChecklistConfig(<IChecklistConfig> {
+          checklistId: cl._id,
+          subjectName: subjectName,
+          assignees: [ assignedUserId.toUpperCase() ],
+        });
+        configs.push(config);
+      }
+
+      let statusValue = clStatusOptions[row.status];
+      info('Import checklist status: %s, for process: %s', statusValue || null, row.process);
+      if (!statusValue) {
+        // Process is Disabled (N/A)
+        if (!config) {
+          config = new ChecklistConfig(<IChecklistConfig> {
+            checklistId: cl._id,
+            subjectName: subjectName,
+            required: false,
+          });
+          configs.push(config);
+        } else {
+          config.required = false;
+        }
+      } else {
+        status = new ChecklistStatus(<IChecklistStatus> {
+          checklistId: cl._id,
+          subjectName: subjectName,
+          value: statusValue,
+          comment: row.comment,
+          inputOn: row.modified_at,
+          inputBy: row.modified_by ? row.modified_by.toUpperCase() : 'IMPORTCCDB',
+        });
+        statuses.push(status);
+      }
+
+      try {
+        if (config) {
+          await config.validate();
+        }
+        if (status) {
+          await status.validate();
+        }
+      } catch (err) {
+        error(err);
+        connection.end();
+        return;
+      }
+    }
+  }
+
+
+  // Done! Save the data (if not a dry run)
 
   await connection.end();
 
@@ -539,33 +939,77 @@ async function main() {
   info('Clear Runcheck database');
   try {
     // await mongoose.connection.db.dropDatabase();
-    await Device.collection.drop();
     await Slot.collection.drop();
+    await Device.collection.drop();
+    await Checklist.collection.drop();
+    await ChecklistConfig.collection.drop();
+    await ChecklistStatus.collection.drop();
   } catch (err) {
     console.error(err);
     return mongoose_disconnect();
   }
 
-  for (let id in devices) {
-    if (devices.hasOwnProperty(id)) {
-      info('Saving device: %s', devices[id].name);
+  for (let name in devices) {
+    if (devices.hasOwnProperty(name)) {
+      info('Saving device: %s', name);
       try {
-        await devices[id].saveWithHistory('SYS:IMPORTCCDB');
+        await devices[name].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
         console.error(err);
-        return mongoose_disconnect();
+        mongoose_disconnect();
+        return;
       }
     }
   }
 
-  for (let id in slots) {
-    if (slots.hasOwnProperty(id)) {
-      info('Saving slot: %s', slots[id].name);
+  for (let name in slots) {
+    if (slots.hasOwnProperty(name)) {
+      info('Saving slot: %s', name);
       try {
-        await slots[id].saveWithHistory('SYS:IMPORTCCDB');
+        await slots[name].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
         console.error(err);
-        return mongoose_disconnect();
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let id in checklists) {
+    if (checklists.hasOwnProperty(id)) {
+      info('Saving checklist: %s', id);
+      try {
+        await checklists[id].save();
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let id in configs) {
+    if (configs.hasOwnProperty(id)) {
+      info('Saving checklist config: %s', id);
+      try {
+        await configs[id].saveWithHistory('SYS:IMPORTCCDB');
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let id in statuses) {
+    if (statuses.hasOwnProperty(id)) {
+      info('Saving checklist status: %s', id);
+      try {
+        await statuses[id].saveWithHistory('SYS:IMPORTCCDB');
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
       }
     }
   }
