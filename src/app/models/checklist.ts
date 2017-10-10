@@ -12,6 +12,7 @@ export interface IChecklistSubject {
   checklistId: ObjectId | null;
   checklistType: 'device-default' | 'slot-default';
   name: string;
+  desc: string;
   order: number;
   final: boolean;
   required: boolean;
@@ -25,7 +26,7 @@ export interface ChecklistSubject extends IChecklistSubject, history.Document<Ch
 
 export interface IChecklistConfig {
   checklistId: ObjectId;
-  subjectId: ObjectId;
+  subjectName: string;
   name?: string;
   required?: boolean;
   assignees?: string[];
@@ -37,7 +38,7 @@ export interface ChecklistConfig extends IChecklistConfig, history.Document<Chec
 
 export interface IChecklistStatus {
   checklistId: ObjectId;
-  subjectId: ObjectId;
+  subjectName: string;
   value: string;
   comment: string;
   inputOn: Date;
@@ -133,6 +134,10 @@ const checklistSubjectSchema = new Schema({
     type: String,
     required: true,
   },
+  desc: {
+    type: String,
+    required: true,
+  },
   order: {
     type: Number,
     default: 0,
@@ -198,9 +203,12 @@ checklistSubjectSchema.methods.applyCfg = function(cfg: ChecklistConfig) {
 history.addHistory(checklistSubjectSchema, {
   pathsToWatch: [
     'name',
-    'assignee',
-    'mandatory',
+    'desc',
+    'order',
+    'final',
     'required',
+    'mandatory',
+    'assignees',
   ],
 });
 
@@ -210,7 +218,7 @@ export const ChecklistSubject = history.model<ChecklistSubject>('ChecklistSubjec
 
 // A checklistConfig is configuration for a checklist subject:
 //   checklist: the checklist to which this configuration belongs
-//   subjectId: the checklist item to which this configuration applies
+//   subjectName: the checklist item to which this configuration applies
 //   name: alternative subject to override the item
 //   assignee: user id of person required to respond to this item
 //   required: indicate if the item must have a response
@@ -219,9 +227,8 @@ const checklistConfigSchema = new Schema({
     type: ObjectId,
     required: true,
   },
-  subjectId: {
-    type: ObjectId,
-    ref: ChecklistSubject.modelName,
+  subjectName: {
+    type: String,
     required: true,
   },
   name: {
@@ -255,7 +262,7 @@ export const ChecklistConfig = history.model<ChecklistConfig>('ChecklistConfig',
 
 // A checklistStatus is the response for a checklist item:
 //  checklistId: the checklist to which this response belongs
-//  subjectId: the checklist item to which this response applies
+//  subjectName: the checklist item to which this response applies
 //  value: the value of the input
 //  comment: extra information
 //  inputOn: date when the input was submitted
@@ -265,9 +272,8 @@ const checklistStatusSchema = new Schema({
     type: ObjectId,
     required: true,
   },
-  subjectId: {
-    type: ObjectId,
-    ref: ChecklistSubject.modelName,
+  subjectName: {
+    type: String,
     required: true,
   },
   value: {

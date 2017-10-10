@@ -11,7 +11,7 @@ form
         th.text-left.col-md-3 Assignee
     tbody
       for subject in subjects
-        - var status = statuses[subject.id]
+        - var status = statuses[subject.subject]
         tr.form-group.cl-subject(id=subject.id)
           td.text-left.form-control-static
             if status && (status.history.updates.length > 0)

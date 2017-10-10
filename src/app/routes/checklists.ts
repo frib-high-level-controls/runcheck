@@ -144,7 +144,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   for (let subject of subjects) {
     if (subject.id) {
       for (let cfg of configs) {
-        if (cfg.subjectId.equals(subject._id)) {
+        if (cfg.subjectName === subject.name) {
           subject.applyCfg(cfg);
           break;
         }
@@ -200,7 +200,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
       let webStatus = {
         id: status.id,
         checklistId: status.checklistId.toHexString(),
-        subjectId: status.subjectId.toHexString(),
+        subjectId: status.subjectName,
         value: status.value,
         comment: status.comment,
         inputBy: status.inputBy,
@@ -208,7 +208,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
         history: webHistory,
       };
 
-      //webChecklist.statuses.push(webStatus);
+      webChecklist.statuses.push(webStatus);
     }
   }
 
@@ -271,9 +271,9 @@ router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, cat
 
   let cfgMap = new Map<string, ChecklistConfig>();
   for (let config of configs) {
-    if (config.subjectId) {
-      cfgMap.set(config.subjectId.toHexString(), config);
-    }
+    //if (config.subjectId) {
+    cfgMap.set(config.subjectName, config);
+    //}
   }
 
   let subjectMap = new Map<string, ChecklistSubject>();
@@ -339,7 +339,7 @@ router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, cat
           if (subject.name !== newSubject.subject) {
             if (!cfg) {
               cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectId: models.ObjectId(subject._id),
+                subjectName: subject.name,
                 checklistType: checklist.checklistType,
                 checklistId: models.ObjectId(checklist._id),
               });
@@ -366,7 +366,7 @@ router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, cat
           if (subject.required !== newSubject.required) {
             if (!cfg) {
               cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectId: models.ObjectId(subject._id),
+                subjectName: subject.name,
                 checklistType: checklist.checklistType,
                 checklistId: models.ObjectId(checklist._id),
               });
@@ -487,7 +487,7 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
 
   const configMap = new Map<string, ChecklistConfig>();
   for (let config of configs) {
-    configMap.set(config.subjectId.toHexString(), config);
+    configMap.set(config.subjectName, config);
   }
 
   const subjectMap = new Map<string, ChecklistSubject>();
@@ -516,7 +516,7 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
 
   let statusMap = new Map<string, ChecklistStatus>();
   for (let status of statuses) {
-    statusMap.set(status.subjectId.toHexString(), status);
+    statusMap.set(status.subjectName, status);
   }
 
   let prms = new Array<Promise<ChecklistStatus>>();
@@ -563,7 +563,7 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
         if (newStatus.value && (newStatus.value !== 'N') && (CHECKLIST_VALUES.includes(newStatus.value))) {
           debug('Crete input: value: %s, comment: %s', newStatus.value, newStatus.comment);
           status = new ChecklistStatus(<IChecklistStatus> {
-            subjectId: subject._id,
+            subjectName: subject.name,
             checklistId: checklist._id,
             value: newStatus.value,
             comment: newStatus.comment,
@@ -645,7 +645,7 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
       let webStatus = {
         id: status.id,
         checklistId: status.checklistId.toHexString(),
-        subjectId: status.subjectId.toHexString(),
+        subjectId: status.subjectName,
         value: status.value,
         comment: status.comment,
         inputBy: status.inputBy,
