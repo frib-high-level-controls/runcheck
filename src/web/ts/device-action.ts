@@ -279,7 +279,7 @@ $(() => {
     $('#device-assign-checklist').addClass('hidden');
     $('#device-checklist-spin').removeClass('hidden');
 
-    let data: webapi.Data<string>;
+    let data: webapi.Pkg<string>;
     try {
       data = await $.get({
          url: `/devices/${device.id}/checklistId`,

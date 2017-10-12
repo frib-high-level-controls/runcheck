@@ -5,7 +5,35 @@
 let slot: webapi.Slot;
 
 $(() => {
-  // no actions now
+  function showMessage(msg: string) {
+    $('#message').append(`
+      <div class="alert alert-danger">
+        <button class="close" data-dismiss="alert">x</button>
+        <span>${msg}</span>
+      </div>
+    `);
+  }
+
+  // ensure the device has been initialized
+  if (!slot) {
+    showMessage('Device not initialized');
+    return;
+  }
+
+  if (slot.checklistId) {
+    // TODO: Show 'unassign' button if permitted.
+    $('#checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#checklist-panel', slot.checklistId);
+  }
+
+  // else {
+  //   if (perms.assign) {
+  //     $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
+  //   } else {
+  //     $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
+  //   }
+  // }
+
 });
 
 // add group functions start

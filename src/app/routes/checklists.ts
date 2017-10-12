@@ -21,6 +21,10 @@ import {
 } from '../models/device';
 
 import {
+  Slot,
+} from '../models/slot';
+
+import {
   Checklist,
   CHECKLIST_VALUES,
   ChecklistConfig,
@@ -123,6 +127,12 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     }
     ownerRole = 'GRP:' + device.dept + '#LEADER';
     varRoleMap.set('VAR:DEPT_LEADER', ownerRole);
+  } else if (checklist.targetType === Slot.modelName) {
+    let slot = await Slot.findById(checklist.targetId).exec();
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
   } else {
     throw new RequestError('Target type not supported: ' + checklist.targetType);
   }
@@ -212,7 +222,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     }
   }
 
-  res.json(<webapi.Data<webapi.Checklist>> {
+  res.json(<webapi.Pkg<webapi.Checklist>> {
     data: webChecklist,
   });
 }));
@@ -660,7 +670,7 @@ router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, cat
   }
 
 
-  res.json(<webapi.Data<webapi.ChecklistStatus[]>> {
+  res.json(<webapi.Pkg<webapi.ChecklistStatus[]>> {
     data: data,
   });
 }));

@@ -49,7 +49,7 @@ router.get('/', catchAll(async (req, res) => {
           arr: slot.arr,
         });
       }
-      res.json(<webapi.Data<webapi.SlotTableRow[]>> {
+      res.json(<webapi.Pkg<webapi.SlotTableRow[]>> {
         data: rows,
       });
     },
@@ -117,7 +117,7 @@ router.get('/:name', catchAll( async (req, res) => {
       });
     },
     'application/json': () => {
-      res.json(<webapi.Data<webapi.Slot>> {
+      res.json(<webapi.Pkg<webapi.Slot>> {
         data: apiSlot,
       });
     },

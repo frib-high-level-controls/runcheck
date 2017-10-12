@@ -40,7 +40,7 @@ abstract class ChecklistUtil {
     // }
     //$.get(document.location + '/checklist/json')
     $.get('/checklists/' + checklistId)
-      .done(function(data: webapi.Data<webapi.Checklist>) {
+      .done(function(data: webapi.Pkg<webapi.Checklist>) {
         if (config) {
           ChecklistUtil.renderEditTemplate(element, data.data);
         } else {
@@ -48,7 +48,7 @@ abstract class ChecklistUtil {
         }
       });
 
-    let data: webapi.Data<webapi.Checklist>;
+    let data: webapi.Pkg<webapi.Checklist>;
     try {
       data = await $.get('/checklists/' + checklistId);
     } catch (err) {
@@ -219,7 +219,7 @@ abstract class ChecklistUtil {
           }
         }
 
-        let data: webapi.Data<webapi.ChecklistStatus[]>;
+        let data: webapi.Pkg<webapi.ChecklistStatus[]>;
         try {
           data = await $.ajax({
             url: `/checklists/${checklist.id}/statuses`,

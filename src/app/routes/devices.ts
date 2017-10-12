@@ -48,7 +48,7 @@ router.get('/', catchAll(async (req, res) => {
           deviceType: device.deviceType,
         });
       }
-      res.json(<webapi.Data<webapi.DeviceTableRow[]>> {
+      res.json(<webapi.Pkg<webapi.DeviceTableRow[]>> {
         data: rows,
       });
     },
@@ -81,7 +81,7 @@ router.get('/:name', catchAll(async (req, res) => {
       });
     },
     'application/json': () => {
-      res.json(<webapi.Data<webapi.Device>> {
+      res.json(<webapi.Pkg<webapi.Device>> {
         data: webDevice,
       });
     },
@@ -98,7 +98,7 @@ router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) 
     throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
   }
 
-  res.json(<webapi.Data<string>> {
+  res.json(<webapi.Pkg<string>> {
     data: device.checklistId.toHexString(),
   });
 }));
@@ -139,7 +139,7 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
   device.checklistId = models.ObjectId(checklist._id);
   await device.saveWithHistory(username);
 
-  res.status(HttpStatus.CREATED).json(<webapi.Data<string>> {
+  res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
     data: device.checklistId.toHexString(),
   });
 }));
