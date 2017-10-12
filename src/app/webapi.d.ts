@@ -32,6 +32,21 @@ declare namespace webapi {
  
   // Application specific types defined below.
 
+  export interface Update {
+    at: string;
+    by: string;
+    paths: { 
+      name: string;
+      value: {};
+    }[]
+  }
+
+  export interface History {
+    updates: Update[];
+    updatedAt: string;
+    updatedBy: string;
+  }
+
   export interface DeviceTableRow {
     name: string;
     desc: string;
