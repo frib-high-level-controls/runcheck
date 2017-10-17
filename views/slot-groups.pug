@@ -1,15 +1,15 @@
 extends layout
 
 block head
-  link(rel='stylesheet', href='/datatables/media/css/dataTables.bootstrap.min.css')
-  title RunCheck slot groups
+  link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  title Groups :: RunCheck
 
 
 block content
   .container
     br
     #message
-      #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+      //-#modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
         .modal-dialog
           .modal-content
             .modal-header
@@ -33,18 +33,22 @@ block content
                     button#c-confirm.btn.btn-space.btn-primary(type='submit') Confrm
                     button#c-cancel.btn.btn-defalt Cancel
               #message2
-    form.form-inline
+    //-form.form-inline
       button.btn.btn-primary#new
         | New Group
-    br
+    //-br
     #slot-groups.tab-pane.active
       .table-responsive
         table#slot-groups-table.table.table-condensed.table-bordered.table-hover
 
 block js
-  script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
-  script(type='text/javascript', src='/datatables/media/js/dataTables.bootstrap.js')
-  script(type='text/javascript', src='/holderjs/holder.min.js')
-  script(type='text/javascript', src='/javascripts/table.js')
-  script(type='text/javascript', src='/javascripts/slot-groups-table.js')
-  script(type='text/javascript', src='/javascripts/slot-groups-action.js')
+  //- script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
+  //- script(type='text/javascript', src='/datatables/media/js/dataTables.bootstrap.js')
+  //- script(type='text/javascript', src='/holderjs/holder.min.js')
+  //- script(type='text/javascript', src='/javascripts/table.js')
+  //- script(type='text/javascript', src='/javascripts/slot-groups-table.js')
+  //- script(type='text/javascript', src='/javascripts/slot-groups-action.js')
+  script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
+  script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/js/datatablesutil.js')
+  script(type='text/javascript', src='/js/slot-groups-table.js')

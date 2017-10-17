@@ -20,7 +20,7 @@ import forgapi = require('./shared/forgapi');
 import users_routes = require('./routes/users');
 import devices_routes = require('./routes/devices');
 import slots_routes = require('./routes/slots');
-import slot_groups_routes = require('./routes/slot-groups');
+import groups = require('./routes/groups');
 import checklists_routes = require('./routes/checklists');
 
 
@@ -357,7 +357,7 @@ async function doStart(): Promise<void> {
   app.use('/users', users_routes);
   app.use('/devices', devices_routes.router);
   app.use('/slots', slots_routes.router);
-  app.use('/slotgroups', slot_groups_routes);
+  app.use('/groups', groups.router);
   app.use('/checklists', checklists_routes.router);
 
   // no handler found for request (404)

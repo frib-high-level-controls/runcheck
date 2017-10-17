@@ -4,7 +4,7 @@
 import * as mongoose from 'mongoose';
 
 import { Checklist } from './checklist';
-// var SlotGroup = require('../models/slot-group').SlotGroup;
+import { Group } from './group';
 
 import * as history from '../shared/history';
 
@@ -16,6 +16,7 @@ export interface ISlot {
   area: string;
   deviceType: string;
   checklistId: ObjectId | null;
+  groupId: ObjectId | null;
   careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   arr: string;
   drr: string;
@@ -58,6 +59,11 @@ const slotSchema = new Schema({
   checklistId: {
     type: ObjectId,
     ref: Checklist.modelName,
+    default: null,
+  },
+  groupId: {
+    type: ObjectId,
+    ref: Group.modelName,
     default: null,
   },
   careLevel: {
@@ -124,6 +130,7 @@ history.addHistory(slotSchema, {
     'area',
     'deviceType',
     'checklistId',
+    'groupId',
     'careLevel',
     'drr',
     'arr',

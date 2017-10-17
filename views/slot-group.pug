@@ -1,19 +1,55 @@
 extends layout-history.pug
 
 block head
-  link(rel='stylesheet', href='/datatables/media/css/dataTables.bootstrap.min.css')
-  title RunCheck slot group
+  link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  title #{group.name} :: RunCheck
 
 
 block content
-  #message
-  #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
-    .modal-dialog
-      .modal-content
-        .modal-header
-          h3#modalLabel
-        .modal-footer
-  .panel.panel-default(style="margin-top: 10px")
+  .container
+    #message
+    //- #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h3#modalLabel
+          .modal-footer
+    #slot-group-details
+      h3 Slot Group
+      .row
+        .col-md-6
+          table.table
+            thead
+              tr
+                th Name
+                th= group.name
+            tbody
+              tr
+                th Description
+                td= group.desc
+          hr
+  br
+  .container
+    .row
+      .col-md-12
+        .panel.panel-default
+          .panel-heading
+            .panel-title Slots
+          .panel-body
+            .table-responsive
+              table#slot-table.table.table-condensed.table-bordered.table-hover
+    .row
+      .col-md-12
+        .panel.panel-default
+          .panel-heading.clearfix
+            .pull-left
+              h4 Checklist
+            .pull-right
+              h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
+              button.btn.btn-primary.hidden#checklist-assign(disabled='disabled') Assign
+          .panel-body.hidden#checklist-panel
+
+  //-.panel.panel-default(style="margin-top: 10px")
     .panel-heading
       strong Basic Infomation
     .panel-body
@@ -33,7 +69,7 @@ block content
               td #{group.createdOn}
               td #{group.area}
               td #{group.description}
-  .panel.panel-default
+  //-.panel.panel-default
     .panel-heading
       strong Slots
     .panel-body
@@ -45,9 +81,13 @@ block content
         .table-responsive
           table#spec-slots-table.table.table-bordered.table-hover
 block js
-  script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
-  script(type='text/javascript', src='/datatables/media/js/dataTables.bootstrap.js')
-  script(type='text/javascript', src='/holderjs/holder.min.js')
-  script(type='text/javascript', src='/javascripts/table.js')
-  script(type='text/javascript', src='/javascripts/slots-table.js')
-  script(type='text/javascript', src='/javascripts/slot-group-action.js')
+  //- script(type='text/javascript', src='/holderjs/holder.min.js')
+  script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
+  script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/js/datatablesutil.js')
+  script(type='text/javascript', src='/js/checklistutil.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-input.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config.js')
+  script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
+  script(type='text/javascript', src='/js/slot-group-action.js')
+  script(type='text/javascript') group = !{JSON.stringify(group)};

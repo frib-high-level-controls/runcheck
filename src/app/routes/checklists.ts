@@ -25,6 +25,10 @@ import {
 } from '../models/slot';
 
 import {
+  Group,
+} from '../models/group';
+
+import {
   Checklist,
   CHECKLIST_VALUES,
   ChecklistConfig,
@@ -129,6 +133,12 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     varRoleMap.set('VAR:DEPT_LEADER', ownerRole);
   } else if (checklist.targetType === Slot.modelName) {
     let slot = await Slot.findById(checklist.targetId).exec();
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
+  } else if (checklist.targetType === Group.modelName) {
+    let slot = await Slot.findOne({ groupId: checklist.targetId }).exec();
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }

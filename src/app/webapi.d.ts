@@ -65,6 +65,12 @@ declare namespace webapi {
     arr: string;
   }
 
+  export interface GroupTableRow {
+    id: string;
+    name: string;
+    desc: string;
+  }
+
   export interface Device {
     id: string,
     name: string;
@@ -86,6 +92,13 @@ declare namespace webapi {
     arr: string;
     drr: string;
     //updates: {}
+  }
+
+  export interface Group {
+    id: string;
+    name: string;
+    desc: string;
+    checklistId: string | null;
   }
 
   interface Checklist {
