@@ -22,6 +22,11 @@ import {
 } from '../app/models/device';
 
 import {
+  Group,
+  IGroup,
+} from '../app/models/group';
+
+import {
   Checklist,
   ChecklistConfig,
   ChecklistStatus,
@@ -557,6 +562,92 @@ async function main() {
     slots[row.name] = slot;
   }
 
+  // Import Slot Groups
+
+  // mysql> desc cl_slot_group;
+  // +-------------+--------------+------+-----+---------+-------+
+  // | Field       | Type         | Null | Key | Default | Extra |
+  // +-------------+--------------+------+-----+---------+-------+
+  // | id          | bigint(20)   | NO   | PRI | NULL    |       |
+  // | description | varchar(255) | YES  |     | NULL    |       |
+  // | modified_at | datetime     | YES  |     | NULL    |       |
+  // | modified_by | varchar(255) | YES  |     | NULL    |       |
+  // | name        | varchar(255) | YES  | UNI | NULL    |       |
+  // | version     | bigint(20)   | YES  |     | NULL    |       |
+  // | owner       | bigint(20)   | YES  | MUL | NULL    |       |
+  // +-------------+--------------+------+-----+---------+-------+
+
+  let groups: { [key: string]: Group | undefined } = {};
+
+  try {
+    rows = await connection.query(
+      `SELECT g.id, g.name, g.description FROM cl_slot_group AS g;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    info('Importing slot group: %s', row.name);
+    let group = new Group(<IGroup> {
+      name: row.name,
+      desc: row.description,
+      memberType: Slot.modelName,
+      checklistId: null,
+    });
+
+    try {
+      await group.validate();
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+
+    groups[row.name] = group;
+  }
+
+  try {
+    rows = await connection.query(
+      `SELECT s.name AS slot_name, g.name AS slot_group_name
+        FROM slot AS s, cl_slot_group AS g
+        WHERE s.cm_group = g.id;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    let group = groups[row.slot_group_name];
+    if (!group) {
+      error('Group name found with name: %s', row.slot_group_name);
+      connection.end();
+      return;
+    }
+
+    let slot = slots[row.slot_name];
+    if (!slot) {
+      error('Slot name found with name: %s', row.slot_name);
+      connection.end();
+      return;
+    }
+
+    slot.groupId = group._id;
+  }
+
+
   // Import Checklist Data
 
   // mysql> desc cl_checklist;
@@ -780,6 +871,51 @@ async function main() {
     checklists[row.assignment_id] = cl;
   }
 
+  try {
+    rows = await connection.query(
+      `SELECT g.name, a.id AS assignment_id
+        FROM cl_slot_group AS g, cl_assignment AS a
+        WHERE g.id = a.slot_group;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    let group = groups[row.name];
+    if (!group) {
+      error('Group not found for checklist: %s', row.name);
+      connection.end();
+      return;
+    }
+
+    info('Import Checklist for Group: %s', group.name);
+    let cl = new Checklist(<IChecklist> {
+      targetId: group._id,
+      targetType: Group.modelName,
+      checklistType: 'slot-default',
+    });
+
+    group.checklistId = cl._id;
+
+    try {
+      await group.validate();
+      await cl.validate();
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+
+    checklists[row.assignment_id] = cl;
+  }
+
   let authUsers: {[key: string]: string | undefined} = {};
 
   try {
@@ -941,6 +1077,7 @@ async function main() {
     // await mongoose.connection.db.dropDatabase();
     await Slot.collection.drop();
     await Device.collection.drop();
+    await Group.collection.drop();
     await Checklist.collection.drop();
     await ChecklistConfig.collection.drop();
     await ChecklistStatus.collection.drop();
@@ -967,6 +1104,24 @@ async function main() {
       info('Saving slot: %s', name);
       try {
         await slots[name].saveWithHistory('SYS:IMPORTCCDB');
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let name in groups) {
+    if (groups.hasOwnProperty(name)) {
+      info('Saving group: %s', name);
+      try {
+        let group = groups[name];
+        if (group) {
+          await group.saveWithHistory('SYS:IMPORTCCDB');
+        } else {
+          warn('Group not found with name: %s', name);
+        }
       } catch (err) {
         console.error(err);
         mongoose_disconnect();
