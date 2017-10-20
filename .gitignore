@@ -73,6 +73,8 @@ npm-debug.log
 /app/
 /public/js
 /tools/
+/test/app/
+/test/apptest/
 
 # Ignore configuration files
 /config/

@@ -41,6 +41,15 @@ module.exports = function(grunt) {
             additionalFlags: '--outDir ./app'
         },
       },
+      apptest: {
+        tsconfig: {
+           tsconfig: './src/apptest',
+           passThrough: true,
+        },
+        options: {
+            additionalFlags: '--outDir ./test'
+        },
+      },
       tools: {
         tsconfig: {
             tsconfig: './src/tools',
@@ -80,6 +89,7 @@ module.exports = function(grunt) {
         },
         clean: {
             app: [ './app' ],
+            test: [ './test' ],
             tools: [ './tools' ],
             public: [ './public/js' ],
         }
