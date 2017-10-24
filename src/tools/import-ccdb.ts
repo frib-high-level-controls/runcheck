@@ -27,6 +27,11 @@ import {
 } from '../app/models/group';
 
 import {
+  IInstall,
+  Install,
+} from '../app/models/install';
+
+import {
   Checklist,
   ChecklistConfig,
   ChecklistStatus,
@@ -1053,6 +1058,84 @@ async function main() {
     }
   }
 
+  // Import Installation Data
+
+  // mysql> desc installation_record;
+  // +----------------+--------------+------+-----+---------+-------+
+  // | Field          | Type         | Null | Key | Default | Extra |
+  // +----------------+--------------+------+-----+---------+-------+
+  // | id             | bigint(20)   | NO   | PRI | NULL    |       |
+  // | install_date   | datetime     | YES  |     | NULL    |       |
+  // | modified_at    | datetime     | YES  |     | NULL    |       |
+  // | modified_by    | varchar(255) | YES  |     | NULL    |       |
+  // | notes          | text         | YES  |     | NULL    |       |
+  // | record_number  | varchar(255) | YES  |     | NULL    |       |
+  // | uninstall_date | datetime     | YES  |     | NULL    |       |
+  // | version        | bigint(20)   | YES  |     | NULL    |       |
+  // | device         | bigint(20)   | YES  | MUL | NULL    |       |
+  // | slot           | bigint(20)   | YES  | MUL | NULL    |       |
+  // +----------------+--------------+------+-----+---------+-------+
+
+  let installs: {[key: string]: Install | undefined} = {};
+
+  try {
+    rows = await connection.query(
+      `SELECT r.id, s.name, d.serial_number, r.install_date, r.modified_by
+        FROM installation_record AS r, device AS d, slot AS s
+        WHERE r.device = d.id AND r.slot = s.id;`,
+      [],
+    );
+    if (!Array.isArray(rows)) {
+      throw new Error('Query result is not an array');
+    }
+  } catch (err) {
+    error(err);
+    connection.end();
+    return;
+  }
+
+  for (let row of rows) {
+    let slot = slots[row.name];
+    if (!slot) {
+      error('Slot not found: %s', row.name);
+      connection.end();
+      return;
+    }
+
+    let device = devices[row.serial_number];
+    if (!device) {
+      error('Device not found: %s', row.name);
+      connection.end();
+      return;
+    }
+
+    info('Import Install for Slot: %s, Device: %s', row.name, row.serial_number);
+    let install = new Install(<IInstall> {
+      slotId: slot._id,
+      deviceId: device._id,
+      installBy: row.modified_by.toUpperCase(),
+      installOn: row.install_date,
+      state: 'INSTALLED',
+    });
+
+    try {
+      await install.validate();
+    } catch (err) {
+      error(err);
+      connection.end();
+      return;
+    }
+
+    slot.installDeviceId = install.deviceId;
+    slot.installDeviceBy = install.installBy;
+    slot.installDeviceOn = install.installOn;
+
+    device.installSlotId = install.slotId;
+    device.installSlotBy = install.installBy;
+    device.installSlotOn = install.installOn;
+
+    installs[row.id] = install;
+  }
 
   // Done! Save the data (if not a dry run)
 
@@ -1078,6 +1161,7 @@ async function main() {
     await Slot.collection.drop();
     await Device.collection.drop();
     await Group.collection.drop();
+    await Install.collection.drop();
     await Checklist.collection.drop();
     await ChecklistConfig.collection.drop();
     await ChecklistStatus.collection.drop();
@@ -1121,6 +1205,24 @@ async function main() {
           await group.saveWithHistory('SYS:IMPORTCCDB');
         } else {
           warn('Group not found with name: %s', name);
+        }
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let id in installs) {
+    if (installs.hasOwnProperty(id)) {
+      info('Saving install: %s', id);
+      try {
+        let install = installs[id];
+        if (install) {
+          await install.save();
+        } else {
+          warn('Install not found with id: %s', id);
         }
       } catch (err) {
         console.error(err);
