@@ -4,6 +4,7 @@
 import * as mongoose from 'mongoose';
 
 import { Checklist } from './checklist';
+import { MODEL_NAME as SLOT_MODEL_NAME } from './slot';
 
 import * as history from  '../shared/history';
 
@@ -15,11 +16,18 @@ export interface IDevice {
   dept: string;
   deviceType: string;
   checklistId: ObjectId | null;
+  installSlotId?: ObjectId;
+  installSlotBy?: string;
+  installSlotOn?: Date;
 };
 
 export interface Device extends IDevice, history.Document<Device> {
   // no additional methods
 };
+
+// Needed to stop cyclical dependency
+// between Slot and Device models.
+export const MODEL_NAME = 'Device';
 
 const Schema = mongoose.Schema;
 
@@ -31,6 +39,9 @@ const ObjectId = Schema.Types.ObjectId;
 //   dept: assocaiate department
 //   deviceType: standard type identifier
 //   checklistId: associated checklist (optional)
+//   installSlotId: the slot in which this device is installed
+//   installSlotOn: the date when this device was installed or uninstalled
+//   installSlotBy: the name of the person or process that installed or uninstalled
 const deviceSchema = new Schema({
   name: {
     type: String,
@@ -56,6 +67,19 @@ const deviceSchema = new Schema({
     type: ObjectId,
     ref: Checklist.modelName,
     default: null,
+  },
+  installSlotId: {
+    type: ObjectId,
+    required: false,
+    ref: SLOT_MODEL_NAME,
+  },
+  installSlotBy: {
+    type: String,
+    required: false,
+  },
+  installSlotOn: {
+    type: Date,
+    required: false,
   },
   // owner: {
   //   type: String,
@@ -99,16 +123,6 @@ const deviceSchema = new Schema({
   //     default: null,
   //   },
   // },
-  // installToSlot: {
-  //   name: {
-  //     type: String,
-  //     default: null,
-  //   },
-  //   id: {
-  //     type: String,
-  //     default: null,
-  //   },
-  // },
   // /**
   //  * 0: not installed
   //  * 1: prepare to install
@@ -124,13 +138,7 @@ const deviceSchema = new Schema({
 });
 
 deviceSchema.plugin(history.addHistory, {
-  pathsToWatch: [
-    'name',
-    'desc',
-    'dept',
-    'deviceType',
-    'checklistId',
-  ],
+  watchAll: true,
 });
 
-export const Device = history.model<Device>('Device', deviceSchema);
+export const Device = history.model<Device>(MODEL_NAME, deviceSchema);

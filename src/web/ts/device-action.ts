@@ -159,6 +159,19 @@ $(() => {
     }
   }
 
+  if (device.installSlotId) {
+    $.get({
+      url: `/slots/${device.installSlotId}`,
+      dataType: 'json',
+    }).then((data) => {
+      $('#install-panel').html(slotDetailsTemplate({
+        slot: data.data,
+        embedded: true,
+      })).removeClass('hidden');
+      $('#uninstall').removeClass('hidden');
+    });
+  }
+
   // var selected = null;
 
     // $('#device-request-slot-install-form input').typeahead({

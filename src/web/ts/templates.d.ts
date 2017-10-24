@@ -8,3 +8,7 @@ declare function checklistConfigItemTemplate(data: any): string;
 declare function checklistInputTemplate(data: any): string;
 
 declare function changeTemplate(data: any): string;
+
+declare function deviceDetailsTemplate(data: any): string;
+
+declare function slotDetailsTemplate(data: any): string;

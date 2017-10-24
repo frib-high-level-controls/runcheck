@@ -1,41 +1,42 @@
-.row
-  .col-md-6
-    table.table
-      thead
-        tr
-          th Name
-          th= device.name
-      tbody
-        tr
-          th Description
-          td= device.desc
-        tr
-          th Type
-          td= device.deviceType
-        tr
-          th Department
-          td= device.dept
-    hr
-          //-tr
-            th Owner
-            td= device.owner
-          //-tr
-            th Installed to device
-            - var installToDevice = device.installToDevice.id ? '<a href="/devices/' + device.installToDevice.id + '">' + device.installToDevice.serialNo + '</a>' : 'N/A'
-            td(id = 'dInstallToDevice')!= installToDevice
-          //-tr
-            th Installed to slot
-            - var installToSlot = device.installToSlot.id ? '<a href="/slots/' + device.installToSlot.id + '">' + device.installToSlot.name + '</a>' : 'N/A'
-              td(id = 'dInstallToSlot')!= installToSlot
-          //-tr
-            th Status
-            -
-              var statusMap = {
-                  '0': 'Not installed',
-                  '1': 'Prepare to install',
-                  '1.5': 'Prepare installation checklist',
-                  '2': 'approved to install',
-                  '3': 'installed'
-                };
-              var status = statusMap[device.status]
-            td(id = 'dStatus', name = device.status)= status
+table.table
+  thead
+    tr
+      th Name
+      if embedded
+        th
+          a(href='/devices/'+device.name, target='_blank')= device.name
+      else
+        th= device.name
+  tbody
+    tr
+      th Description
+      td= device.desc
+    tr
+      th Type
+      td= device.deviceType
+    tr
+      th Department
+      td= device.dept
+      //-tr
+        th Owner
+        td= device.owner
+      //-tr
+        th Installed to device
+        - var installToDevice = device.installToDevice.id ? '<a href="/devices/' + device.installToDevice.id + '">' + device.installToDevice.serialNo + '</a>' : 'N/A'
+        td(id = 'dInstallToDevice')!= installToDevice
+      //-tr
+        th Installed to slot
+        - var installToSlot = device.installToSlot.id ? '<a href="/slots/' + device.installToSlot.id + '">' + device.installToSlot.name + '</a>' : 'N/A'
+          td(id = 'dInstallToSlot')!= installToSlot
+      //-tr
+        th Status
+        -
+          var statusMap = {
+              '0': 'Not installed',
+              '1': 'Prepare to install',
+              '1.5': 'Prepare installation checklist',
+              '2': 'approved to install',
+              '3': 'installed'
+            };
+          var status = statusMap[device.status]
+        td(id = 'dStatus', name = device.status)= status

@@ -4,6 +4,7 @@
 import * as mongoose from 'mongoose';
 
 import { Checklist } from './checklist';
+import { MODEL_NAME as DEVICE_MODEL_NAME } from './device';
 import { Group } from './group';
 
 import * as history from '../shared/history';
@@ -20,16 +21,25 @@ export interface ISlot {
   careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   arr: string;
   drr: string;
+  installDeviceId?: ObjectId;
+  installDeviceBy?: string;
+  installDeviceOn?: Date;
 };
 
 export interface Slot extends ISlot, history.Document<Slot> {
   // no additional methods
 };
 
-const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
+// Needed to stop cyclical dependency
+// between Slot and Device models.
+export const MODEL_NAME = 'Slot';
+
+export const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
 
 const Schema = mongoose.Schema;
+
 const ObjectId = Schema.Types.ObjectId;
+
 
 const slotSchema = new Schema({
   //system: String,
@@ -79,7 +89,20 @@ const slotSchema = new Schema({
     type: String,
     required: true,
   },
-  //elementName: String,
+  installDeviceId: {
+    type: ObjectId,
+    required: false,
+    ref: DEVICE_MODEL_NAME,
+  },
+  installDeviceBy: {
+    type: String,
+    required: false,
+  },
+  installDeviceOn: {
+    type: Date,
+    required: false,
+  },
+  // elementName: String,
   // InnerDiameter: String,// Minimum Beam Pipe Inner Diameter (mm)
   // flangeLength: Number,// Element Flange to Flange Length (m)
   // placeHolder: Number,
@@ -91,7 +114,6 @@ const slotSchema = new Schema({
   // end2endLength: Number,// Accumulated end-to-end Length (m)
   // comment: String,
   // artemisDistance: Number,// Distance from Artemis source (m) ???
-
   // the following attributes not in slot excel file
   // owner: String,
   // area: String,
@@ -108,10 +130,6 @@ const slotSchema = new Schema({
   //   default: 0,
   //   enum: [0, 1, 2, 2.5, 3, 4]
   // },
-  // device: {
-  //   serialNo: {type: String, default: null},
-  //   id: {type: String, default: null}
-  // },
   // approvalStatus: {
   //   type: Boolean,
   //   default: false
@@ -124,17 +142,7 @@ const slotSchema = new Schema({
 });
 
 history.addHistory(slotSchema, {
-  pathsToWatch: [
-    'name',
-    'desc',
-    'area',
-    'deviceType',
-    'checklistId',
-    'groupId',
-    'careLevel',
-    'drr',
-    'arr',
-  ],
+  watchAll: true,
 });
 
-export const Slot = history.model<Slot>('Slot', slotSchema);
+export const Slot = history.model<Slot>(MODEL_NAME, slotSchema);

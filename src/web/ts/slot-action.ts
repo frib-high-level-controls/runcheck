@@ -26,6 +26,19 @@ $(() => {
     ChecklistUtil.render('#checklist-panel', slot.checklistId);
   }
 
+  if (slot.installDeviceId) {
+    $.get({
+      url: `/devices/${slot.installDeviceId}`,
+      dataType: 'json',
+    }).then((data) => {
+      $('#install-panel').html(deviceDetailsTemplate({
+        device: data.data,
+        embedded: true,
+      })).removeClass('hidden');
+      $('#uninstall').removeClass('hidden');
+    });
+  }
+
   // else {
   //   if (perms.assign) {
   //     $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');

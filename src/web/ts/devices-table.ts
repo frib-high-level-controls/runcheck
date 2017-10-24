@@ -39,6 +39,15 @@ $(() => {
       },
       searching: true,
     }, {
+      title: 'Installation Slot',
+      data: <any> null,
+      render: (row: webapi.DeviceTableRow): string => {
+        if (!row.installSlotName) {
+          return '-';
+        }
+        return `<a href="/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
+      },
+    }, {
       title: 'Checklist',
       //order: true,
       type: 'numeric',

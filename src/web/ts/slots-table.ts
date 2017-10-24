@@ -56,6 +56,15 @@ $(() => {
       },
       searching: true,
     }, {
+      title: 'Installation Device',
+      data: <any> null,
+      render: (row: webapi.SlotTableRow): string => {
+        if (!row.installDeviceName) {
+          return '-';
+        }
+        return `<a href="/devices/${row.installDeviceName}" target="_blank">${row.installDeviceName}</a>`;
+      },
+    }, {
       title: 'Checklist',
       // order: true,
       type: 'numeric',

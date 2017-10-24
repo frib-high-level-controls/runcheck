@@ -10,7 +10,10 @@ import * as auth from '../shared/auth';
 import * as log from '../shared/logging';
 //var reqUtils = require('../lib/req-utils');
 
-import { ObjectId } from '../shared/models';
+import {
+  mapById,
+  ObjectId,
+} from '../shared/models';
 
 import {
   catchAll,
@@ -25,6 +28,10 @@ import {
   Slot,
 } from '../models/slot';
 
+import {
+  Device,
+} from '../models/device';
+
 const debug = dbg('runcheck:slots');
 
 export const router = express.Router();
@@ -36,9 +43,12 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
-      const slots = await Slot.find().exec();
+      const [ slots, devices ] = await Promise.all([
+        Slot.find().exec(),
+        mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
+      ]);
       for (let slot of slots) {
-        rows.push({
+        const row: webapi.SlotTableRow = {
           id: ObjectId(slot._id).toHexString(),
           name: slot.name,
           desc: slot.desc,
@@ -47,7 +57,17 @@ router.get('/', catchAll(async (req, res) => {
           careLevel: slot.careLevel,
           drr: slot.drr,
           arr: slot.arr,
-        });
+        };
+        if (slot.installDeviceId) {
+          const deviceId = slot.installDeviceId.toHexString();
+          const device = devices.get(deviceId);
+          if (device) {
+            row.installDeviceName = device.name;
+          } else {
+            log.warn('Installation device not found: %s', deviceId);
+          }
+        }
+        rows.push(row);
       }
       res.json(<webapi.Pkg<webapi.SlotTableRow[]>> {
         data: rows,
@@ -87,12 +107,20 @@ router.get('/', catchAll(async (req, res) => {
 //   });
 // }));
 
+// '^[a-fA-F\\d]{24}$'
 
-router.get('/:name', catchAll( async (req, res) => {
-  const name = String(req.params.name);
+router.get('/:name_or_id', catchAll( async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Slot (and history) with name or id: %s', nameOrId);
 
-  debug('Find Slot (and history) with name: %s', name);
-  const slot = await Slot.findOneWithHistory({ name: name.toUpperCase() });
+  let slot: Slot | null;
+  let device: Device | null | undefined;
+  if (nameOrId.match('^[a-fA-F\\d]{24}$')) {
+    slot = await Slot.findByIdWithHistory(nameOrId);
+  } else {
+    slot = await Slot.findOneWithHistory({ name: nameOrId.toUpperCase() });
+  }
+
   if (!slot) {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
@@ -107,6 +135,9 @@ router.get('/:name', catchAll( async (req, res) => {
     careLevel: slot.careLevel,
     drr: slot.drr,
     arr: slot.arr,
+    installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
+    installDeviceBy: slot.installDeviceBy,
+    installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
   };
 
   return format(res, {

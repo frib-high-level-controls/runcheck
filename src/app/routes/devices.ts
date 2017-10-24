@@ -16,6 +16,10 @@ import {
 } from '../models/checklist';
 
 import {
+  Slot,
+} from '../models/slot';
+
+import {
   Device,
 } from '../models/device';
 
@@ -39,14 +43,27 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.DeviceTableRow[] =  [];
-      const devices = await Device.find().exec();
+      const [ devices, slots ] = await Promise.all([
+        Device.find().exec(),
+        models.mapById(Slot.find({ installDeviceId: { $exists: true }}).exec()),
+      ]);
       for (let device of devices) {
-        rows.push({
+        const row: webapi.DeviceTableRow = {
           name: device.name,
           desc: device.desc,
           dept: device.dept,
           deviceType: device.deviceType,
-        });
+        };
+        if (device.installSlotId) {
+          const slotId = device.installSlotId.toHexString();
+          const slot = slots.get(slotId);
+          if (slot) {
+            row.installSlotName = slot.name;
+          } else {
+            log.warn('Installation slot not found: %s', slotId);
+          }
+        }
+        rows.push(row);
       }
       res.json(<webapi.Pkg<webapi.DeviceTableRow[]>> {
         data: rows,
@@ -55,34 +72,43 @@ router.get('/', catchAll(async (req, res) => {
   });
 }));
 
-router.get('/:name', catchAll(async (req, res) => {
-  const name = String(req.params.name);
+router.get('/:name_or_id', catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Device (and history) with name or id: %s', nameOrId);
 
-  debug('Find Device (and history) with name: %s', name);
-  const device = await Device.findOneWithHistory({ name: name.toUpperCase() });
+  let device: Device | null;
+  if (nameOrId.match('^[a-fA-F\\d]{24}$')) {
+    device = await Device.findByIdWithHistory(nameOrId);
+  } else {
+    device = await Device.findOneWithHistory({ name: nameOrId.toUpperCase() });
+  }
+
   if (!device) {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const webDevice: webapi.Device = {
+  const apiDevice: webapi.Device = {
     id: String(device.id),
     name: device.name,
     desc: device.desc,
     dept: device.dept,
     deviceType: device.deviceType,
     checklistId: device.checklistId ? device.checklistId.toHexString() : null,
+    installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
+    installSlotBy: device.installSlotBy,
+    installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString() : undefined,
   };
 
   return format(res, {
     'text/html': () => {
       res.render('device', {
-        device: webDevice,
+        device: apiDevice,
         moment: moment,
       });
     },
     'application/json': () => {
       res.json(<webapi.Pkg<webapi.Device>> {
-        data: webDevice,
+        data: apiDevice,
       });
     },
   });
@@ -113,9 +139,14 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const username = auth.getUsername(req);
   const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
-  if (!username || !auth.hasAnyRole(req, ['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
+
+  const username = auth.getUsername(req);
+  const permitted = ['SYS:RUNCHECK', DEPT_LEADER_ROLE];
+  if (!username || !auth.hasAnyRole(req, permitted)) {
+    if (debug.enabled) {
+      debug('Forbidden: Requires any role: [%s]', permitted);
+    }
     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
   }
 

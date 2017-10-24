@@ -52,6 +52,7 @@ declare namespace webapi {
     desc: string;
     dept: string;
     deviceType: string;
+    installSlotName?: string;
   }
 
   export interface SlotTableRow {
@@ -63,6 +64,7 @@ declare namespace webapi {
     careLevel: string; 
     drr: string;
     arr: string;
+    installDeviceName?: string;
   }
 
   export interface GroupTableRow {
@@ -78,6 +80,9 @@ declare namespace webapi {
     dept: string;
     deviceType: string;
     checklistId: string | null;
+    installSlotId?: string;
+    installSlotOn?: string;
+    installSlotBy?: string;
     //updates: {}
   }
 
@@ -91,6 +96,9 @@ declare namespace webapi {
     careLevel: string;
     arr: string;
     drr: string;
+    installDeviceId?: string;
+    installDeviceOn?: string;
+    installDeviceBy?: string;
     //updates: {}
   }
 

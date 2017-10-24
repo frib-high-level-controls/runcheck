@@ -1,0 +1,26 @@
+
+table.table
+  thead
+    tr
+      th Name
+      if embedded
+        th
+          a(href='/slots/'+slot.name, target='_blank')= slot.name
+      else  
+        th= slot.name
+  tbody
+    tr
+      th Type
+      td= slot.deviceType
+    tr
+      th Area
+      td= slot.area
+    tr
+      th Level of Care
+      td= slot.careLevel
+    tr
+      th DRR
+      td= slot.drr
+    tr
+      th ARR
+      td= slot.arr

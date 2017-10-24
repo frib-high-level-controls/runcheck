@@ -16,30 +16,20 @@ block content
       h3 Slot
       .row
         .col-md-6
-          table.table
-            thead
-              tr
-                th Name
-                th= slot.name
-            tbody
-              tr
-                th Type
-                td= slot.deviceType
-              tr
-                th Area
-                td= slot.area
-              tr
-                th Level of Care
-                td= slot.careLevel
-              tr
-                th DRR
-                td= slot.drr
-              tr
-                th ARR
-                td= slot.arr
+          include ./client-side/slot-details.pug
           hr
   br
   .container
+    .row
+      .col-md-6
+        .panel.panel-default
+          .panel-heading.clearfix
+            .pull-left
+              h4 Installation Device
+            .pull-right
+              button.btn.btn-primary.hidden#install(disabled='disabled') Install
+              button.btn.btn-primary.hidden#uninstall(disabled='disabled') Uninstall
+          .panel-body.hidden#install-panel
     .row
       .col-md-12
         .panel.panel-default
@@ -166,6 +156,7 @@ block content
 block js
   script(type='text/javascript', src='/js/slot-action.js')
   script(type='text/javascript', src='/js/checklistutil.js')
+  script(type='text/javascript', src='/javascripts/template/device-details.js')
   script(type='text/javascript', src='/javascripts/template/checklist-input.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config.js')
   script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
