@@ -246,7 +246,7 @@ async function doStart(): Promise<express.Application> {
   if (!cfg.forgapi.url) {
     throw new Error('FORG base URL not configured');
   }
-  log('FORG API base URL: %s', cfg.forgapi.url);
+  info('FORG API base URL: %s', cfg.forgapi.url);
 
   const forgClient = new forgapi.Client({
     url: String(cfg.forgapi.url),
@@ -258,12 +258,12 @@ async function doStart(): Promise<express.Application> {
   if (!cfg.cas.cas_url) {
     throw new Error('CAS base URL not configured');
   }
-  log('CAS base URL: %s', cfg.cas.cas_url);
+  info('CAS base URL: %s', cfg.cas.cas_url);
 
   if (!cfg.cas.service_url) {
     throw new Error('CAS service URL not configured');
   }
-  log('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
+  info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
 
   const cfAuthProvider = new cfauth.CasForgProvider(forgClient, {
     casUrl: String(cfg.cas.cas_url),
@@ -332,7 +332,7 @@ async function doStart(): Promise<express.Application> {
   app.get('/logout', (req, res) => {
     cfAuthProvider.logout(req);
     const redirectUrl = cfAuthProvider.getCasLogoutUrl(true);
-    log('Redirect to CAS logout: %s', redirectUrl);
+    info('Redirect to CAS logout: %s', redirectUrl);
     res.redirect(redirectUrl);
   });
 
