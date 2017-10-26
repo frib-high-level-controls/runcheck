@@ -64,6 +64,7 @@ $(() => {
         }
         return `<a href="/devices/${row.installDeviceName}" target="_blank">${row.installDeviceName}</a>`;
       },
+      searching: true,
     }, {
       title: 'Checklist',
       // order: true,

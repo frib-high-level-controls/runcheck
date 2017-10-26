@@ -47,6 +47,7 @@ $(() => {
         }
         return `<a href="/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
       },
+      searching: true,
     }, {
       title: 'Checklist',
       //order: true,
