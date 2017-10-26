@@ -1,4 +1,6 @@
-
+/**
+ * Start and configure the web application.
+ */
 import fs = require('fs');
 import path = require('path');
 
@@ -13,6 +15,7 @@ import session = require('express-session');
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
 import status = require('./shared/status');
+import tasks = require('./shared/tasks');
 import auth = require('./shared/auth');
 import cfauth = require('./shared/cas-forg-auth');
 import forgapi = require('./shared/forgapi');
@@ -67,13 +70,12 @@ interface Config {
 let app: express.Application;
 
 // application logging
-let log = logging.log;
 let info = logging.info;
 let warn = logging.warn;
 let error = logging.error;
 
 // application lifecycle
-let state = 'stopped';
+let task = new tasks.StandardTask<express.Application>(doStart, doStop);
 
 // application activity
 let activeCount = 0;
@@ -125,15 +127,16 @@ async function readNameVersion(): Promise<[string | undefined, string | undefine
 };
 
 // asynchronously start the application
-async function start(): Promise<express.Application> {
-  if (state !== 'stopped') {
-    throw new Error('Application must be in "stopped" state');
-  }
+function start(): Promise<express.Application> {
+  return task.start();
+};
+
+// asynchronously configure the application
+async function doStart(): Promise<express.Application> {
 
   let activeFinished: () => void;
 
-  state = 'starting';
-  log('Application starting');
+  info('Application starting');
 
   activeCount = 0;
   activeStopped = new Promise<void>(function (resolve) {
@@ -149,14 +152,14 @@ async function start(): Promise<express.Application> {
   app.set('version', version);
 
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (state !== 'started') {
-      res.status(503).end('application ' + state);
+    if (task.getState() !== 'STARTED') {
+      res.status(503).end('Application ' + task.getState());
       return;
     }
     res.on('finish', () => {
       activeCount -= 1;
       updateActivityStatus();
-      if (state === 'stopping' && activeCount <= 0) {
+      if (task.getState() === 'STOPPING' && activeCount <= 0) {
         activeFinished();
       }
     });
@@ -165,27 +168,7 @@ async function start(): Promise<express.Application> {
     next();
   });
 
-  try {
-    await doStart();
-  } catch (err) {
-    try {
-      await stop();
-    } catch (ierr) {
-      /* ignore */
-    }
-    throw err;
-  }
-
-  log('Application started');
-  state = 'started';
-  return app;
-};
-
-
-// asynchronously configure the application
-async function doStart(): Promise<void> {
   let env: {} | undefined = app.get('env');
-  let name: {} | undefined = app.get('name');
 
   let cfg: Config = {
     app: {
@@ -215,7 +198,7 @@ async function doStart(): Promise<void> {
     rc(name, cfg);
     if (cfg.configs) {
       for (let file of cfg.configs) {
-        log('Load configuration: %s', file);
+        info('Load configuration: %s', file);
       }
     }
   }
@@ -242,7 +225,7 @@ async function doStart(): Promise<void> {
 
   mongoose.connection.on('connected', () => {
     status.setComponentOk('MongoDB', 'Connected');
-    log('Mongoose default connection opened.');
+    info('Mongoose default connection opened.');
   });
 
   mongoose.connection.on('disconnected', () => {
@@ -256,7 +239,7 @@ async function doStart(): Promise<void> {
   });
 
   status.setComponentError('MongoDB', 'Never Connected');
-  log('Mongoose default connection: %s', mongoUrl);
+  info('Mongoose default connection: %s', mongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
   // Authentication configuration
@@ -369,32 +352,25 @@ async function doStart(): Promise<void> {
 
   // error handlers
   app.use(handlers.requestErrorHandler);
+
+  info('Application started');
+  return app;
 };
 
 // asynchronously stop the application
-async function stop(): Promise<void> {
-  if (state !== 'started') {
-    throw new Error('Application must be in "started" state');
-  }
-
-  state = 'stopping';
-  log('Application stopping');
-
-  if (activeCount > 0) {
-    log('Waiting for active requests to stop');
-    await activeStopped;
-  }
-
-  try {
-    await doStop();
-  } finally {
-    log('Application stopped');
-    state = 'stopped';
-  }
-};
+function stop(): Promise<void> {
+  return task.stop();
+}
 
 // asynchronously disconnect the application
 async function doStop(): Promise<void> {
+  info('Application stopping');
+
+  if (activeCount > 0) {
+    info('Waiting for active requests to stop');
+    await activeStopped;
+  }
+
   try {
     await status.monitor.stop();
     info('Status monitor stopped');
@@ -410,7 +386,7 @@ async function doStop(): Promise<void> {
     warn('Mongoose disconnect failure: %s', err);
   }
 
-  return;
-}
+  info('Application stopped');
+};
 
-export { start, stop, log, error };
+export { start, stop, info, warn, error };
