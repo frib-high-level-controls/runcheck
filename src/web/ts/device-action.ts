@@ -170,6 +170,8 @@ $(() => {
       })).removeClass('hidden');
       $('#uninstall').removeClass('hidden');
     });
+  } else {
+    $('#install').removeClass('hidden');
   }
 
   // var selected = null;
