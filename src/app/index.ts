@@ -66,13 +66,16 @@ interface Config {
   };
 };
 
+// application states (same as tasks.State, but avoids the dependency)
+export type State = 'STARTING' | 'STARTED' | 'STOPPING' | 'STOPPED';
+
 // application singleton
 let app: express.Application;
 
 // application logging
-let info = logging.info;
-let warn = logging.warn;
-let error = logging.error;
+export let info = logging.info;
+export let warn = logging.warn;
+export let error = logging.error;
 
 // application lifecycle
 let task = new tasks.StandardTask<express.Application>(doStart, doStop);
@@ -126,8 +129,13 @@ async function readNameVersion(): Promise<[string | undefined, string | undefine
   return [name, version];
 };
 
+// get the application state
+export function getState(): State {
+  return task.getState();
+};
+
 // asynchronously start the application
-function start(): Promise<express.Application> {
+export function start(): Promise<express.Application> {
   return task.start();
 };
 
@@ -358,7 +366,7 @@ async function doStart(): Promise<express.Application> {
 };
 
 // asynchronously stop the application
-function stop(): Promise<void> {
+export function stop(): Promise<void> {
   return task.stop();
 }
 
@@ -388,5 +396,3 @@ async function doStop(): Promise<void> {
 
   info('Application stopped');
 };
-
-export { start, stop, info, warn, error };
