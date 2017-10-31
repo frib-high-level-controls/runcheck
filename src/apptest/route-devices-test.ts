@@ -11,7 +11,7 @@ import {
 } from '../app/models/device';
 
 import * as app from './app';
-import * as data from './test-data';
+import * as data from './data';
 
 const debug = dbg('runcheck:test:devices');
 
