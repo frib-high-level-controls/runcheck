@@ -15,14 +15,6 @@ import * as data from './test-data';
 
 const debug = dbg('runcheck:test:devices');
 
-const MONGO_URL = 'mongodb://localhost:27017/forg-test';
-// To populate the DB for development, use this URL:
-// const MONGO_URL = 'mongodb://localhost:27017/forg-dev';
-
-const MONGO_OPTS = {
-  useMongoClient: true,
-};
-
 // Utility to get an authenticated agent for the specified user.
 async function requestFor(app: express.Application, username: string, password?: string) {
   const agent = request.agent(app);
@@ -40,10 +32,10 @@ describe('Device T99999-TEST-0009-0099-S00002', () => {
   let handler: express.Application;
 
   before(async () => {
-    // Initialize the test data
-    await data.initialize();
     // Start the application
     handler = await app.start();
+    // Initialize the test data
+    await data.initialize();
   });
 
   before(async () => {
@@ -56,6 +48,10 @@ describe('Device T99999-TEST-0009-0099-S00002', () => {
     }
     deviceId = device.id;
     debug('Device T99999-TEST-0009-0099-S00002 => %s', deviceId);
+  });
+
+  after(async () => {
+    await app.stop();
   });
 
   it('Anonymous user get device by name', () => {

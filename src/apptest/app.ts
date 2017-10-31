@@ -13,9 +13,16 @@ import * as session from 'express-session';
 
 import { State } from '../app';
 
+import * as auth from '../app/shared/auth';
+import * as forgauth from '../app/shared/forg-auth';
 import * as handlers from '../app/shared/handlers';
+import * as ppauth from '../app/shared/passport-auth';
 import * as status from '../app/shared/status';
 import * as tasks from '../app/shared/tasks';
+
+import * as devices from '../app/routes/devices';
+
+import * as forgapi from './shared/mock-forgapi';
 
 // application states
 export type State = State;
@@ -41,6 +48,13 @@ export function start(): Promise<express.Application> {
 }
 
 async function doStart(): Promise<express.Application> {
+
+  const forgClient = forgapi.MockClient.getInstance();
+
+  const authProvider = new forgauth.DevForgBasicProvider(forgClient, { realm: 'TEST' });
+
+  auth.setProvider(authProvider);
+
   app = express();
 
   // status monitor start
@@ -78,7 +92,23 @@ async function doStart(): Promise<express.Application> {
   app.use(express.static(path.resolve(__dirname, '..', '..', 'public')));
   app.use(express.static(path.resolve(__dirname, '..', '..', 'bower_components')));
 
+  app.use(authProvider.initialize());
+
+  app.get('/login', authProvider.authenticate(), (req, res) => {
+    if (req.query.bounce) {
+      res.redirect(req.query.bounce);
+      return;
+    }
+    res.redirect('/');
+  });
+
+  app.get('/logout', (req, res) => {
+    authProvider.logout(req);
+    res.redirect('/');
+  });
+
   app.use('/status', status.router);
+  app.use('/devices', devices.router);
 
   // no handler found for request
   app.use(handlers.notFoundHandler);

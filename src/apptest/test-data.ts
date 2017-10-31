@@ -2,7 +2,7 @@
 /*
  * Utility for loading test data.
  */
-import mongoose = require('mongoose');
+import * as mongoose from 'mongoose';
 
 import * as auth from '../app/shared/auth';
 
@@ -17,16 +17,6 @@ import {
 } from '../app/models/checklist';
 
 import * as forgapi from './shared/mock-forgapi';
-
-mongoose.Promise = global.Promise;
-
-const MONGO_URL = 'mongodb://localhost:27017/runcheck-test';
-// To populate the DB for development, use this URL:
-// const MONGO_URL = 'mongodb://localhost:27017/forg-dev';
-
-const MONGO_OPTS = {
-  useMongoClient: true,
-};
 
 
 const USERS: forgapi.User[] = [
@@ -91,8 +81,6 @@ export function initialize(): Promise<void> {
 };
 
 async function doInititialize(): Promise<void> {
-  await mongoose.connect(MONGO_URL, MONGO_OPTS);
-
   // clear the database
   await mongoose.connection.db.dropDatabase();
 
