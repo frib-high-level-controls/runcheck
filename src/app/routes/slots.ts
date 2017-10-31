@@ -8,12 +8,9 @@ import * as moment from 'moment';
 
 import * as auth from '../shared/auth';
 import * as log from '../shared/logging';
+import * as models from '../shared/models';
 //var reqUtils = require('../lib/req-utils');
 
-import {
-  mapById,
-  ObjectId,
-} from '../shared/models';
 
 import {
   catchAll,
@@ -45,11 +42,11 @@ router.get('/', catchAll(async (req, res) => {
       const rows: webapi.SlotTableRow[] = [];
       const [ slots, devices ] = await Promise.all([
         Slot.find().exec(),
-        mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
+        models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
       ]);
       for (let slot of slots) {
         const row: webapi.SlotTableRow = {
-          id: ObjectId(slot._id).toHexString(),
+          id: models.ObjectId(slot._id).toHexString(),
           name: slot.name,
           desc: slot.desc,
           area: slot.area,
@@ -115,7 +112,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
 
   let slot: Slot | null;
   let device: Device | null | undefined;
-  if (nameOrId.match('^[a-fA-F\\d]{24}$')) {
+  if (models.isValidId(nameOrId)) {
     slot = await Slot.findByIdWithHistory(nameOrId);
   } else {
     slot = await Slot.findOneWithHistory({ name: nameOrId.toUpperCase() });
@@ -126,7 +123,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
   }
 
   const apiSlot: webapi.Slot = {
-    id: ObjectId(slot._id).toHexString(),
+    id: models.ObjectId(slot._id).toHexString(),
     name: slot.name,
     desc: slot.desc,
     area: slot.area,

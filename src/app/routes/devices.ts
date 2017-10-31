@@ -77,7 +77,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
   debug('Find Device (and history) with name or id: %s', nameOrId);
 
   let device: Device | null;
-  if (nameOrId.match('^[a-fA-F\\d]{24}$')) {
+  if (models.isValidId(nameOrId)) {
     device = await Device.findByIdWithHistory(nameOrId);
   } else {
     device = await Device.findOneWithHistory({ name: nameOrId.toUpperCase() });
