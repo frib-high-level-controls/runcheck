@@ -14,39 +14,55 @@ $(() => {
     `);
   }
 
+  async function renderInstall(deviceId: string) {
+    try {
+      let data: webapi.Pkg<webapi.Device> = await $.get({
+        url: `/devices/${slot.installDeviceId}`,
+        dataType: 'json',
+      });
+      $('#install-panel')
+        .html(deviceDetailsTemplate({
+          device: data.data,
+          embedded: true,
+        }))
+        .removeClass('hidden');
+      // TODO Permissions!
+      $('#uninstall').removeClass('hidden');
+    } catch (err) {
+      showMessage('Device not found!');
+    }
+  }
+
   // ensure the device has been initialized
   if (!slot) {
-    showMessage('Device not initialized');
+    console.error('Slot');
+    showMessage('Slot not initialized');
     return;
   }
 
-  if (slot.checklistId) {
-    // TODO: Show 'unassign' button if permitted.
+  if (slot.installDeviceId) {
+    renderInstall(slot.installDeviceId);
+  }
+
+  if (slot.groupId) {
+    $('#checklist-panel').removeClass('hidden').html(`
+      <h4>See the associated <a href="/groups/slot/${slot.groupId}" target="_blank">Group</a></h3>
+    `);
+  } else if (slot.checklistId) {
+    if (slot.permissions.assign) {
+      $('#checklist-unassign').removeClass('hidden').removeAttr('disabled');
+    } else {
+      $('#checklist-unassign').removeClass('hidden').attr('disabled', 'disabled');
+    }
     $('#checklist-panel').removeClass('hidden');
     ChecklistUtil.render('#checklist-panel', slot.checklistId);
+  } else {
+    if (slot.permissions.assign) {
+      $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
+    } else {
+      $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
+    }
   }
-
-  if (slot.installDeviceId) {
-    $.get({
-      url: `/devices/${slot.installDeviceId}`,
-      dataType: 'json',
-    }).then((data) => {
-      $('#install-panel').html(deviceDetailsTemplate({
-        device: data.data,
-        embedded: true,
-      })).removeClass('hidden');
-      $('#uninstall').removeClass('hidden');
-    });
-  }
-
-  // else {
-  //   if (perms.assign) {
-  //     $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
-  //   } else {
-  //     $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
-  //   }
-  // }
-
 });
 
 // add group functions start
@@ -61,7 +77,7 @@ $(() => {
 //   var sField = 'Validaton failed: ';
 //   if ($('.row-selected').length == 0) {
 //     $('#message').append('<div class="alert alert-info"><button class="close" data-dismiss="alert">x</button>Please select at least one slot.</div>');
-//     return;
+//     return; 
 //   }
 //   var slotIds = [];
 //   $('.row-selected').each(function() {

@@ -11,6 +11,10 @@ import * as log from '../shared/logging';
 import * as models from '../shared/models';
 //var reqUtils = require('../lib/req-utils');
 
+import {
+  Checklist,
+  IChecklist,
+} from '../models/checklist';
 
 import {
   catchAll,
@@ -29,7 +33,31 @@ import {
   Device,
 } from '../models/device';
 
+import {
+  Group,
+} from '../models/group';
+
 const debug = dbg('runcheck:slots');
+
+
+/**
+ * Compute the permissions of the current user for the specified slot.
+ *
+ * @param req HTTP Request
+ * @param slot Model
+ */
+function getPermissions(req: express.Request, slot: Slot) {
+  const ADMIN_ROLE = 'ADM:RUNCHECK';
+  const AREA_LEADER_ROLE = auth.formatRole('GRP', slot.area, 'LEADER');
+  const PERM_ASSIGN_ROLES = [ ADMIN_ROLE, AREA_LEADER_ROLE ];
+  if (debug.enabled) {
+    debug('PERM: ASSIGN: %s (%s)', auth.hasAnyRole(req, PERM_ASSIGN_ROLES), PERM_ASSIGN_ROLES.join(' | '));
+  }
+  return {
+    assign: auth.hasAnyRole(req, PERM_ASSIGN_ROLES),
+  };
+};
+
 
 export const router = express.Router();
 
@@ -111,7 +139,6 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
   debug('Find Slot (and history) with name or id: %s', nameOrId);
 
   let slot: Slot | null;
-  let device: Device | null | undefined;
   if (models.isValidId(nameOrId)) {
     slot = await Slot.findByIdWithHistory(nameOrId);
   } else {
@@ -132,9 +159,11 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     careLevel: slot.careLevel,
     drr: slot.drr,
     arr: slot.arr,
+    groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
     installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
     installDeviceBy: slot.installDeviceBy,
     installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
+    permissions: getPermissions(req, slot),
   };
 
   return format(res, {
@@ -149,6 +178,59 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
         data: apiSlot,
       });
     },
+  });
+}));
+
+
+/**
+ * Assign a Checklist to the specified slot.
+ */
+router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Device with name or id: %s', nameOrId);
+
+  let slot: Slot | null;
+  if (models.isValidId(nameOrId)) {
+    slot = await Slot.findById(nameOrId).exec();
+  } else {
+    slot = await Slot.findOne({name : nameOrId.toUpperCase() });
+  }
+
+  if (!slot || !slot.id) {
+    throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
+  }
+
+  const username = auth.getUsername(req);
+  const permissions = getPermissions(req, slot);
+  if (!username || !permissions.assign) {
+    throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
+  }
+
+  // TODO: Check that a device is installed?
+
+  if (slot.checklistId) {
+    debug('Slot already has checklist id: %s', slot.checklistId);
+    res.json(<webapi.Pkg<string>> {
+      data: slot.checklistId.toHexString(),
+    });
+    return;
+  }
+
+  const doc: IChecklist = {
+    checklistType: 'slot-default',
+    targetType: models.getModelName(slot),
+    targetId: models.ObjectId(slot._id),
+  };
+
+  debug('Create new Checklist with type: %s', doc.checklistType);
+  const checklist = await Checklist.create(doc);
+
+  debug('Update Slot with new checklist id: %s', checklist._id);
+  slot.checklistId = models.ObjectId(checklist._id);
+  await slot.saveWithHistory(auth.formatRole('USR', username ));
+
+  res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
+    data: slot.checklistId.toHexString(),
   });
 }));
 

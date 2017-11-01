@@ -88,6 +88,7 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
       careLevel: slot.careLevel,
       arr: slot.arr,
       drr: slot.drr,
+      permissions: {},
     });
   }
   res.json(<webapi.Pkg<webapi.Slot[]>> {

@@ -4,6 +4,7 @@ block head
   title #{slot.name} :: RunCheck
 
 block content
+  br
   .container
     #message
     //-#modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
@@ -12,13 +13,25 @@ block content
           .modal-header
             h3#modalLabel
           .modal-footer
-    #slot-details
-      h3 Slot
-      .row
-        .col-md-6
-          include ./client-side/slot-details.pug
-          hr
-  br
+    .row
+      .col-md-6
+        .panel.panel-primary
+          .panel-heading.clearfix
+            .pull-left
+              h2 Slot
+            .pull-right
+              if slot.groupId
+                //- h3
+                  button.btn.btn-linkbtn-link(href=slot.groupId) Group
+                //- h3
+                  a.btn.btn-default(href='/groups/slot/' + slot.groupId) Group
+                h3
+                  span.btn.btn-default
+                    a(href="") Go to Group
+          .panel-body#slot-details
+            include ./client-side/slot-details.pug
+          //- hr
+  //- br
   .container
     .row
       .col-md-6
@@ -38,7 +51,8 @@ block content
               h4 Checklist
             .pull-right
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
-              button.btn.btn-primary.hidden#checklist-assign(disabled='disabled') Assign
+              button.btn.btn-primary.hidden#checklist-assign(autocomplete='off' type='button' disabled='disabled') Assign
+              button.btn.btn-primary.hidden#checklist-unassign(autocomplete='off' type='button' disabled='disabled') Unassign
           .panel-body.hidden#checklist-panel
   //-.panel.panel-default
     .panel-heading

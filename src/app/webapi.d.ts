@@ -96,9 +96,13 @@ declare namespace webapi {
     careLevel: string;
     arr: string;
     drr: string;
+    groupId?: string;
     installDeviceId?: string;
     installDeviceOn?: string;
     installDeviceBy?: string;
+    permissions: {
+      assign?: boolean;
+    }
     //updates: {}
   }
 
