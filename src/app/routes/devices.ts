@@ -155,6 +155,7 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
     res.json({
       data: device.checklistId.toHexString(),
     });
+    return;
   }
 
   const doc: IChecklist = {
