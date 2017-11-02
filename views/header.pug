@@ -29,7 +29,7 @@ header
         ul.nav.navbar-nav.navbar-right
           if (auth && auth.username)
             li
-              img.img-responsive(style='height: 50px;' src=forgurl + '/api/v1/users/' + auth.username + '/photo', title=auth.username)
+              img.img-responsive(style='height: 50px;', src=forgurl + '/api/v1/users/' + auth.username + '/photo', title=auth.username, alt=auth.username)
             li.dropdown
               a.dropdown-toggle(href='#', data-toggle='dropdown') #{auth.user.fullname ? auth.user.fullname : auth.username}
                 b.caret

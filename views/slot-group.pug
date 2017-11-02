@@ -37,7 +37,7 @@ block content
             .panel-title Slots
           .panel-body
             .table-responsive
-              table#slot-table.table.table-condensed.table-bordered.table-hover
+              table.table.table-condensed.table-bordered.table-hover#slot-table
     .row
       .col-md-12
         .panel.panel-default
@@ -46,7 +46,7 @@ block content
               h4 Checklist
             .pull-right
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
-              button.btn.btn-primary.hidden#checklist-assign(disabled='disabled') Assign
+              button.btn.btn-primary.hidden#checklist-assign(type='button', disabled='disabled') Assign
           .panel-body.hidden#checklist-panel
 
   //-.panel.panel-default(style="margin-top: 10px")

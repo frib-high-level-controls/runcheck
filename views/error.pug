@@ -1,11 +1,11 @@
 extends layout.pug
 
 block content
-    h1 Error
-    if code
-      p Code: #{code}
-    if message
-      p Message: #{message}
-    if cause && cause.stack
-      p Stack Trace:
-        pre #{cause.stack}
+  h1 Error
+  if code
+    p Code: #{code}
+  if message
+    p Message: #{message}
+  if cause && cause.stack
+    p Stack Trace:
+      pre #{cause.stack}

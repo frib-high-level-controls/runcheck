@@ -27,7 +27,7 @@ block content
                   a.btn.btn-default(href='/groups/slot/' + slot.groupId) Group
                 h3
                   span.btn.btn-default
-                    a(href="") Go to Group
+                    a(href='') Go to Group
           .panel-body#slot-details
             include ./client-side/slot-details.pug
           //- hr
@@ -40,8 +40,8 @@ block content
             .pull-left
               h4 Installation Device
             .pull-right
-              button.btn.btn-primary.hidden#install(disabled='disabled') Install
-              button.btn.btn-primary.hidden#uninstall(disabled='disabled') Uninstall
+              button.btn.btn-primary.hidden#install(type='button', disabled='disabled') Install
+              button.btn.btn-primary.hidden#uninstall(type='button', disabled='disabled') Uninstall
           .panel-body.hidden#install-panel
     .row
       .col-md-12
@@ -51,8 +51,8 @@ block content
               h4 Checklist
             .pull-right
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
-              button.btn.btn-primary.hidden#checklist-assign(autocomplete='off' type='button' disabled='disabled') Assign
-              button.btn.btn-primary.hidden#checklist-unassign(autocomplete='off' type='button' disabled='disabled') Unassign
+              button.btn.btn-primary.hidden#checklist-assign(autocomplete='off', type='button', disabled='disabled') Assign
+              button.btn.btn-primary.hidden#checklist-unassign(autocomplete='off', type='button', disabled='disabled') Unassign
           .panel-body.hidden#checklist-panel
   //-.panel.panel-default
     .panel-heading

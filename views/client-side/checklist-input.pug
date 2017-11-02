@@ -70,7 +70,7 @@ form
                   if path.name === 'inputOn' && path.value
                     - inputOn = path.value
                 td.text-left.text-primary
-                  span(data-toggle='tooltip' title=moment(inputOn).format('MMM D YYYY, h:mm:ss A'))= moment(inputOn).fromNow()
+                  span(data-toggle='tooltip', title=moment(inputOn).format('MMM D YYYY, h:mm:ss A'))= moment(inputOn).fromNow()
                 td.text-center.text-primary
                   span= value
                 td.text-left.text-primary

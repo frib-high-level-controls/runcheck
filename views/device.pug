@@ -32,8 +32,8 @@ block content
             .pull-left
               h4 Installation Slot
             .pull-right
-              button.btn.btn-primary.hidden#install(disabled='disabled') Install
-              button.btn.btn-primary.hidden#uninstall(disabled='disabled') Uninstall
+              button.btn.btn-primary.hidden#install(type='button', disabled='disabled') Install
+              button.btn.btn-primary.hidden#uninstall(type='button', disabled='disabled') Uninstall
           .panel-body.hidden#install-panel
     .row
       .col-md-12
@@ -43,7 +43,7 @@ block content
               h4 Checklist
             .pull-right
               h4.fa.fa-spinner.fa-spin.hidden#device-checklist-spin
-              button.btn.btn-primary.hidden#device-assign-checklist(disabled='disabled') Assign
+              button.btn.btn-primary.hidden#device-assign-checklist(type='button', disabled='disabled') Assign
             //- .row
               .col-md-4
                 h3

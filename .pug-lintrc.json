@@ -9,9 +9,9 @@
   "disallowDuplicateAttributes": true,
   "disallowHtmlText": null,
   "disallowIdAttributeWithStaticValue": null,
-  "disallowIdLiterals": true,
+  "disallowIdLiterals": null,
   "disallowIdLiteralsBeforeAttributes": null,
-  "disallowMultipleLineBreaks": true,
+  "disallowMultipleLineBreaks": null,
   "disallowSpaceAfterCodeOperator": null,
   "disallowSpacesInsideAttributeBrackets": true,
   "disallowSpecificAttributes":[
@@ -31,9 +31,9 @@
   "requireSpaceAfterCodeOperator": true,
   "requireSpacesInsideAttributeBrackets": null,
   "requireSpecificAttributes":[
-    { "form": "action" },
     { "img": "alt" },
     { "input": "type" },
+    { "button": "type" },
     { "input[type=submit]": "value" }
   ],
   "requireStrictEqualityOperators": true,
@@ -46,5 +46,7 @@
   "validateExtensions": true,
   "validateIndentation": 2,
   "validateLineBreaks": "LF",
-  "validateSelfClosingTags": true
+  "validateSelfClosingTags": true,
+  "disallowAttributeTemplateString": "all",
+  "disallowTemplateString": "all"
 }

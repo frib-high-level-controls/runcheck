@@ -1,13 +1,13 @@
-extends layout-history
+extends layout-history.pug
 
 block head
   title FRIB runcheck - #{user.name}
 
 block content
   #message
-  .well(style="margin-top: 10px")
+  .well(style='margin-top: 10px')
     #profile
-      img(src='/users/' + user.adid + '/photo')
+      img(src='/users/' + user.adid + '/photo', alt=user.name)
       dl
         dt Name
         dd #{user.name}
@@ -54,9 +54,9 @@ block content
                         option(value=''+subject, selected)= subject
                       else
                         option(value=''+subject)= subject
-              button.btn.btn-default(type='reset')#reset reset
+              button.btn.btn-default#reset(type='reset') reset
               != '  '
-              button.btn.btn-primary(type='submit', disabled)#update update
+              button.btn.btn-primary#update(type='submit', disabled) update
           else
             ul
               if (user.roles.admin)

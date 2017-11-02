@@ -1,4 +1,4 @@
-extends layout
+extends layout.pug
 
 block head
   link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
@@ -37,9 +37,9 @@ block content
       button.btn.btn-primary#new
         | New Group
     //-br
-    #slot-groups.tab-pane.active
+    .tab-pane.active#slot-groups
       .table-responsive
-        table#slot-groups-table.table.table-condensed.table-bordered.table-hover
+        table.table.table-condensed.table-bordered.table-hover#slot-groups-table
 
 block js
   //- script(type='text/javascript', src='/datatables/media/js/jquery.dataTables.js')
