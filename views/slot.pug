@@ -29,7 +29,7 @@ block content
                   span.btn.btn-default
                     a(href='') Go to Group
           .panel-body#slot-details
-            include ./client-side/slot-details.pug
+            include ./web/slot-details.pug
           //- hr
   //- br
   .container
@@ -170,9 +170,9 @@ block content
 block js
   script(type='text/javascript', src='/js/slot-action.js')
   script(type='text/javascript', src='/js/checklistutil.js')
-  script(type='text/javascript', src='/javascripts/template/device-details.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-input.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-config.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
+  script(type='text/javascript', src='/js/templates/device-details.js')
+  script(type='text/javascript', src='/js/templates/checklist-input.js')
+  script(type='text/javascript', src='/js/templates/checklist-config.js')
+  script(type='text/javascript', src='/js/templates/checklist-config-item.js')
   script(type='text/javascript', src='/js/authutil.js')
   script(type='text/javascript') slot = !{JSON.stringify(slot)};

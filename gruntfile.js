@@ -15,17 +15,15 @@ module.exports = function(grunt) {
       }
     },
     shell: {
-      templateSource: 'views/client-side/*.pug',
-      templateOutput: 'public/javascripts/template',
       options: {
         stderr: false
       },
-      template: {
-        command: './node_modules/.bin/pug <%= shell.templateSource %> -D -c --name-after-file -o <%= shell.templateOutput %>'
-      },
       puglint: {
-        command: './node_modules/.bin/pug-lint ./views/*.pug ./views/client-side/*.pug'
-      }
+        command: './node_modules/.bin/pug-lint ./views/*.pug ./views/web/*.pug',
+      },
+      pugcompile: {
+        command: './node_modules/.bin/pug ./views/web/*.pug -D -P -c --name-after-file -o ./public/js/templates',
+      },
     },
     ts: {
       app: {
@@ -107,6 +105,11 @@ module.exports = function(grunt) {
   grunt.registerTask("default", [
     'ts:app',
     'ts:web',
-    'shell:template'
+    'shell:pugcompile',
+  ]);
+
+  grunt.registerTask('lint', [
+    'tslint',
+    'puglint',
   ]);
 };

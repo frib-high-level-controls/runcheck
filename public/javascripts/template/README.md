@@ -1,1 +1,0 @@
-This directory is for the javascript files generated from `views/client-side`. In order to make the repository clean, we do not track the generated files. The build task needs to be run for a new deployment, and when the files in `views/client-side` and their dependencies are updated. 

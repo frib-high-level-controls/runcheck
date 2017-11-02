@@ -11,7 +11,7 @@ block content
       .row
         .col-md-6
           h3 Device
-          include ./client-side/device-details.pug
+          include ./web/device-details.pug
           hr
 
   //- .container.btn-toolbar
@@ -94,12 +94,12 @@ block js
   //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
   //- script(type='text/javascript', src='/javascripts/typeahead.js')
   script(type='text/javascript', src='/js/device-action.js')
-  script(type='text/javascript', src='/javascripts/template/device-details.js')
+  script(type='text/javascript', src='/js/templates/device-details.js')
   script(type='text/javascript', src='/js/checklistutil.js')
-  script(type='text/javascript', src='/javascripts/template/slot-details.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-input.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-config.js')
-  script(type='text/javascript', src='/javascripts/template/checklist-config-item.js')
+  script(type='text/javascript', src='/js/templates/slot-details.js')
+  script(type='text/javascript', src='/js/templates/checklist-input.js')
+  script(type='text/javascript', src='/js/templates/checklist-config.js')
+  script(type='text/javascript', src='/js/templates/checklist-config-item.js')
 
   script(type='text/javascript')
     | device = !{JSON.stringify(device)};
