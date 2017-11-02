@@ -27,7 +27,6 @@ $(() => {
         }))
         .removeClass('hidden');
       // TODO Permissions!
-      $('#uninstall').removeClass('hidden');
     } catch (err) {
       showMessage('Device not found!');
     }
@@ -41,7 +40,10 @@ $(() => {
   }
 
   if (slot.installDeviceId) {
+    $('#uninstall').removeClass('hidden');
     renderInstall(slot.installDeviceId);
+  } else {
+    $('#install').removeClass('hidden');
   }
 
   if (slot.groupId) {
