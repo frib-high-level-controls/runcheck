@@ -8,6 +8,7 @@
     "bower": "./node_modules/.bin/bower",
     "mocha": "./node_modules/.bin/mocha",
     "pug": "./node_modules/.bin/pug",
+    "pug-lint": "./node_modules/.bin/pug-lint",
     "postinstall": "cd ./public && npm install"
   },
   "dependencies": {
