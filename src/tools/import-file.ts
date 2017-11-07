@@ -10,13 +10,14 @@ import mongoose = require('mongoose');
 
 import * as history from '../app/shared/history';
 
+import { Slot } from '../app/models/slot';
+
+import { Device } from '../app/models/device';
+
 import {
   Checklist,
   ChecklistSubject,
 } from '../app/models/checklist';
-
-//import slot = require('../app/models/slot');
-//import device = require('../app/models/device');
 
 
 interface HistoryDocument extends history.Document<HistoryDocument> {};
@@ -40,7 +41,7 @@ interface Config {
 
 mongoose.Promise = global.Promise;
 
-const debug = dbg('import-ccdb');
+const debug = dbg('import-file');
 
 const info = console.info;
 const warn = console.warn;
@@ -93,12 +94,14 @@ async function main() {
   for (let filePath of cfg._) {
     let absFilePath = path.resolve(String(filePath));
     let name = path.basename(absFilePath, '.json');
-    if (name.toLowerCase() === Checklist.collection.name.toLowerCase()) {
+    if (name.toUpperCase() === Slot.collection.name.toUpperCase()) {
+      models.set(absFilePath, Slot);
+    } else if (name.toUpperCase() === Device.collection.name.toUpperCase()) {
+      models.set(absFilePath, Device);
+    } else if (name.toUpperCase() === Checklist.collection.name.toUpperCase()) {
       models.set(absFilePath, Checklist);
-      continue;
-    } else if (name.toLowerCase() === ChecklistSubject.collection.name.toLowerCase()) {
+    } else if (name.toUpperCase() === ChecklistSubject.collection.name.toUpperCase  ()) {
       models.set(absFilePath, ChecklistSubject);
-      continue;
     } else {
       info('No model associated with data file: %s', filePath);
       return;
