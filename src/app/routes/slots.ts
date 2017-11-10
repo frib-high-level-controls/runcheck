@@ -132,8 +132,11 @@ router.get('/', catchAll(async (req, res) => {
 //   });
 // }));
 
-// '^[a-fA-F\\d]{24}$'
 
+/**
+ * Get the slot specified by name or ID
+ * and then respond with either HTML or JSON.
+ */
 router.get('/:name_or_id', catchAll( async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot (and history) with name or id: %s', nameOrId);

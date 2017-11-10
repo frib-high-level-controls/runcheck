@@ -48,19 +48,19 @@ abstract class ChecklistUtil {
         }
       });
 
-    let data: webapi.Pkg<webapi.Checklist>;
-    try {
-      data = await $.get('/checklists/' + checklistId);
-    } catch (err) {
-      //TODO?
-      return;
-    }
+    // let data: webapi.Pkg<webapi.Checklist>;
+    // try {
+    //   data = await $.get('/checklists/' + checklistId);
+    // } catch (err) {
+    //   //TODO?
+    //   return;
+    // }
 
-    if (config) {
-      ChecklistUtil.renderEditTemplate(element, data.data);
-    } else {
-      ChecklistUtil.renderUpdateTemplate(element, data.data);
-    }
+    // if (config) {
+    //   ChecklistUtil.renderEditTemplate(element, data.data);
+    // } else {
+    //   ChecklistUtil.renderUpdateTemplate(element, data.data);
+    // }
 
   }
 

@@ -83,6 +83,9 @@ declare namespace webapi {
     installSlotId?: string;
     installSlotOn?: string;
     installSlotBy?: string;
+    perms: {
+      assign?: boolean;
+    }
     //updates: {}
   }
 

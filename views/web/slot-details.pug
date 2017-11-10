@@ -1,4 +1,3 @@
-
 table.table
   thead
     tr
@@ -10,20 +9,26 @@ table.table
         th= slot.name
   tbody
     tr
-      th Type
-      td= slot.deviceType
+      th Description
+      td= slot.desc
+    if !embedded
+      tr
+        th Type
+        td= slot.deviceType
     tr
       th Area
       td= slot.area
-    tr
-      th Level of Care
-      td= slot.careLevel
+    if !embedded
+      tr
+        th Level of Care
+        td= slot.careLevel
     tr
       th DRR
       td= slot.drr
-    tr
-      th ARR
-      td= slot.arr
+    if !embedded
+      tr
+        th ARR
+        td= slot.arr
 if slot.groupId
   h4.pull-right
     a(href='/groups/slot/'+slot.groupId) Go to Group

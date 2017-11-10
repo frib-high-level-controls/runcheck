@@ -2,6 +2,126 @@
  * Support user interaction on Device details view.
  */
 
+let device: webapi.Device;
+
+$(() => {
+
+  function showMessage(msg: string) {
+    $('#message').append(`
+      <div class="alert alert-danger">
+        <button class="close" data-dismiss="alert">x</button>
+        <span>${msg}</span>
+      </div>
+    `);
+  }
+
+  /**
+   * Execute the function and log either
+   * the exception or the rejected promise.
+   * Note that 'Promise.resolve().then(f).catch(console.err)'
+   * has similar behavior to this function,
+   * but does NOT execute f() immediately.
+   */
+  function catchAndLog(f: () => Promise<void>) {
+    try {
+      Promise.resolve(f()).catch(console.error);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function installationRender(selector: string, slotId: string) {
+    catchAndLog(async () => {
+      $(selector).html(`
+        <div class="text-center" style="font-size:24px;">
+          <span class="fa fa-spinner fa-spin"/>
+        </div>
+      `)
+      .removeClass('hidden');
+
+      let pkg: webapi.Pkg<webapi.Slot>;
+      try {
+        pkg = await $.get({
+          url: `/slots/${slotId}`,
+          dataType: 'json',
+        });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = 'Unknown error retrieving Slot';
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        $(selector).html(`
+          <span class="text-danger">${message}</span>
+        `)
+        .removeClass('hidden');
+        return;
+      }
+
+      let details = slotDetailsTemplate({
+        slot: pkg.data,
+        embedded: true,
+      });
+
+      $(selector).html(details).removeClass('hidden');
+    });
+  }
+
+
+  // register event handlers
+
+  $('#checklist-assign').click((evt) => {
+    catchAndLog(async () => {
+      evt.preventDefault();
+      $('#checklist-assign').addClass('hidden');
+      $('#checklist-spin').removeClass('hidden');
+
+      let pkg: webapi.Pkg<string>;
+      try {
+        pkg = await $.get({
+          url: `/devices/${device.id}/checklistId`,
+          method: 'PUT',
+          dataType: 'json',
+        });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = 'Unknown error assigning checklist';
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        $('#checklist-spin').addClass('hidden');
+        $('#checklist-assign').removeClass('hidden');
+        $('#checklist-panel').html(`
+          <span class='text-danger'>${message}</span>
+        `).removeClass('hidden');
+        return;
+      }
+
+      device.checklistId = pkg.data;
+      $('#checklist-spin').addClass('hidden');
+      $('#checklist-panel').removeClass('hidden');
+      ChecklistUtil.render('#checklist-panel', device.checklistId);
+    });
+  });
+
+  if (device.installSlotId) {
+    installationRender('#install-panel', device.installSlotId);
+  }
+
+  if (device.checklistId) {
+    // TODO: Show 'unassign' button if permitted.
+    $('#checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#checklist-panel', device.checklistId);
+  } else {
+    $('#checklist-panel').addClass('hidden');
+    if (device.perms.assign) {
+      $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
+    } else {
+      $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
+    }
+  }
+});
+
   //   // $('#preInstall').removeAttr('disabled');
   //   // $('#approve-install').removeAttr('disabled');
   //   // $('#reject-install').removeAttr('disabled');
@@ -117,62 +237,16 @@
   // }
 
 
+  // const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
 
-let device: webapi.Device;
+  // const perms = {
+  //   assign: false,
+  // };
 
-$(() => {
+  // if (AuthUtil.hasAnyRole(['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
+  //   perms.assign = true;
+  // }
 
-  function showMessage(msg: string) {
-    $('#message').append(`
-      <div class="alert alert-danger">
-        <button class="close" data-dismiss="alert">x</button>
-        <span>${msg}</span>
-      </div>
-    `);
-  }
-
-  // ensure the device has been initialized
-  if (!device) {
-    showMessage('Device not initialized');
-    return;
-  }
-
-  const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
-
-  const perms = {
-    assign: false,
-  };
-
-  if (AuthUtil.hasAnyRole(['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
-    perms.assign = true;
-  }
-
-  if (device.checklistId) {
-    // TODO: Show 'unassign' button if permitted.
-    $('#device-checklist-panel').removeClass('hidden');
-    ChecklistUtil.render('#device-checklist-panel', device.checklistId);
-  } else {
-    if (perms.assign) {
-      $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
-    } else {
-      $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
-    }
-  }
-
-  if (device.installSlotId) {
-    $.get({
-      url: `/slots/${device.installSlotId}`,
-      dataType: 'json',
-    }).then((data) => {
-      $('#install-panel').html(slotDetailsTemplate({
-        slot: data.data,
-        embedded: true,
-      })).removeClass('hidden');
-      $('#uninstall').removeClass('hidden');
-    });
-  } else {
-    $('#install').removeClass('hidden');
-  }
 
   // var selected = null;
 
@@ -269,50 +343,7 @@ $(() => {
     // //   setInstallTo(url, id);
     // // });
 
-  function catchAll<T>(cb: (evt: JQuery.Event<T>) => Promise<void>): (evt: JQuery.Event<T>) => void {
-    return (evt: JQuery.Event<T>) => {
-      // Promise.resolve(cb(evt)).catch();
-
-
-    };
-  }
-
-
-  $('#device-assign-checklist').click(async (evt) => {
-    // (async () => {
-    //   evt.preventDefault();
-
-      
-
-
-    // })();
-
-
-
-    evt.preventDefault();
-
-    $('#device-assign-checklist').addClass('hidden');
-    $('#device-checklist-spin').removeClass('hidden');
-
-    let data: webapi.Pkg<string>;
-    try {
-      data = await $.get({
-         url: `/devices/${device.id}/checklistId`,
-         method: 'PUT',
-         dataType: 'json',
-      });
-    } catch (err) {
-      $('#device-checklist-spin').addClass('hidden');
-      $('#device-assign-checklist').removeClass('hidden');
-      showMessage(err.responseText);
-      return;
-    }
-
-    device.checklistId = data.data;
-    $('#device-checklist-spin').addClass('hidden');
-    $('#device-checklist-panel').removeClass('hidden');
-    ChecklistUtil.render('#device-checklist-panel', device.checklistId);
-  });
+  
 
 
     // $('#reject-install').click(function (e) {
@@ -340,4 +371,3 @@ $(() => {
     // //   $('#prepare-panel .slot,.device').addClass('hidden');
     // //   $('#prepare-title').text('');
     // // });
-});

@@ -8,6 +8,7 @@
         "strictNullChecks": true,
         "removeComments": false,
         "preserveConstEnums": true,
-        "sourceMap": false
+        "sourceMap": false,
+        "lib": [ "dom", "es5", "scripthost", "es2015.promise" ]
     }
 }

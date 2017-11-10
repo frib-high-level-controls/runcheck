@@ -1,39 +1,33 @@
-extends layout-history.pug
+extends layout.pug
 
 block head
   link(rel='stylesheet', href='/stylesheets/typeaheadjs.css')
   title #{device.name} :: RunCheck
 
 block content
-  .container
-    #message
-    #device-details
-      .row
-        .col-md-6
-          h3 Device
-          include ./web/device-details.pug
-          hr
-
-  //- .container.btn-toolbar
-    if device.checklist
-      button.btn.btn-space.btn-primary(id='device-add-checklist' disabled='disabled') Add Checklist
-    else
-      button.btn.btn-space.btn-primary(id='device-add-checklist') Add Checklist
-    button.btn.btn-space.btn-primary(id = 'reject-install') Reject
-    button.btn.btn-space.btn-primary(id = 'approve-install') Approve
-    button.btn.btn-space.btn-primary(id = 'install') Install
-    button.btn.btn-space.btn-danger(id = 'set-not-installed') Set not installed
   br
+  #message
   .container
     .row
       .col-md-6
+        .panel.panel-primary
+          .panel-heading
+            h4 Device
+          .panel-body
+            include ./web/device-details.pug
+      //- .container.btn-toolbar
+      //- if device.checklist
+      //-   button.btn.btn-space.btn-primary(id='device-add-checklist' disabled='disabled') Add Checklist
+      //- else
+      //-   button.btn.btn-space.btn-primary(id='device-add-checklist') Add Checklist
+      //- button.btn.btn-space.btn-primary(id = 'reject-install') Reject
+      //- button.btn.btn-space.btn-primary(id = 'approve-install') Approve
+      //- button.btn.btn-space.btn-primary(id = 'install') Install
+      //- button.btn.btn-space.btn-danger(id = 'set-not-installed') Set not installed
+      .col-md-6
         .panel.panel-default
-          .panel-heading.clearfix
-            .pull-left
-              h4 Installation Slot
-            .pull-right
-              button.btn.btn-primary.hidden#install(type='button', disabled='disabled') Install
-              button.btn.btn-primary.hidden#uninstall(type='button', disabled='disabled') Uninstall
+          .panel-heading
+             h4 Installation
           .panel-body.hidden#install-panel
     .row
       .col-md-12
@@ -42,16 +36,10 @@ block content
             .pull-left
               h4 Checklist
             .pull-right
-              h4.fa.fa-spinner.fa-spin.hidden#device-checklist-spin
-              button.btn.btn-primary.hidden#device-assign-checklist(type='button', disabled='disabled') Assign
-            //- .row
-              .col-md-4
-                h3
-                  | Checklist
-              .col-md-8.text-right
-                h3
-                  button.btn.btn-primary(id='device-assign-checklist' disabled='disabled') Assign
-          .panel-body.hidden#device-checklist-panel
+              h4.fa.fa-spinner.fa-spin.hidden#checklist-spin
+              button.btn.btn-primary.hidden#checklist-assign(type='button', disabled) Assign
+              //- button.btn.btn-primary.hidden#checklist-unassign(type='button', disabled) Unassign
+          .panel-body.hidden#checklist-panel
   //-- var notInstalled = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
   //- .panel.panel-default(id = 'prepare-panel', class=notInstalled? '' : 'hidden')
     .panel-heading
@@ -94,19 +82,10 @@ block js
   //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
   //- script(type='text/javascript', src='/javascripts/typeahead.js')
   script(type='text/javascript', src='/js/device-action.js')
-  script(type='text/javascript', src='/js/templates/device-details.js')
   script(type='text/javascript', src='/js/checklistutil.js')
   script(type='text/javascript', src='/js/templates/slot-details.js')
+  script(type='text/javascript', src='/js/templates/device-details.js')
   script(type='text/javascript', src='/js/templates/checklist-input.js')
   script(type='text/javascript', src='/js/templates/checklist-config.js')
   script(type='text/javascript', src='/js/templates/checklist-config-item.js')
-
-  script(type='text/javascript')
-    | device = !{JSON.stringify(device)};
-
-  script(type='text/javascript', src='/js/authutil.js')
-  script(type='text/javascript')
-    | AuthUtil.setUsername('#{auth.username}');
-    if auth.user && auth.user.roles
-      each role in auth.user.roles
-        | AuthUtil.addRole('#{role}');
+  script(type='text/javascript') device = !{JSON.stringify(device)};

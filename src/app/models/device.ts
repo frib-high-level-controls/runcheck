@@ -36,8 +36,8 @@ const ObjectId = Schema.Types.ObjectId;
 // Device represents a physical entity
 //   name: unique machine readable name
 //   desc: descriptive human readable name
-//   dept: assocaiate department
-//   deviceType: standard type identifier
+//   dept: associated department
+//   deviceType: standard device type name
 //   checklistId: associated checklist (optional)
 //   installSlotId: the slot in which this device is installed
 //   installSlotOn: the date when this device was installed or uninstalled

@@ -36,6 +36,9 @@ const debug = dbg('runcheck:devices');
 
 export const router = express.Router();
 
+/**
+ * Get the list view of devices (HTML) or list of devices (JSON).
+ */
 router.get('/', catchAll(async (req, res) => {
   return format(res, {
     'text/html': () => {
@@ -72,6 +75,10 @@ router.get('/', catchAll(async (req, res) => {
   });
 }));
 
+/**
+ * Get the device specified by name or ID
+ * and then respond with either HTML or JSON.
+ */
 router.get('/:name_or_id', catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Device (and history) with name or id: %s', nameOrId);
@@ -87,6 +94,8 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
+  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
+
   const apiDevice: webapi.Device = {
     id: String(device.id),
     name: device.name,
@@ -97,6 +106,9 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
     installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString() : undefined,
+    perms: {
+      assign: auth.hasAnyRole(req, [ 'ADM:RUNCHECK', DEPT_LEADER_ROLE ]),
+    },
   };
 
   return format(res, {
@@ -139,10 +151,10 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
+  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
 
   const username = auth.getUsername(req);
-  const permitted = ['SYS:RUNCHECK', DEPT_LEADER_ROLE];
+  const permitted = ['ADM:RUNCHECK', DEPT_LEADER_ROLE];
   if (!username || !auth.hasAnyRole(req, permitted)) {
     if (debug.enabled) {
       debug('Forbidden: Requires any role: [%s]', permitted);
