@@ -111,10 +111,10 @@ async function doStart(): Promise<express.Application> {
   app.use('/devices', devices.router);
 
   // no handler found for request
-  app.use(handlers.notFoundHandler);
+  app.use(handlers.notFoundHandler());
 
   // error handlers
-  app.use(handlers.requestErrorHandler);
+  app.use(handlers.requestErrorHandler());
 
   return app;
 }
