@@ -4,8 +4,6 @@
  */
 import * as mongoose from 'mongoose';
 
-import * as auth from '../app/shared/auth';
-
 import {
   Device,
   IDevice,
@@ -51,22 +49,37 @@ const DEVICES: IDevice[] = [
 ];
 
 const CL_SUBJECTS: IChecklistSubject[] = [
-  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'device-default', order:0, assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ],       'mandatory': false, 'required': true, 'final': false },
-  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'device-default', order:1, assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ],     'mandatory': false, 'required': true, 'final': false },
-  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'device-default', order:2, assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], 'mandatory': false, 'required': true, 'final': false },
-  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'device-default', order:3, assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ],            'mandatory': false, 'required': true, 'final': false },
-  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'device-default', order:4, assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ],   'mandatory': false, 'required': true, 'final': false },
-  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'device-default', order:5, assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ],               'mandatory': false, 'required': true, 'final': false },
-  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'device-default', order:6, assignees: [ 'VAR:DEPT_LEADER' ],                          'mandatory': true,  'required': true, 'final': true  },
+  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'device-default', order: 0,
+    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ], mandatory: false, required: true, final: false },
+  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'device-default', order: 1,
+    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ], mandatory: false, required: true, final: false },
+  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'device-default', order: 2,
+    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], mandatory: false, required: true, final: false },
+  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'device-default', order: 3,
+    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
+  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'device-default', order: 4,
+    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ],   mandatory: false, required: true, final: false },
+  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'device-default', order: 5,
+    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
+  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'device-default', order: 6,
+    assignees: [ 'VAR:DEPT_LEADER' ], mandatory: true,  required: true, final: true  },
 
-  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'slot-default', order:0, assignees: [ 'VAR:DEPT_LEADER' ],                          'mandatory': false, 'required': true, 'final': false },
-  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'slot-default', order:1, assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ],       'mandatory': false, 'required': true, 'final': false },
-  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'slot-default', order:2, assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ],     'mandatory': false, 'required': true, 'final': false },
-  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'slot-default', order:3, assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], 'mandatory': false, 'required': true, 'final': false },
-  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'slot-default', order:4, assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ],            'mandatory': false, 'required': true, 'final': false },
-  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'slot-default', order:5, assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ],   'mandatory': false, 'required': true, 'final': false },
-  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'slot-default', order:6, assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ],               'mandatory': false, 'required': true, 'final': false },
-  { name: 'AM',    desc: 'AM',    checklistId: null, checklistType: 'slot-default', order:7, assignees: [ 'VAR:AREA_LEADER' ],                          'mandatory': true,  'required': true, 'final': true  }
+  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'slot-default', order: 0,
+    assignees: [ 'VAR:DEPT_LEADER' ], mandatory: false, required: true, final: false },
+  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'slot-default', order: 1,
+    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ], mandatory: false, required: true, final: false },
+  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'slot-default', order: 2,
+    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ], mandatory: false, required: true, final: false },
+  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'slot-default', order: 3,
+    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], mandatory: false, required: true, final: false },
+  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'slot-default', order: 4,
+    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
+  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'slot-default', order: 5,
+    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ], mandatory: false, required: true, final: false },
+  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'slot-default', order: 6,
+    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
+  { name: 'AM',    desc: 'AM',    checklistId: null, checklistType: 'slot-default', order: 7,
+    assignees: [ 'VAR:AREA_LEADER' ], mandatory: true,  required: true, final: true },
 ];
 
 
@@ -86,11 +99,11 @@ async function doInititialize(): Promise<void> {
 
   forgapi.MockClient.getInstance().addUser(USERS);
 
-  for (let DEVICE of DEVICES) {
-    await new Device(DEVICE).saveWithHistory('SYS:TEST');
+  for (let device of DEVICES) {
+    await new Device(device).saveWithHistory('SYS:TEST');
   }
 
-  for (let SUBJECT of CL_SUBJECTS) {
-    await new ChecklistSubject(SUBJECT).saveWithHistory('SYS:TEST');
+  for (let subject of CL_SUBJECTS) {
+    await new ChecklistSubject(subject).saveWithHistory('SYS:TEST');
   }
 };

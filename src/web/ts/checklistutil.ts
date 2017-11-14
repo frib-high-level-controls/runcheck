@@ -21,6 +21,29 @@ abstract class ChecklistUtil {
     `);
   }
 
+  /**
+   * Execute the function and log either
+   * the exception or the rejected promise.
+   * Note that 'Promise.resolve().then(f).catch(console.err)'
+   * has similar behavior to this function,
+   * but does NOT execute f() immediately.
+   */
+  protected static catchAndLog(f: () => Promise<void> | void): void {
+    try {
+      Promise.resolve(f()).catch(console.error);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  protected static wrapAsyncHandlerAndLog<A, B>(f: (a?: A, b?: B) => Promise<void> | void): (a?: A, b?: B) => void {
+    return (a, b) => {
+      ChecklistUtil.catchAndLog(() => {
+        f(a, b);
+      });
+    };
+  }
+
   protected static async renderTo(element: JQuery<HTMLElement>, checklistId: string, config?: boolean) {
     // show spinner to the user while checklist loads
     element.off().html(`
@@ -46,6 +69,7 @@ abstract class ChecklistUtil {
         } else {
           ChecklistUtil.renderUpdateTemplate(element, data.data);
         }
+        element.removeClass('hidden');
       });
 
     // let data: webapi.Pkg<webapi.Checklist>;
@@ -154,12 +178,12 @@ abstract class ChecklistUtil {
 
     // enable controls as permitted
     for (let subject of checklist.subjects) {
-      if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
+      // if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
         let sel = parent.find(`#${subject.id} select`).removeAttr('disabled');
         if (sel.val() === 'YC') {
           parent.find(`#${subject.id} input`).removeAttr('disabled');
         }
-      }
+      // }
     }
 
     if (checklist.editable) {
@@ -207,7 +231,7 @@ abstract class ChecklistUtil {
         let updates: any[] = [];
 
         for (let subject of checklist.subjects) {
-          if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
+          // if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
             let e = $(`#${subject.id}`);
             if (e) {
               updates.push({
@@ -216,7 +240,7 @@ abstract class ChecklistUtil {
                 subjectId: subject.id,
               });
             }
-          }
+          // }
         }
 
         let data: webapi.Pkg<webapi.ChecklistStatus[]>;

@@ -4,7 +4,6 @@
 import * as dbg from 'debug';
 import * as express from 'express';
 import * as moment from 'moment';
-import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
 import * as log from '../shared/logging';
@@ -33,6 +32,26 @@ import {
 
 
 const debug = dbg('runcheck:devices');
+
+/**
+ * Compute the permissions of the current user for the specified device.
+ *
+ * @param req HTTP Request
+ * @param slot Model
+ */
+function getPermissions(req: express.Request, device: Device) {
+  const ADMIN_ROLE = 'ADM:RUNCHECK';
+  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
+  const PERM_ASSIGN_ROLES = [ ADMIN_ROLE, DEPT_LEADER_ROLE ];
+  if (debug.enabled) {
+    debug('PERM: ASSIGN: %s (%s)', auth.hasAnyRole(req, PERM_ASSIGN_ROLES), PERM_ASSIGN_ROLES.join(' | '));
+  }
+  return {
+    assign: auth.hasAnyRole(req, PERM_ASSIGN_ROLES),
+  };
+};
+
+
 
 export const router = express.Router();
 
@@ -94,8 +113,6 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
-
   const apiDevice: webapi.Device = {
     id: String(device.id),
     name: device.name,
@@ -106,9 +123,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
     installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString() : undefined,
-    perms: {
-      assign: auth.hasAnyRole(req, [ 'ADM:RUNCHECK', DEPT_LEADER_ROLE ]),
-    },
+    perms: getPermissions(req, device),
   };
 
   return format(res, {
@@ -151,14 +166,12 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
-
   const username = auth.getUsername(req);
-  const permitted = ['ADM:RUNCHECK', DEPT_LEADER_ROLE];
-  if (!username || !auth.hasAnyRole(req, permitted)) {
-    if (debug.enabled) {
-      debug('Forbidden: Requires any role: [%s]', permitted);
-    }
+  const permissions = getPermissions(req, device);
+  if (!username || !permissions.assign) {
+    // if (debug.enabled) {
+    //   debug('Forbidden: Requires any role: [%s]', permitted);
+    // }
     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
   }
 

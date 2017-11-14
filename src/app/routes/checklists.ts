@@ -3,7 +3,6 @@
  */
 import * as dbg  from 'debug';
 import * as express from 'express';
-import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
 import * as log from '../shared/logging';

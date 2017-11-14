@@ -1,7 +1,7 @@
 /**
  * Tests for devices routes.
  */
-import { assert } from 'chai';
+//import { assert } from 'chai';
 import * as dbg from 'debug';
 import * as express from 'express';
 import * as request from 'supertest';
@@ -59,6 +59,13 @@ describe('Device T99999-TEST-0009-0099-S00002', () => {
       .get(`/devices/T99999-TEST-0009-0099-S00002`)
       .set('Accept', 'application/json')
       .expect(200);
+  });
+
+  it('Anonymous user assign checklist', async () => {
+    return request(handler)
+      .put(`/devices/${deviceId}/checklistId`)
+      .set('Accept', 'application/json')
+      .expect(302); // redirect to login
   });
 
   it('User "feam" assign checklist', async () => {

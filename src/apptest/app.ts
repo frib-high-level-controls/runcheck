@@ -16,7 +16,6 @@ import { State } from '../app';
 import * as auth from '../app/shared/auth';
 import * as forgauth from '../app/shared/forg-auth';
 import * as handlers from '../app/shared/handlers';
-import * as ppauth from '../app/shared/passport-auth';
 import * as status from '../app/shared/status';
 import * as tasks from '../app/shared/tasks';
 

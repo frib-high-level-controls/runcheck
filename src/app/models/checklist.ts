@@ -1,7 +1,6 @@
 /**
  * Model to represent a checklist (for device or slot).
  */
-import * as dbg from 'debug';
 import * as mongoose from 'mongoose';
 
 import * as history from '../shared/history';
@@ -59,7 +58,6 @@ export interface Checklist extends IChecklist, mongoose.Document {
   // no additional methods
 };
 
-const debug = dbg('runcheck:checklist');
 
 const Schema = mongoose.Schema;
 

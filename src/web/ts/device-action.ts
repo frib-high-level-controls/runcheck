@@ -6,38 +6,13 @@ let device: webapi.Device;
 
 $(() => {
 
-  function showMessage(msg: string) {
-    $('#message').append(`
-      <div class="alert alert-danger">
-        <button class="close" data-dismiss="alert">x</button>
-        <span>${msg}</span>
-      </div>
-    `);
-  }
-
-  /**
-   * Execute the function and log either
-   * the exception or the rejected promise.
-   * Note that 'Promise.resolve().then(f).catch(console.err)'
-   * has similar behavior to this function,
-   * but does NOT execute f() immediately.
-   */
-  function catchAndLog(f: () => Promise<void>) {
-    try {
-      Promise.resolve(f()).catch(console.error);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
   function installationRender(selector: string, slotId: string) {
-    catchAndLog(async () => {
+    WebUtil.catchAll(async () => {
       $(selector).html(`
         <div class="text-center" style="font-size:24px;">
           <span class="fa fa-spinner fa-spin"/>
         </div>
-      `)
-      .removeClass('hidden');
+      `).removeClass('hidden');
 
       let pkg: webapi.Pkg<webapi.Slot>;
       try {
@@ -52,9 +27,10 @@ $(() => {
           message = pkg.error.message;
         }
         $(selector).html(`
-          <span class="text-danger">${message}</span>
-        `)
-        .removeClass('hidden');
+          <div>
+            <span class="text-danger">${message}</span>
+          </div>
+        `).removeClass('hidden');
         return;
       }
 
@@ -70,8 +46,7 @@ $(() => {
 
   // register event handlers
 
-  $('#checklist-assign').click((evt) => {
-    catchAndLog(async () => {
+  $('#checklist-assign').click(WebUtil.wrapCatchAll1(async (evt) => {
       evt.preventDefault();
       $('#checklist-assign').addClass('hidden');
       $('#checklist-spin').removeClass('hidden');
@@ -92,7 +67,9 @@ $(() => {
         $('#checklist-spin').addClass('hidden');
         $('#checklist-assign').removeClass('hidden');
         $('#checklist-panel').html(`
-          <span class='text-danger'>${message}</span>
+          <div>
+            <span class='text-danger'>${message}</span>
+          </div>
         `).removeClass('hidden');
         return;
       }
@@ -101,19 +78,28 @@ $(() => {
       $('#checklist-spin').addClass('hidden');
       $('#checklist-panel').removeClass('hidden');
       ChecklistUtil.render('#checklist-panel', device.checklistId);
-    });
-  });
+  }));
 
   if (device.installSlotId) {
     installationRender('#install-panel', device.installSlotId);
+  } else {
+    $('#install-panel').html(`
+      <div>
+        <span>Device not installed</span>
+      </div>
+    `).removeClass('hidden');
   }
 
   if (device.checklistId) {
     // TODO: Show 'unassign' button if permitted.
-    $('#checklist-panel').removeClass('hidden');
+    // $('#checklist-panel').removeClass('hidden');
     ChecklistUtil.render('#checklist-panel', device.checklistId);
   } else {
-    $('#checklist-panel').addClass('hidden');
+    $('#checklist-panel').html(`
+      <div>
+        <span>No checklist assigned</span>
+      </div>
+    `).removeClass('hidden');
     if (device.perms.assign) {
       $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
     } else {

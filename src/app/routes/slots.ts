@@ -18,14 +18,12 @@ import {
 
 import {
   catchAll,
-  ensureAccepts,
   format,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
 
 import {
-  ISlot,
   Slot,
 } from '../models/slot';
 
@@ -33,9 +31,9 @@ import {
   Device,
 } from '../models/device';
 
-import {
-  Group,
-} from '../models/group';
+// import {
+//   Group,
+// } from '../models/group';
 
 const debug = dbg('runcheck:slots');
 
