@@ -158,6 +158,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     deviceType: slot.deviceType,
     checklistId: slot.checklistId ? slot.checklistId.toHexString() : null,
     careLevel: slot.careLevel,
+    safetyLevel: slot.safetyLevel,
     drr: slot.drr,
     arr: slot.arr,
     groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
@@ -188,13 +189,13 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
  */
 router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
-  debug('Find Device with name or id: %s', nameOrId);
+  debug('Find Slot with name or id: %s', nameOrId);
 
   let slot: Slot | null;
   if (models.isValidId(nameOrId)) {
     slot = await Slot.findById(nameOrId).exec();
   } else {
-    slot = await Slot.findOne({name : nameOrId.toUpperCase() });
+    slot = await Slot.findOne({name: nameOrId.toUpperCase() });
   }
 
   if (!slot || !slot.id) {
@@ -207,18 +208,32 @@ router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async 
     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
   }
 
-  // TODO: Check that a device is installed?
-
   if (slot.checklistId) {
-    debug('Slot already has checklist id: %s', slot.checklistId);
-    res.json(<webapi.Pkg<string>> {
+    log.warn('Slot already has checklist id: %s', slot.checklistId);
+    res.status(HttpStatus.OK).json(<webapi.Pkg<string>> {
       data: slot.checklistId.toHexString(),
     });
     return;
   }
 
+  let checklistType: 'slot-default';
+
+  switch (slot.safetyLevel) {
+  case 'NORMAL':
+  case 'CONTROL':
+  default:
+    checklistType = 'slot-default'; // UPPERCASE?
+    break;
+  case 'CREDITED':
+    checklistType = 'slot-default'; // 'SLOT_CREDITED';
+    break;
+  case 'ESHIMPACT':
+    checklistType = 'slot-default'; // 'SLOT_ESHIMPACT';
+    break;
+  }
+
   const doc: IChecklist = {
-    checklistType: 'slot-default',
+    checklistType: checklistType,
     targetType: models.getModelName(slot),
     targetId: models.ObjectId(slot._id),
   };

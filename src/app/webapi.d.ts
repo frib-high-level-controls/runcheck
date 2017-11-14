@@ -97,6 +97,7 @@ declare namespace webapi {
     deviceType: string;
     checklistId: string | null;
     careLevel: string;
+    safetyLevel: string;
     arr: string;
     drr: string;
     groupId?: string;

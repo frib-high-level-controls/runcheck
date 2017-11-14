@@ -1,4 +1,4 @@
-extends layout-history.pug
+extends layout.pug
 
 block head
   title #{slot.name} :: RunCheck
@@ -7,41 +7,22 @@ block content
   br
   .container
     #message
-    //-#modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
-      .modal-dialog
-        .modal-content
-          .modal-header
-            h3#modalLabel
-          .modal-footer
     .row
       .col-md-6
         .panel.panel-primary
-          .panel-heading.clearfix
-            .pull-left
-              h2 Slot
-            .pull-right
-              if slot.groupId
-                //- h3
-                  button.btn.btn-linkbtn-link(href=slot.groupId) Group
-                //- h3
-                  a.btn.btn-default(href='/groups/slot/' + slot.groupId) Group
-                h3
-                  span.btn.btn-default
-                    a(href='') Go to Group
-          .panel-body#slot-details
+          .panel-heading
+            h4 Slot
+          .panel-body
             include ./web/slot-details.pug
-          //- hr
-  //- br
-  .container
-    .row
       .col-md-6
         .panel.panel-default
           .panel-heading.clearfix
             .pull-left
-              h4 Installation Device
+              h4 Installation
             .pull-right
-              button.btn.btn-primary.hidden#install(type='button', disabled='disabled') Install
-              button.btn.btn-primary.hidden#uninstall(type='button', disabled='disabled') Uninstall
+              h4.fa.fa-spinner.fa-spin.hidden#install-spin
+              button.btn.btn-primary.hidden#install(type='button', disabled) Install
+              button.btn.btn-primary.hidden#uninstall(type='button', disabled) Uninstall
           .panel-body.hidden#install-panel
     .row
       .col-md-12
@@ -50,9 +31,9 @@ block content
             .pull-left
               h4 Checklist
             .pull-right
-              h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
-              button.btn.btn-primary.hidden#checklist-assign(autocomplete='off', type='button', disabled='disabled') Assign
-              button.btn.btn-primary.hidden#checklist-unassign(autocomplete='off', type='button', disabled='disabled') Unassign
+              h4.fa.fa-spinner.fa-spin.hidden#checklist-spin
+              button.btn.btn-primary.hidden#checklist-assign(type='button', disabled) Assign
+              button.btn.btn-primary.hidden#checklist-unassign(type='button', disabled) Unassign
           .panel-body.hidden#checklist-panel
   //-.panel.panel-default
     .panel-heading
@@ -168,11 +149,14 @@ block content
   each h in slot.__updates.reverse()
     +change(h, moment)
 block js
-  script(type='text/javascript', src='/js/slot-action.js')
+  //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
+  //- script(type='text/javascript', src='/javascripts/typeahead.js')
+  script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/js/checklistutil.js')
   script(type='text/javascript', src='/js/templates/device-details.js')
   script(type='text/javascript', src='/js/templates/checklist-input.js')
   script(type='text/javascript', src='/js/templates/checklist-config.js')
   script(type='text/javascript', src='/js/templates/checklist-config-item.js')
   script(type='text/javascript', src='/js/authutil.js')
-  script(type='text/javascript') slot = !{JSON.stringify(slot)};
+  script(type='text/javascript', src='/js/slot-action.js')
+  script(type='text/javascript') var slot = !{JSON.stringify(slot)};

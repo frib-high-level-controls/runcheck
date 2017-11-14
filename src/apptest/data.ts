@@ -10,6 +10,11 @@ import {
 } from '../app/models/device';
 
 import {
+  ISlot,
+  Slot,
+} from '../app/models/slot';
+
+import {
   ChecklistSubject,
   IChecklistSubject,
 } from '../app/models/checklist';
@@ -36,15 +41,26 @@ const DEVICES: IDevice[] = [
   {
     name: 'T99999-TEST-0009-0099-S00001',
     desc: 'Test Device #1',
-    deviceType: 'DEV',
     dept: 'ISF:LAB.DIV.FE',
-    checklistId: null,
+    deviceType: 'DEV',
   }, {
     name: 'T99999-TEST-0009-0099-S00002',
     desc: 'Test Device #2',
-    deviceType: 'DEV',
     dept: 'ISF:LAB.DIV.FE',
-    checklistId: null,
+    deviceType: 'DEV',
+  },
+];
+
+const SLOTS: ISlot[] = [
+  {
+    name: 'FE_TEST:DEV_D0001',
+    desc: 'Test Slot #1',
+    area: 'ADB:FRONT_END',
+    deviceType: 'DEV',
+    arr: 'ARR0X',
+    drr: 'DRR0X-0Y',
+    careLevel: 'MEDIUM',
+    safetyLevel: 'NORMAL',
   },
 ];
 
@@ -101,6 +117,10 @@ async function doInititialize(): Promise<void> {
 
   for (let device of DEVICES) {
     await new Device(device).saveWithHistory('SYS:TEST');
+  }
+
+  for (let slot of SLOTS) {
+    await new Slot(slot).saveWithHistory('SYS:TEST');
   }
 
   for (let subject of CL_SUBJECTS) {

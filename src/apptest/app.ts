@@ -19,7 +19,9 @@ import * as handlers from '../app/shared/handlers';
 import * as status from '../app/shared/status';
 import * as tasks from '../app/shared/tasks';
 
+import * as checklists from '../app/routes/checklists';
 import * as devices from '../app/routes/devices';
+import * as slots from '../app/routes/slots';
 
 import * as forgapi from './shared/mock-forgapi';
 
@@ -108,6 +110,8 @@ async function doStart(): Promise<express.Application> {
 
   app.use('/status', status.router);
   app.use('/devices', devices.router);
+  app.use('/slots', slots.router);
+  app.use('/checklists', checklists.router);
 
   // no handler found for request
   app.use(handlers.notFoundHandler());

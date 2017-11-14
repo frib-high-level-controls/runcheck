@@ -2,63 +2,128 @@
  * Support user interaction on Device details view.
  */
 
-let slot: webapi.Slot;
+// let slot: webapi.Slot;
 
 $(() => {
-  function showMessage(msg: string) {
-    $('#message').append(`
-      <div class="alert alert-danger">
-        <button class="close" data-dismiss="alert">x</button>
-        <span>${msg}</span>
-      </div>
-    `);
+
+  let slot: webapi.Slot = (<any> window).slot;
+
+  // function showMessage(msg: string) {
+  //   $('#message').append(`
+  //     <div class="alert alert-danger">
+  //       <button class="close" data-dismiss="alert">x</button>
+  //       <span>${msg}</span>
+  //     </div>
+  //   `);
+  // }
+
+  async function installationRender(selector: string, deviceId: string) {
+    WebUtil.catchAll(async () => {
+      $(selector).html(`
+        <div class="text-center" style="font-size:24px;">
+          <span class="fa fa-spinner fa-spin"/>
+        </div>
+      `).removeClass('hidden');
+
+      let pkg: webapi.Pkg<webapi.Device>;
+      try {
+        pkg = await $.get({
+          url: `/devices/${slot.installDeviceId}`,
+          dataType: 'json',
+        });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = 'Unknown error retrieving Device';
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        $(selector).html(`
+          <div>
+            <span class="text-danger">${message}</span>
+          </div>
+        `).removeClass('hidden');
+        return;
+      }
+
+      let details = deviceDetailsTemplate({
+        device: pkg.data,
+        embedded: true,
+      });
+
+      $('#install-panel').html(details).removeClass('hidden');
+    });
   }
 
-  async function renderInstall(deviceId: string) {
+  $('#checklist-assign').click(WebUtil.wrapCatchAll1(async (evt) => {
+    evt.preventDefault();
+    $('#checklist-assign').addClass('hidden');
+    $('#checklist-spin').removeClass('hidden');
+
+    let pkg: webapi.Pkg<string>;
     try {
-      let data: webapi.Pkg<webapi.Device> = await $.get({
-        url: `/devices/${slot.installDeviceId}`,
+      pkg = await $.get({
+        url: `/slots/${slot.id}/checklistId`,
+        method: 'PUT',
         dataType: 'json',
       });
-      $('#install-panel')
-        .html(deviceDetailsTemplate({
-          device: data.data,
-          embedded: true,
-        }))
-        .removeClass('hidden');
-      // TODO Permissions!
-    } catch (err) {
-      showMessage('Device not found!');
+    } catch (xhr) {
+      pkg = xhr.responseJSON;
+      let message = 'Unknown error assigning checklist';
+      if (pkg && pkg.error && pkg.error.message) {
+        message = pkg.error.message;
+      }
+      $('#checklist-spin').addClass('hidden');
+      $('#checklist-assign').removeClass('hidden');
+      $('#checklist-panel').html(`
+        <div>
+          <span class='text-danger'>${message}</span>
+        </div>
+      `).removeClass('hidden');
+      return;
     }
-  }
+
+    slot.checklistId = pkg.data;
+    $('#checklist-spin').addClass('hidden');
+    $('#checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#checklist-panel', slot.checklistId);
+  }));
 
   // ensure the device has been initialized
-  if (!slot) {
-    console.error('Slot');
-    showMessage('Slot not initialized');
-    return;
-  }
+  // if (!slot) {
+  //   console.error('Slot');
+  //   showMessage('Slot not initialized');
+  //   return;
+  // }
 
   if (slot.installDeviceId) {
-    $('#uninstall').removeClass('hidden');
-    renderInstall(slot.installDeviceId);
+    // $('#uninstall').removeClass('hidden');
+    installationRender('#install-panel', slot.installDeviceId);
   } else {
     $('#install').removeClass('hidden');
   }
 
   if (slot.groupId) {
     $('#checklist-panel').removeClass('hidden').html(`
-      <h4>See the associated <a href="/groups/slot/${slot.groupId}" target="_blank">Group</a></h3>
+      <div>
+        <h4>
+          See the associated
+          <a href="/groups/slot/${slot.groupId}" target="_blank">Group</a>
+        </h4>
+      </div>
     `);
   } else if (slot.checklistId) {
-    if (slot.permissions.assign) {
-      $('#checklist-unassign').removeClass('hidden').removeAttr('disabled');
-    } else {
-      $('#checklist-unassign').removeClass('hidden').attr('disabled', 'disabled');
-    }
-    $('#checklist-panel').removeClass('hidden');
+    // if (slot.permissions.assign) {
+    //   $('#checklist-unassign').removeClass('hidden').removeAttr('disabled');
+    // } else {
+    //   $('#checklist-unassign').removeClass('hidden').attr('disabled', 'disabled');
+    // }
     ChecklistUtil.render('#checklist-panel', slot.checklistId);
   } else {
+    $('#checklist-panel').html(`
+      <div>
+        <span>No checklist assigned</span>
+      </div>
+    `).removeClass('hidden');
     if (slot.permissions.assign) {
       $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
     } else {

@@ -16,9 +16,10 @@ export interface ISlot {
   desc: string;
   area: string;
   deviceType: string;
-  checklistId: ObjectId | null;
-  groupId: ObjectId | null;
+  checklistId?: ObjectId;
+  groupId?: ObjectId;
   careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  safetyLevel: 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
   arr: string;
   drr: string;
   installDeviceId?: ObjectId;
@@ -36,11 +37,28 @@ export const MODEL_NAME = 'Slot';
 
 export const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
 
+export const SAFETY_LEVELS = [ 'NORMAL', 'CONTROL', 'CREDITED', 'ESHIMPACT' ];
+
 const Schema = mongoose.Schema;
 
 const ObjectId = Schema.Types.ObjectId;
 
-
+/**
+ * Slot represents a logical entity
+ *   name: unique machine readable name
+ *   desc: descriptive human readable name
+ *   area: associated area
+ *   deviceType: standard device type name
+ *   checklistId: associated checklist (optional)
+ *   groupId: associated slot group (optional)
+ *   careLevel: the level of care
+ *   safetyLevel: the level of safety
+ *   arr: associated Accelerator Readiness Review (ie ARR0X)
+ *   drr: associated Device Readinewss Review (ie DRR0X-0Y)
+ *   installDeviceId: the device that is installed
+ *   installDeviceOn: the date when this device was installed or uninstalled
+ *   installDecieBy: the name of the person or process that installed or uninstalled
+ */
 const slotSchema = new Schema({
   //system: String,
   //subsystem: String,
@@ -69,17 +87,22 @@ const slotSchema = new Schema({
   checklistId: {
     type: ObjectId,
     ref: Checklist.modelName,
-    default: null,
+    required: false,
   },
   groupId: {
     type: ObjectId,
     ref: Group.modelName,
-    default: null,
+    required: false,
   },
   careLevel: {
     type: String,
     default: CARE_LEVELS[0],
     enum: CARE_LEVELS,
+  },
+  safetyLevel: {
+    type: String,
+    default: SAFETY_LEVELS[0],
+    enum: SAFETY_LEVELS,
   },
   arr: {
     type: String,
@@ -91,8 +114,8 @@ const slotSchema = new Schema({
   },
   installDeviceId: {
     type: ObjectId,
-    required: false,
     ref: DEVICE_MODEL_NAME,
+    required: false,
   },
   installDeviceBy: {
     type: String,

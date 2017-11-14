@@ -85,6 +85,7 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
       deviceType: slot.deviceType,
       checklistId: slot.checklistId ? ObjectId(slot.checklistId).toHexString() : null,
       careLevel: slot.careLevel,
+      safetyLevel: slot.safetyLevel,
       arr: slot.arr,
       drr: slot.drr,
       permissions: {},

@@ -157,11 +157,17 @@ router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) 
 }));
 
 
-router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  const id = String(req.params.id);
+router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Device with name or id: %s', nameOrId);
 
-  debug('Find Device with id: %s', id);
-  let device = await Device.findById(id).exec();
+  let device: Device | null;
+  if (models.isValidId(nameOrId)) {
+    device = await Device.findById(nameOrId).exec();
+  } else {
+    device = await Device.findOne({ name: nameOrId.toUpperCase() });
+  }
+
   if (!device || !device.id) {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
@@ -169,15 +175,12 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
   const username = auth.getUsername(req);
   const permissions = getPermissions(req, device);
   if (!username || !permissions.assign) {
-    // if (debug.enabled) {
-    //   debug('Forbidden: Requires any role: [%s]', permitted);
-    // }
     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
   }
 
   if (device.checklistId) {
-    debug('Device already has checklist id: %s', device.checklistId);
-    res.json({
+    log.warn('Device already has checklist id: %s', device.checklistId);
+    res.status(HttpStatus.OK).json({
       data: device.checklistId.toHexString(),
     });
     return;
@@ -194,15 +197,12 @@ router.put('/:id/checklistId', auth.ensureAuthenticated, catchAll(async (req, re
 
   debug('Update Device with new checklist id: %s', checklist._id);
   device.checklistId = models.ObjectId(checklist._id);
-  await device.saveWithHistory(username);
+  await device.saveWithHistory(auth.formatRole('USR', username));
 
   res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
     data: device.checklistId.toHexString(),
   });
 }));
-
-
-
 
 /*
 devices.put('/:id/install-to-device', auth.ensureAuthenticated, reqUtils.exist('id', Device), reqUtils.hasAll('body', ['targetId']), reqUtils.exist('targetId', Device, '_id', 'body'), function (req, res) {

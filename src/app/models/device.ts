@@ -15,7 +15,7 @@ export interface IDevice {
   desc: string;
   dept: string;
   deviceType: string;
-  checklistId: ObjectId | null;
+  checklistId?: ObjectId;
   installSlotId?: ObjectId;
   installSlotBy?: string;
   installSlotOn?: Date;
@@ -66,7 +66,7 @@ const deviceSchema = new Schema({
   checklistId: {
     type: ObjectId,
     ref: Checklist.modelName,
-    default: null,
+    required: false,
   },
   installSlotId: {
     type: ObjectId,

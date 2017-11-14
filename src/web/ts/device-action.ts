@@ -2,9 +2,9 @@
  * Support user interaction on Device details view.
  */
 
-let device: webapi.Device;
-
 $(() => {
+
+  let device: webapi.Device = (<any> window).device;
 
   function installationRender(selector: string, slotId: string) {
     WebUtil.catchAll(async () => {
@@ -91,8 +91,11 @@ $(() => {
   }
 
   if (device.checklistId) {
-    // TODO: Show 'unassign' button if permitted.
-    // $('#checklist-panel').removeClass('hidden');
+    // if (slot.permissions.assign) {
+    //   $('#checklist-unassign').removeClass('hidden').removeAttr('disabled');
+    // } else {
+    //   $('#checklist-unassign').removeClass('hidden').attr('disabled', 'disabled');
+    // }
     ChecklistUtil.render('#checklist-panel', device.checklistId);
   } else {
     $('#checklist-panel').html(`
