@@ -8,17 +8,11 @@ import mysql = require('mysql');
 import rc = require('rc');
 
 import {
-  ObjectId,
-} from '../app/shared/models';
-
-import {
-  ISlot,
   Slot,
 } from '../app/models/slot';
 
 import {
   Device,
-  IDevice,
 } from '../app/models/device';
 
 import {

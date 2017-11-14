@@ -44,7 +44,6 @@ mongoose.Promise = global.Promise;
 const debug = dbg('import-file');
 
 const info = console.info;
-const warn = console.warn;
 const error = console.error;
 
 async function main() {
@@ -142,7 +141,7 @@ async function main() {
     debug('Total data records read: %s', data.length);
 
     for (let d of data) {
-      debug('Create document and validate: %s', JSON.stringify(d));
+      info('Create %s and validate: %s', Model.modelName, JSON.stringify(d));
       let doc = new Model(d);
       try {
         await doc.validate();
@@ -178,7 +177,7 @@ async function main() {
 
   const updatedBy = cfg.user ? String(cfg.user) : 'system';
 
-  for (let [filePath, docs] of documents.entries()) {
+  for (let [_, docs] of documents.entries()) {
     for (let doc of docs) {
       if (typeof (<HistoryDocument> doc).saveWithHistory === 'function') {
         await (<HistoryDocument> doc).saveWithHistory(updatedBy);
