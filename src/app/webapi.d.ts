@@ -89,7 +89,18 @@ declare namespace webapi {
     //updates: {}
   }
 
-  export interface Slot {
+  export interface SlotInstall {
+    installDeviceId?: string;
+    installDeviceOn?: string;
+    installDeviceBy?: string;
+  }
+
+  export interface SlotPerms {
+    canAssign?: boolean;
+    canInstall?: boolean;
+  }
+
+  export interface Slot extends SlotPerms, SlotInstall {
     id: string,
     name: string;
     desc: string;
@@ -101,12 +112,12 @@ declare namespace webapi {
     arr: string;
     drr: string;
     groupId?: string;
-    installDeviceId?: string;
-    installDeviceOn?: string;
-    installDeviceBy?: string;
-    permissions: {
-      assign?: boolean;
-    }
+    // installDeviceId?: string;
+    // installDeviceOn?: string;
+    // installDeviceBy?: string;
+    // permissions: {
+    //   assign?: boolean;
+    // }
     //updates: {}
   }
 

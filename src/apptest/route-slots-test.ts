@@ -1,28 +1,74 @@
 /**
  * Tests for slots routes.
  */
+import { AssertionError } from 'assert';
+
 import { assert } from 'chai';
 import * as express from 'express';
 import * as request from 'supertest';
+
+import { Device } from '../app/models/device';
+import { Slot } from '../app/models/slot';
 
 import * as app from './app';
 import * as data from './data';
 
 // Utility to get an authenticated agent for the specified user.
-async function requestFor(app: express.Application, username: string, password?: string) {
+async function requestFor(app: express.Application, username?: string, password?: string) {
   const agent = request.agent(app);
-  await agent
-    .get('/login')
-    .auth(username, password || 'Pa5w0rd')
-    .expect(302);
+  if (username) {
+    await agent
+      .get('/login')
+      .auth(username, password || 'Pa5w0rd')
+      .expect(302);
+  }
   return agent;
 };
 
-describe('Slot FE_TEST:DEV_D0001', () => {
+async function getSlotNameOrId(r: { name: string, by: string }) {
+  if (r.by === 'ID') {
+    let slot = await Slot.findOne({ name: r.name}).exec();
+    if (!slot || !slot.id) {
+      throw new AssertionError({ message: `Slot not found with name: ${r.name}` });
+    }
+    return slot.id;
+  }
+  return r.name;
+}
 
-  let slotName = 'FE_TEST:DEV_D0001';
+async function getDeviceId(r: { device: string }) {
+  let device = await Device.findOne({ name: r.device }).exec();
+  if (!device || !device.id) {
+    throw new AssertionError({ message: `Device not found with name: ${r.device}`});
+  }
+  return device.id;
+}
 
-  let slotId: string | undefined;
+function expectPackage(data?: {}) {
+  return (res: request.Response) => {
+    if (res.status < 300 || res.status >= 400) {
+      let pkg = <webapi.Pkg<{}>> res.body;
+      assert.isObject(pkg);
+      if (res.status < 300) {
+        assert.isObject(pkg.data);
+        assert.isUndefined(pkg.error);
+        if (data) {
+          // For some reason this function, deepInclude(),
+          // is not in the type definitions (@types/chai@4.0.5)!
+          (<any> assert).deepInclude(pkg.data, data);
+        }
+      } else {
+        assert.isObject(pkg.error);
+        assert.isNumber((<any> pkg.error).code);
+        assert.isString((<any> pkg.error).message);
+        assert.isNotEmpty((<any> pkg.error).message);
+      }
+    }
+  };
+}
+
+describe('Test slot routes', () => {
+
   let handler: express.Application;
 
   before(async () => {
@@ -36,109 +82,120 @@ describe('Slot FE_TEST:DEV_D0001', () => {
     await app.stop();
   });
 
-  it('Anonymous user get device by name and ID', async () => {
-    await request(handler)
-      .get(`/slots/${slotName}`)
-      .set('Accept', 'application/json')
-      .expect(200)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isUndefined(pkg.error);
-        assert.isDefined(pkg.data);
-        assert.isDefined(pkg.data.id);
-        assert.deepEqual(pkg.data.name, slotName);
-        slotId = pkg.data.id;
-      });
+  describe('Get slot data', () => {
+    let table = [
+      { name: 'FE_TEST:DEVA_D0001', user: '', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: '', by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: '', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: '', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', by: 'ID' },
+    ];
 
-    await request(handler)
-      .get(`/slots/${slotId}`)
-      .set('Accept', 'application/json')
-      .expect(200)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isUndefined(pkg.error);
-        assert.isDefined(pkg.data);
-        assert.isDefined(pkg.data.id);
-        assert.deepEqual(pkg.data.name, slotName);
-        assert.deepEqual(pkg.data.id, slotId);
+    for (let row of table) {
+      it( `User ${row.user || 'anonymous'} get slot (${row.name}) by ${row.by}`, async () => {
+        const nameOrId = await getSlotNameOrId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .get(`/slots/${nameOrId}`)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect(expectPackage({ name: row.name }));
       });
+    }
   });
 
-  it('Anonymous user assign checklist by name and ID', async () => {
-    await request(handler)
-      .put(`/slots/${slotName}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(302).expect('Location', /^\/login($|\?)/);
-
-    await request(handler)
-      .put(`/slots/${slotId}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(302).expect('Location', /^\/login($|\?)/);
+  describe('Assign checklist before device installation', () => {
+    let table = [
+      // User unauthenticated
+      { name: 'FE_TEST:DEVA_D0001', user: '', status: 302, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: '', status: 302, by: 'ID' },
+      // User unauthorized
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
+      // Device not installed
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
+    ];
+    for (let row of table) {
+      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
+        const nameOrId = await getSlotNameOrId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .put(`/slots/${nameOrId}/checklistId`)
+          .set('Accept', 'application/json')
+          .expect(row.status)
+          .expect(expectPackage());
+      });
+    }
   });
 
-  it('User "FEDM" assign checklist by name and ID', async () => {
-    const agent = await requestFor(handler, 'fedm');
-    await agent
-      .put(`/slots/${slotName}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(403)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isObject(pkg.error);
-        assert.isString(pkg.error.message);
-      });
+  describe('Install device', () => {
+    let table = [
+      // User unauthenticated
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: '', status: 302, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: '', status: 302, by: 'ID' },
+      // User unauthorized
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 403, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 403, by: 'ID' },
+      // Device type incompatible
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 400, by: 'ID' },
+      // Installation OK
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 200, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 200, by: 'ID' },
+      // Already installed
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 400, by: 'ID' },
 
-    await agent
-      .put(`/slots/${slotId}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(403)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isObject(pkg.error);
-        assert.isString(pkg.error.message);
+    ];
+    for (let row of table) {
+      it(`User '${row.user || 'Anonymous'}', install device (${row.device} => ${row.name}) by ${row.by}`, async () => {
+        const nameOrId = await getSlotNameOrId(row);
+        const deviceId = await getDeviceId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .put(`/slots/${nameOrId}/installation`)
+          .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: { installDeviceId: deviceId }})
+          .expect(row.status)
+          .expect(expectPackage());
       });
+    }
   });
 
-  it('User "FEAM" assign checklist by name and ID', async () => {
-    let checklistId: string | undefined;
-    const agent = await requestFor(handler, 'feam');
-    await agent
-      .put(`/slots/${slotName}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(201)
-      .expect((res: request.Response) => {
-        let pkg = <webapi.Pkg<string>> res.body;
-        assert.isObject(pkg);
-        assert.isUndefined(pkg.error);
-        assert.isString(pkg.data);
-        checklistId = pkg.data;
-      });
+  describe('Assign checklist after device installation', () => {
+    let table = [
+      // User unauthorized
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
+      // Assign OK
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 201, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 201, by: 'ID' },
+      // Already assigned
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
+    ];
+    for (let row of table) {
+      it.skip(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
+        const nameOrId = await getSlotNameOrId(row);
+        const agent = await requestFor(handler, row.user);
+        await agent
+          .put(`/slots/${nameOrId}/checklistId`)
+          .set('Accept', 'application/json')
+          .expect(row.status)
+          .expect(expectPackage());
 
-    await agent
-      .put(`/slots/${slotId}/checklistId`)
-      .set('Accept', 'application/json')
-      .expect(200)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isUndefined(pkg.error);
-        assert.deepEqual(pkg.data, checklistId);
+        // TODO: Confirm the checklist TYPE!!
       });
-
-    await agent
-      .get(`/checklists/${checklistId}`)
-      .set('Accept', 'application/json')
-      .expect(200)
-      .expect((res: request.Response) => {
-        let pkg = res.body;
-        assert.isObject(pkg);
-        assert.isUndefined(pkg.error);
-        assert.deepEqual(pkg.data.id, checklistId);
-        assert.deepEqual(pkg.data.type, 'slot-default');
-      });
+    }
   });
+
 });

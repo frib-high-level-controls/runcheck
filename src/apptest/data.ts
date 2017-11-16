@@ -22,7 +22,7 @@ import {
 import * as forgapi from './shared/mock-forgapi';
 
 
-const USERS: forgapi.User[] = [
+export const USERS: forgapi.User[] = [
   { uid: 'FEAM',
     lastname: '',
     firstname: '',
@@ -37,30 +37,39 @@ const USERS: forgapi.User[] = [
   },
 ];
 
-const DEVICES: IDevice[] = [
+export const DEVICES: IDevice[] = [
   {
-    name: 'T99999-TEST-0009-0099-S00001',
+    name: 'T99999-DEVA-0009-0099-S00001',
     desc: 'Test Device #1',
     dept: 'ISF:LAB.DIV.FE',
-    deviceType: 'DEV',
+    deviceType: 'DEVA',
   }, {
-    name: 'T99999-TEST-0009-0099-S00002',
+    name: 'T99999-DEVB-0009-0099-S00002',
     desc: 'Test Device #2',
     dept: 'ISF:LAB.DIV.FE',
-    deviceType: 'DEV',
+    deviceType: 'DEVB',
   },
 ];
 
-const SLOTS: ISlot[] = [
+export const SLOTS: ISlot[] = [
   {
-    name: 'FE_TEST:DEV_D0001',
+    name: 'FE_TEST:DEVA_D0001',
     desc: 'Test Slot #1',
     area: 'ADB:FRONT_END',
-    deviceType: 'DEV',
+    deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
     careLevel: 'MEDIUM',
     safetyLevel: 'NORMAL',
+  }, {
+    name: 'FE_TEST:DEVB_D0002',
+    desc: 'Test Slot #2',
+    area: 'ADB:FRONT_END',
+    deviceType: 'DEVB',
+    arr: 'ARR0X',
+    drr: 'DRR0X-0Y',
+    careLevel: 'MEDIUM',
+    safetyLevel: 'CONTROL',
   },
 ];
 

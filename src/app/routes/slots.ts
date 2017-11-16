@@ -12,11 +12,6 @@ import * as models from '../shared/models';
 //var reqUtils = require('../lib/req-utils');
 
 import {
-  Checklist,
-  IChecklist,
-} from '../models/checklist';
-
-import {
   catchAll,
   format,
   HttpStatus,
@@ -35,8 +30,20 @@ import {
 //   Group,
 // } from '../models/group';
 
+import {
+  IInstall,
+  Install,
+} from '../models/install';
+
+import {
+  Checklist,
+  IChecklist,
+} from '../models/checklist';
+
+
 const debug = dbg('runcheck:slots');
 
+const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 
 /**
  * Compute the permissions of the current user for the specified slot.
@@ -45,14 +52,16 @@ const debug = dbg('runcheck:slots');
  * @param slot Model
  */
 function getPermissions(req: express.Request, slot: Slot) {
-  const ADMIN_ROLE = 'ADM:RUNCHECK';
-  const AREA_LEADER_ROLE = auth.formatRole('GRP', slot.area, 'LEADER');
-  const PERM_ASSIGN_ROLES = [ ADMIN_ROLE, AREA_LEADER_ROLE ];
+  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
+  const assign = auth.hasAnyRole(req, roles);
+  const install = assign;
   if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', auth.hasAnyRole(req, PERM_ASSIGN_ROLES), PERM_ASSIGN_ROLES.join(' | '));
+    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
+    debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
   }
   return {
-    assign: auth.hasAnyRole(req, PERM_ASSIGN_ROLES),
+    assign: assign,
+    install: install,
   };
 };
 
@@ -150,6 +159,8 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
+  let perms = getPermissions(req, slot);
+
   const apiSlot: webapi.Slot = {
     id: models.ObjectId(slot._id).toHexString(),
     name: slot.name,
@@ -165,7 +176,9 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
     installDeviceBy: slot.installDeviceBy,
     installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
-    permissions: getPermissions(req, slot),
+    //permissions: 
+    canAssign: perms.assign,
+    canInstall: perms.install,
   };
 
   return format(res, {
@@ -208,6 +221,10 @@ router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async 
     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
   }
 
+  if (!slot.installDeviceId) {
+    throw new RequestError('Device must be installed', BAD_REQUEST);
+  }
+
   if (slot.checklistId) {
     log.warn('Slot already has checklist id: %s', slot.checklistId);
     res.status(HttpStatus.OK).json(<webapi.Pkg<string>> {
@@ -248,6 +265,94 @@ router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async 
   res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
     data: slot.checklistId.toHexString(),
   });
+}));
+
+/**
+ * Install Device in Slot
+ */
+router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Slot with name or id: %s', nameOrId);
+
+  let slot: Slot | null;
+  if (models.isValidId(nameOrId)) {
+    slot = await Slot.findById(nameOrId).exec();
+  } else {
+    slot = await Slot.findOne({name: nameOrId.toUpperCase() });
+  }
+
+  if (!slot || !slot.id) {
+    throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
+  }
+
+  const username = auth.getUsername(req);
+  const permissions = getPermissions(req, slot);
+  if (!username || !permissions.install) {
+    throw new RequestError('Not permitted to install device', HttpStatus.FORBIDDEN);
+  }
+
+  let pkg = <webapi.Pkg<{ installDeviceId: string }>> req.body;
+  if (debug.enabled) {
+    debug(`Request data: ${JSON.stringify(pkg)}`);
+  }
+
+  let device: Device | null = null;
+  let install: Install | null = null;
+  if (pkg && pkg.data && models.isValidId(pkg.data.installDeviceId)) {
+    debug('Find Device with ID: %s', pkg.data.installDeviceId);
+    debug('Find Install with device ID: %s', pkg.data.installDeviceId);
+    [ device, install ] = await Promise.all([
+      Device.findById(pkg.data.installDeviceId).exec(),
+      Install.findOne({ deviceId: pkg.data.installDeviceId }).exec(),
+    ]);
+  }
+
+  if (!device || !device.id) {
+    throw new RequestError('Device not found', BAD_REQUEST);
+  }
+
+  if (install) {
+    throw new RequestError('Device is already installed', BAD_REQUEST);
+  }
+
+  if (slot.deviceType !== device.deviceType) {
+    throw new RequestError('Device type is not compatible', BAD_REQUEST);
+  }
+
+  install = new Install(<IInstall> {
+    slotId: models.ObjectId(slot.id),
+    deviceId: models.ObjectId(device.id),
+    installOn: new Date(), // TODO: Get from client!
+    installBy: auth.formatRole('USR', username),
+    state: 'INSTALLING',
+  });
+
+  await install.save();
+
+  slot.installDeviceId = install.deviceId;
+  slot.installDeviceOn = install.installOn;
+  slot.installDeviceBy = install.installBy;
+
+  device.installSlotId = install.slotId;
+  device.installSlotOn = install.installOn;
+  device.installSlotBy = install.installBy;
+
+  await Promise.all([
+    device.saveWithHistory(install.installBy),
+    slot.saveWithHistory(install.installBy),
+  ]);
+
+  install.state = 'INSTALLED';
+  await install.save();
+
+  let respkg: webapi.Pkg<webapi.SlotInstall> = {
+    data: {
+      installDeviceId: install.deviceId.toHexString(),
+      installDeviceOn: install.installOn.toISOString(),
+      installDeviceBy: install.installBy,
+    },
+  };
+  res.json(respkg);
 }));
 
 // var slotTransition = [
