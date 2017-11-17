@@ -48,6 +48,7 @@ declare namespace webapi {
   }
 
   export interface DeviceTableRow {
+    id: string;
     name: string;
     desc: string;
     dept: string;

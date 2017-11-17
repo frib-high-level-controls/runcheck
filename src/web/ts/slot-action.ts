@@ -8,6 +8,10 @@ $(() => {
 
   let slot: webapi.Slot = (<any> window).slot;
 
+  // Used to populate device selection for installation
+  let devices: Array<{ id: string, text: string, disabled?: boolean }> | undefined;
+
+
   // function showMessage(msg: string) {
   //   $('#message').append(`
   //     <div class="alert alert-danger">
@@ -28,12 +32,12 @@ $(() => {
       let pkg: webapi.Pkg<webapi.Device>;
       try {
         pkg = await $.get({
-          url: `/devices/${slot.installDeviceId}`,
+          url: `/devices/${deviceId}`,
           dataType: 'json',
         });
       } catch (xhr) {
         pkg = xhr.responseJSON;
-        let message = 'Unknown error retrieving Device';
+        let message = 'Unknown error retrieving device';
         if (pkg && pkg.error && pkg.error.message) {
           message = pkg.error.message;
         }
@@ -61,7 +65,7 @@ $(() => {
 
     let pkg: webapi.Pkg<string>;
     try {
-      pkg = await $.get({
+      pkg = await $.ajax({
         url: `/slots/${slot.id}/checklistId`,
         method: 'PUT',
         dataType: 'json',
@@ -74,9 +78,10 @@ $(() => {
       }
       $('#checklist-spin').addClass('hidden');
       $('#checklist-assign').removeClass('hidden');
-      $('#checklist-panel').html(`
-        <div>
-          <span class='text-danger'>${message}</span>
+      $('#checklist-panel').prepend(`
+        <div class="alert alert-danger">
+          <button class="close" data-dismiss="alert">x</button>
+          <span>${message}</span>
         </div>
       `).removeClass('hidden');
       return;
@@ -88,18 +93,130 @@ $(() => {
     ChecklistUtil.render('#checklist-panel', slot.checklistId);
   }));
 
-  // ensure the device has been initialized
-  // if (!slot) {
-  //   console.error('Slot');
-  //   showMessage('Slot not initialized');
-  //   return;
-  // }
+
+  $('#install').click(WebUtil.wrapCatchAll1(async (evt) => {
+    evt.preventDefault();
+    $('#install').addClass('hidden');
+    $('#install-spin').removeClass('hidden');
+
+    if (!devices) {
+      let pkg: webapi.Pkg<webapi.DeviceTableRow[]>;
+      try {
+        pkg = await $.get({
+          url: '/devices',
+          data: { deviceType: slot.deviceType },
+          dataType: 'json',
+        });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = 'Unknown error retrieving devices';
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        $('#install-form').prepend(`
+          <div class="alert alert-danger">
+            <button class="close" data-dismiss="alert">x</button>
+            <span>${message}</span>
+          </div>
+        `);
+      }
+
+      devices = [];
+      if (pkg && Array.isArray(pkg.data)) {
+        for (let device of pkg.data) {
+          let text = `${device.name} (${device.desc})`;
+          if (text.length > 48) {
+            text = `${text.substr(0, 48)}...`;
+          }
+          devices.push({
+            id: device.id,
+            text: text,
+            disabled: Boolean(device.installSlotName),
+          });
+        }
+      }
+
+      $('#install-name').select2({
+        data: devices,
+      });
+
+      $('#install-date').datepicker({
+        todayBtn: true,
+        todayHighlight: true,
+      }).datepicker('update', new Date());
+    }
+
+    $('#install-spin').addClass('hidden');
+    $('#install-form').removeClass('hidden');
+  }));
+
+  $('#install-save').click(WebUtil.wrapCatchAll1(async (evt) => {
+    evt.preventDefault();
+
+    $('install-form').attr('disabled', 'disabled');
+    let installDeviceId = $('#install-name').find(':selected').val();
+    let installDeviceOn = $('#install-date').datepicker('getDate');
+
+    let pkg: webapi.Pkg<webapi.SlotInstall>;
+    try {
+      pkg = await $.ajax({
+        url: `/slots/${slot.id}/installation`,
+        method: 'PUT',
+        dataType: 'json',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify(<webapi.Pkg<webapi.SlotInstall>> {
+          data: {
+            installDeviceId: installDeviceId,
+            installDeviceOn: installDeviceOn.toISOString(),
+          },
+        }),
+      });
+      if (!pkg.data.installDeviceId) {
+        throw new Error('Invalid Device ID');
+      }
+    } catch (xhr) {
+      pkg = xhr.responseJSON;
+      let message = 'Unknown error installing device';
+      if (pkg && pkg.error && pkg.error.message) {
+        message = pkg.error.message;
+      }
+      $('#install-form').prepend(`
+        <div class="alert alert-danger">
+          <button class="close" data-dismiss="alert">x</button>
+          <span>${message}</span>
+        </div>
+      `).removeAttr('disabled');
+      return;
+    }
+
+    slot.installDeviceId = pkg.data.installDeviceId;
+    slot.installDeviceId = pkg.data.installDeviceOn;
+    slot.installDeviceBy = pkg.data.installDeviceBy;
+    $('#install-form').addClass('hidden');
+    installationRender('#install-panel', pkg.data.installDeviceId);
+  }));
+
+  $('#install-cancel').click(WebUtil.wrapCatchAll1(async (evt) => {
+    evt.preventDefault();
+    $('#install').removeClass('hidden');
+    $('#install-form').addClass('hidden');
+  }));
+
 
   if (slot.installDeviceId) {
     // $('#uninstall').removeClass('hidden');
     installationRender('#install-panel', slot.installDeviceId);
   } else {
-    $('#install').removeClass('hidden');
+    $('#install-panel').html(`
+      <div>
+        <span>No device installed</span>
+      </div>
+    `).removeClass('hidden');
+    if (slot.canInstall) {
+      $('#install').removeClass('hidden').removeAttr('disabled');
+    } else {
+      $('#install').removeClass('hidden').attr('disabled', 'disabled');
+    }
   }
 
   if (slot.groupId) {
@@ -124,7 +241,7 @@ $(() => {
         <span>No checklist assigned</span>
       </div>
     `).removeClass('hidden');
-    if (slot.permissions.assign) {
+    if (slot.canAssign) {
       $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
     } else {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');

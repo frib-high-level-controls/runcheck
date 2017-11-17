@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.3",
+    "@types/bootstrap-datepicker": "0.0.11",
     "@types/chai": "^4.0.1",
     "@types/commander": "^2.9.2",
     "@types/datatables.net": "^1.10.6",
@@ -56,6 +57,7 @@
     "@types/passport-http": "^0.3.2",
     "@types/rc": "^0.0.1",
     "@types/request": "^2.0.3",
+    "@types/select2": "^4.0.41",
     "@types/serve-favicon": "^2.2.28",
     "@types/supertest": "^2.0.1",
     "chai": "^4.0.2",

@@ -3,9 +3,12 @@
   "private": true,
   "dependencies": {
     "bootstrap": "^3.3.7",
+    "bootstrap-datepicker": "^1.7.1",
     "datatables": "^1.10.13",
     "datatables-bootstrap": "0.0.1",
     "es6-promise": "^4.1.1",
-    "font-awesome": "^4.7.0"
+    "font-awesome": "^4.7.0",
+    "select2": "^4.0.6-rc.0",
+    "select2-bootstrap-theme": "0.1.0-beta.10"
   }
 }

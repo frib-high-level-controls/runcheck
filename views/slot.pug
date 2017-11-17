@@ -2,6 +2,9 @@ extends layout.pug
 
 block head
   title #{slot.name} :: RunCheck
+  link(rel='stylesheet', href='/node_modules/select2/dist/css/select2.min.css')
+  link(rel='stylesheet', href='/node_modules/select2-bootstrap-theme/dist/select2-bootstrap.min.css')
+  link(rel='stylesheet', href='/node_modules/bootstrap-datepicker/dist/css/bootstrap-datepicker3.min.css')
 
 block content
   br
@@ -22,8 +25,19 @@ block content
             .pull-right
               h4.fa.fa-spinner.fa-spin.hidden#install-spin
               button.btn.btn-primary.hidden#install(type='button', disabled) Install
-              button.btn.btn-primary.hidden#uninstall(type='button', disabled) Uninstall
-          .panel-body.hidden#install-panel
+              //- button.btn.btn-primary.hidden#uninstall(type='button', disabled) Uninstall
+          .panel-body
+            form.hidden#install-form
+              .form-group
+                label(for='install-name') Device
+                select.form-control#install-name(style='width:100%')
+              .form-group
+                label(for='install-date') Date
+                input.form-control#install-date(type='text')
+              button.btn.btn-primary.pull-right#install-save(type='submit') Save
+              button.btn.btn-default#install-cancel(type='button') Cancel
+              hr
+            #install-panel
     .row
       .col-md-12
         .panel.panel-default
@@ -149,7 +163,9 @@ block content
   each h in slot.__updates.reverse()
     +change(h, moment)
 block js
-  //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
+  script(type='text/javascript', src='/node_modules/select2/dist/js/select2.min.js')
+  script(type='text/javascript', src='/node_modules/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js')
+  //- script(type='text/javascript', src='/node_modules/typeahead.js/dist/typeahead.bundle.min.js')
   //- script(type='text/javascript', src='/javascripts/typeahead.js')
   script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/js/checklistutil.js')

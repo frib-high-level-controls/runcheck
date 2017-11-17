@@ -342,6 +342,13 @@ router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async
     slot.saveWithHistory(install.installBy),
   ]);
 
+  // Is it practical to rollback this change
+  // if an error has occurred during update?
+  // These minor changes should not result
+  // in a validation error, and if this is a
+  // network or database error then likely
+  // it would be impossible to rollback.
+
   install.state = 'INSTALLED';
   await install.save();
 

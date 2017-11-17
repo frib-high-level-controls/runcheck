@@ -64,13 +64,28 @@ router.get('/', catchAll(async (req, res) => {
       res.render('devices');
     },
     'application/json': async () => {
-      const rows: webapi.DeviceTableRow[] =  [];
+      let conds: { deviceType?: string } = {};
+      for (let param in req.query) {
+        if (req.query.hasOwnProperty(param)) {
+          if (param.toUpperCase() === 'DEVICETYPE') {
+            conds.deviceType = String(req.query[param]);
+          }
+        }
+      }
+      if (debug.enabled) {
+        debug('Find Devices with %s', JSON.stringify(conds));
+      }
       const [ devices, slots ] = await Promise.all([
-        Device.find().exec(),
+        Device.find(conds).exec(),
         models.mapById(Slot.find({ installDeviceId: { $exists: true }}).exec()),
       ]);
+      const rows: webapi.DeviceTableRow[] =  [];
       for (let device of devices) {
+        if (!device.id) {
+          continue;
+        }
         const row: webapi.DeviceTableRow = {
+          id: device.id,
           name: device.name,
           desc: device.desc,
           dept: device.dept,
