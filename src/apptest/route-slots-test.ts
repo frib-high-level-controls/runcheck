@@ -186,6 +186,8 @@ describe('Test slot routes', () => {
   describe('Assign checklist after device installation', () => {
     let table = [
       // User unauthorized
+      { name: 'FE_TEST:DEVA_D0001', user: '',     status: 403, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: '',     status: 403, by: 'ID' },
       { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
       { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
       // Assign OK
@@ -196,7 +198,7 @@ describe('Test slot routes', () => {
       { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
     ];
     for (let row of table) {
-      it.skip(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
+      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
         const nameOrId = await getSlotNameOrId(row);
         const agent = await requestFor(handler, row.user);
         await agent
