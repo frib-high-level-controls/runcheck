@@ -103,7 +103,7 @@ $(() => {
         <span>No checklist assigned</span>
       </div>
     `).removeClass('hidden');
-    if (device.perms.assign) {
+    if (device.canAssign) {
       $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
     } else {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');

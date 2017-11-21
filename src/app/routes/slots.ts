@@ -176,7 +176,6 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
     installDeviceBy: slot.installDeviceBy,
     installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString().split('T')[0] : undefined,
-    //permissions: 
     canAssign: perms.assign,
     canInstall: perms.install,
   };
@@ -226,11 +225,7 @@ router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async 
   }
 
   if (slot.checklistId) {
-    log.warn('Slot already has checklist id: %s', slot.checklistId);
-    res.status(HttpStatus.OK).json(<webapi.Pkg<string>> {
-      data: slot.checklistId.toHexString(),
-    });
-    return;
+    throw new RequestError('Slot already assigned checklist', HttpStatus.BAD_REQUEST);
   }
 
   let checklistType: 'slot-default';

@@ -128,6 +128,8 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
+  let perms = getPermissions(req, device);
+
   const apiDevice: webapi.Device = {
     id: String(device.id),
     name: device.name,
@@ -138,7 +140,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
     installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString().split('T')[0] : undefined,
-    perms: getPermissions(req, device),
+    canAssign: perms.assign,
   };
 
   return format(res, {
@@ -194,11 +196,7 @@ router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async 
   }
 
   if (device.checklistId) {
-    log.warn('Device already has checklist id: %s', device.checklistId);
-    res.status(HttpStatus.OK).json({
-      data: device.checklistId.toHexString(),
-    });
-    return;
+    throw new RequestError('Device already assigned checklist', HttpStatus.BAD_REQUEST);
   }
 
   const doc: IChecklist = {

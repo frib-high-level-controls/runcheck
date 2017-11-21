@@ -74,7 +74,17 @@ declare namespace webapi {
     desc: string;
   }
 
-  export interface Device {
+  export interface DevicePerms {
+    canAssign?: boolean;
+  }
+
+  export interface DeviceInstall {
+    installSlotId?: string;
+    installSlotOn?: string;
+    installSlotBy?: string;
+  }
+
+  export interface Device extends DevicePerms, DeviceInstall {
     id: string,
     name: string;
     desc: string;
@@ -84,10 +94,6 @@ declare namespace webapi {
     installSlotId?: string;
     installSlotOn?: string;
     installSlotBy?: string;
-    perms: {
-      assign?: boolean;
-    }
-    //updates: {}
   }
 
   export interface SlotInstall {
@@ -113,13 +119,6 @@ declare namespace webapi {
     arr: string;
     drr: string;
     groupId?: string;
-    // installDeviceId?: string;
-    // installDeviceOn?: string;
-    // installDeviceBy?: string;
-    // permissions: {
-    //   assign?: boolean;
-    // }
-    //updates: {}
   }
 
   export interface Group {
