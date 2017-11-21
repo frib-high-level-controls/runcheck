@@ -179,10 +179,14 @@ async function main() {
 
   for (let [_, docs] of documents.entries()) {
     for (let doc of docs) {
-      if (typeof (<HistoryDocument> doc).saveWithHistory === 'function') {
-        await (<HistoryDocument> doc).saveWithHistory(updatedBy);
-      } else {
-        await doc.save();
+      try {
+        if (typeof (<HistoryDocument> doc).saveWithHistory === 'function') {
+          await (<HistoryDocument> doc).saveWithHistory(updatedBy);
+        } else {
+          await doc.save();
+        }
+      } catch (err) {
+        error(err);
       }
     }
   }
