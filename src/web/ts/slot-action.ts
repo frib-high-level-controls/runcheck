@@ -155,8 +155,8 @@ $(() => {
 
     $('install-form').attr('disabled', 'disabled');
     let installDeviceId = $('#install-name').find(':selected').val();
-    let installDeviceOn = $('#install-date').datepicker('getDate');
-
+    let installDeviceOn: Date | null = $('#install-date').datepicker('getUTCDate');
+ 
     let pkg: webapi.Pkg<webapi.SlotInstall>;
     try {
       pkg = await $.ajax({
@@ -166,8 +166,8 @@ $(() => {
         contentType: 'application/json; charset=utf-8',
         data: JSON.stringify(<webapi.Pkg<webapi.SlotInstall>> {
           data: {
-            installDeviceId: installDeviceId,
-            installDeviceOn: installDeviceOn.toISOString(),
+            installDeviceId: installDeviceId ? String(installDeviceId) : undefined,
+            installDeviceOn: installDeviceOn ? installDeviceOn.toISOString().split('T')[0] : undefined,
           },
         }),
       });

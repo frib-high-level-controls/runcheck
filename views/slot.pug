@@ -31,9 +31,10 @@ block content
               .form-group
                 label(for='install-name') Device
                 select.form-control#install-name(style='width:100%')
+                  option(value='', selected, disabled) Select a Device
               .form-group
                 label(for='install-date') Date
-                input.form-control#install-date(type='text')
+                input.form-control#install-date(type='text', placeholder='Select a Date')
               button.btn.btn-primary.pull-right#install-save(type='submit') Save
               button.btn.btn-default#install-cancel(type='button') Cancel
               hr

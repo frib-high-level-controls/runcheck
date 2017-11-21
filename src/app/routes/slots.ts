@@ -175,7 +175,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
     installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
     installDeviceBy: slot.installDeviceBy,
-    installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
+    installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString().split('T')[0] : undefined,
     //permissions: 
     canAssign: perms.assign,
     canInstall: perms.install,
@@ -291,21 +291,43 @@ router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async
     throw new RequestError('Not permitted to install device', HttpStatus.FORBIDDEN);
   }
 
-  let pkg = <webapi.Pkg<{ installDeviceId: string }>> req.body;
+  let pkg = <webapi.Pkg<webapi.SlotInstall>> req.body;
   if (debug.enabled) {
     debug(`Request data: ${JSON.stringify(pkg)}`);
   }
 
-  let device: Device | null = null;
-  let install: Install | null = null;
-  if (pkg && pkg.data && models.isValidId(pkg.data.installDeviceId)) {
-    debug('Find Device with ID: %s', pkg.data.installDeviceId);
-    debug('Find Install with device ID: %s', pkg.data.installDeviceId);
-    [ device, install ] = await Promise.all([
-      Device.findById(pkg.data.installDeviceId).exec(),
-      Install.findOne({ deviceId: pkg.data.installDeviceId }).exec(),
-    ]);
+  if (!pkg.data) {
+    throw new RequestError('Invalid request data', BAD_REQUEST);
   }
+
+  if (!pkg.data.installDeviceId) {
+    throw new RequestError('Device is required', BAD_REQUEST);
+  }
+
+  let deviceId = pkg.data.installDeviceId;
+  if (!models.isValidId(deviceId)) {
+    throw new RequestError('Device ID is invalid', BAD_REQUEST);
+  }
+
+  if (!pkg.data.installDeviceOn) {
+    throw new RequestError('Date is required', BAD_REQUEST);
+  }
+
+  if (!pkg.data.installDeviceOn.match(/\d{4}-\d{2}-\d{2}/)) {
+    throw new RequestError('Date is invalid (1)', BAD_REQUEST);
+  }
+
+  let installOn = new Date(pkg.data.installDeviceOn);
+  if (!Number.isFinite(installOn.getTime())) {
+    throw new RequestError('Date is invalid (2)', BAD_REQUEST);
+  }
+
+  debug('Find Device with ID: %s', deviceId);
+  debug('Find Install with device ID: %s', deviceId);
+  let [ device, install ] = await Promise.all([
+    Device.findById(deviceId).exec(),
+    Install.findOne({ deviceId: deviceId }).exec(),
+  ]);
 
   if (!device || !device.id) {
     throw new RequestError('Device not found', BAD_REQUEST);
@@ -322,7 +344,7 @@ router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async
   install = new Install(<IInstall> {
     slotId: models.ObjectId(slot.id),
     deviceId: models.ObjectId(device.id),
-    installOn: new Date(), // TODO: Get from client!
+    installOn: installOn,
     installBy: auth.formatRole('USR', username),
     state: 'INSTALLING',
   });
@@ -355,8 +377,8 @@ router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async
   let respkg: webapi.Pkg<webapi.SlotInstall> = {
     data: {
       installDeviceId: install.deviceId.toHexString(),
-      installDeviceOn: install.installOn.toISOString(),
       installDeviceBy: install.installBy,
+      installDeviceOn: install.installOn.toISOString().split('T')[0],
     },
   };
   res.json(respkg);

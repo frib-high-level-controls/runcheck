@@ -17,6 +17,10 @@ table.table
     tr
       th Department
       td= device.dept
+    if embedded && device.installSlotOn
+      - var d = new Date(device.installSlotOn);
+      th Installed
+      td #{d.getUTCMonth()+1}/#{d.getUTCDate()}/#{d.getUTCFullYear()}
       //-tr
         th Owner
         td= device.owner

@@ -1,6 +1,9 @@
 /**
  * Tests for slots routes.
  */
+
+/* tslint:disable:max-line-length */
+
 import { AssertionError } from 'assert';
 
 import { assert } from 'chai';
@@ -139,20 +142,25 @@ describe('Test slot routes', () => {
   describe('Install device', () => {
     let table = [
       // User unauthenticated
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: '', status: 302, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: '', status: 302, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: '', status: 302, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: '', status: 302, by: 'ID' },
       // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 403, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEDM', status: 403, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEDM', status: 403, by: 'ID' },
       // Device type incompatible
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 400, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 400, by: 'ID' },
+      // Installation date missing or invalid
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: undefined,    user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '',           user: 'FEAM', status: 400, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: '2017',       user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-13-20', user: 'FEAM', status: 400, by: 'ID' },
       // Installation OK
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 200, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 200, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 200, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 200, by: 'ID' },
       // Already installed
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 400, by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 400, by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 400, by: 'ID' },
 
     ];
     for (let row of table) {
@@ -164,9 +172,13 @@ describe('Test slot routes', () => {
           .put(`/slots/${nameOrId}/installation`)
           .set('Accept', 'application/json')
           .set('Content-Type', 'application/json')
-          .send({ data: { installDeviceId: deviceId }})
+          .send({ data: {
+              installDeviceId: deviceId,
+              installDeviceOn: row.date,
+            }
+          })
           .expect(row.status)
-          .expect(expectPackage());
+          .expect(expectPackage({ installDeviceOn: row.date }));
       });
     }
   });

@@ -137,7 +137,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     checklistId: device.checklistId ? device.checklistId.toHexString() : null,
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
-    installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString() : undefined,
+    installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString().split('T')[0] : undefined,
     perms: getPermissions(req, device),
   };
 
