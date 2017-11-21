@@ -25,13 +25,16 @@ table.table
       tr
         th Level of Safety
         td= slot.safetyLevel
-    tr
-      th DRR
-      td= slot.drr
-    if !embedded
+      tr
+        th DRR
+        td= slot.drr
       tr
         th ARR
         td= slot.arr
+    if embedded && slot.installDeviceOn
+      - var d = new Date(slot.installDeviceOn);
+      th Installed
+      td #{d.getUTCMonth()+1}/#{d.getUTCDate()}/#{d.getUTCFullYear()}
 if slot.groupId
   h4.pull-right
     a(href='/groups/slot/'+slot.groupId) Go to Group
