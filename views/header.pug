@@ -15,12 +15,18 @@ header
             a(href='/devices/') Devices
           li
             a(href='/slots/') Slots
+          li
+            a(href='/groups/slot/') Slot Groups
           li.dropdown
-            a.dropdown-toggle(href='#', data-toggle='dropdown') Groups
+            a.dropdown-toggle(href='#', data-toggle='dropdown') Checklists
               b.caret
             ul.dropdown-menu
               li
-                a(href='/groups/slot/') Slot
+                a(href='/checklists?type=DEVICE') Devices
+              li
+                a(href='/checklists?type=SLOT') Slots
+              li
+                a(href='/checklists?type=SLOTGROUP') Slot Groups
           //-li
             a(href='/checklists/') Checklists
           //-if (locals.session && locals.session.userid && locals.session.roles && locals.session.roles.admin)

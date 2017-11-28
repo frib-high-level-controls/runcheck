@@ -131,6 +131,8 @@ declare namespace webapi {
   interface Checklist {
     id: string;
     targetId: string;
+    targetName?: string;
+    targetDesc?: string;
     type: string;
     editable: boolean;
     subjects: ChecklistSubject[];

@@ -3,6 +3,7 @@
  */
 import * as dbg  from 'debug';
 import * as express from 'express';
+import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
 import * as log from '../shared/logging';
@@ -11,6 +12,7 @@ import * as models from '../shared/models';
 import {
   catchAll,
   ensureAccepts,
+  format,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -37,6 +39,14 @@ import {
   IChecklistStatus,
   IChecklistSubject,
 } from '../models/checklist';
+
+type ObjectId = mongoose.Types.ObjectId;
+
+interface Target {
+  name: string;
+  desc: string;
+  checklistId?: ObjectId | null;
+};
 
 
 const debug = dbg('runcheck:checklists');
@@ -90,9 +100,166 @@ const debug = dbg('runcheck:checklists');
 //   return datas;
 // };
 
+export function findQueryParam(req: express.Request, name: string): string | undefined {
+  // If name is an exact match then do not do case insensitive search.
+  if (req.query[name]) {
+    return String(req.query[name]);
+  }
+  name = name.toUpperCase();
+  for (let key in req.query) {
+    if (req.query.hasOwnProperty(key)) {
+      if (key.toUpperCase() === name) {
+        return String(req.query(key));
+      }
+    }
+  }
+  return;
+}
+
+
+
 
 
 export const router = express.Router();
+
+
+router.get('/', catchAll(async (req, res) => {
+  let targetType = findQueryParam(req, 'type');
+  debug('Checklist target type: %s', targetType);
+
+
+  // let qType: string | undefined;
+  // for (let name in req.query) {
+  //   if (req.query.hasOwnProperty(name)) {
+  //     if (name.toUpperCase() === 'TYPE') {
+  //       qType = String(req.query[name]).toUpperCase();
+  //     }
+  //   }
+  // }
+
+  if (!targetType) {
+    return;
+  }
+
+  format(res, {
+    'text/html': () => {
+      res.render('checklists', {
+        targetType: targetType,
+      });
+    },
+    'application/json': async () => {
+      let targets: Target[];
+
+      switch (String(targetType).toUpperCase()) {
+      case 'SLOT':
+        debug('Find Slots with assigned checklist');
+        targets = await Slot.find({ checklistId: { $exists: true } /*, groupId: { $exists: false }*/}).exec();
+        break;
+      case 'DEVICE':
+        debug('Find Devices with assigned checklist');
+        targets = await Device.find({ checklistId: { $exists: true } }).exec();
+        break;
+      case 'SLOTGROUP':
+        debug('Find Groups with assigned checklist');
+        targets = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
+        break;
+      default:
+      targets = [];
+      let [ devices, slots, slotgroups ] = await Promise.all([
+          Device.find({ checklistId: { $exists: true } }).exec(),
+          Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec(),
+        ]);
+        targets = targets.concat(devices, slots, slotgroups);
+        break;
+      }
+
+      let checklistIds: ObjectId[] = [];
+      for (let target of targets) {
+        if (target.checklistId) {
+          checklistIds.push(target.checklistId);
+        }
+      }
+
+      debug('Find checklists for targets (length: %s)', checklistIds.length);
+
+      let [ checklists, subjects, /*configs,*/ statuses ] = await Promise.all([
+        models.mapById(Checklist.find({ _id: { $in: checklistIds } }).exec()),
+        ChecklistSubject.find({ checklistId: { $in: (<Array<ObjectId | null>> checklistIds).concat(null) } }).exec(),
+        //ChecklistConfig.find({ checklistId: { $in: checklistIds } }).exec(),
+        ChecklistStatus.find({ checklistId: { $in: checklistIds } }).exec(),
+      ]);
+
+      debug('Found checklists');
+
+      let apiChecklists: webapi.Checklist[] = [];
+      for (let target of targets) {
+        if (!target.checklistId) {
+          continue;
+        }
+        let checklist = checklists.get(target.checklistId.toHexString());
+        if (!checklist) {
+          continue;
+        }
+        let apiStatuses: webapi.ChecklistStatus[] = [];
+        for (let status of statuses) {
+          if (status.checklistId.equals(checklist._id)) {
+            apiStatuses.push({
+              id: '', // String(status.id),
+              checklistId: '', //status.checklistId.toHexString(),
+              subjectId: status.subjectName,
+              value: status.value,
+              comment: status.comment,
+              inputBy: status.inputBy,
+              inputOn: status.inputOn.toISOString(),
+              history: {
+                updates: [],
+                updatedAt: '',
+                updatedBy: '',
+              },
+            });
+          }
+        }
+
+        let apiSubjects: webapi.ChecklistSubject[] = [];
+        for (let subject of subjects) {
+          if (subject.checklistType === checklist.checklistType && (!subject.checklistId || subject.checklistId === checklist._id)) {
+            apiSubjects.push({
+              id: '', //String(subject.id),
+              checklistType: subject.checklistType,
+              subject: subject.name,
+              checklistId: '', // subject.checklistId ? subject.checklistId.toHexString() : String(checklist.id),
+              order: subject.order,
+              assignee: subject.assignees,
+              required: subject.required,
+              mandatory: subject.mandatory,
+              final: subject.final,
+            });
+          }
+        }
+
+        apiChecklists.push({
+          id: String(checklist.id),
+          targetId: checklist.targetId.toHexString(),
+          targetName: target.name,
+          targetDesc: target.desc,
+          type: checklist.checklistType,
+          editable: false,
+          subjects: apiSubjects,
+          statuses: apiStatuses,
+        });
+      }
+
+      res.json(<webapi.Pkg<webapi.Checklist[]>> {
+        data: apiChecklists,
+      });
+
+    },
+  });
+
+}));
+
+
 
 router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);

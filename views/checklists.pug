@@ -1,10 +1,9 @@
 extends layout.pug
 
 block head
-  title RunCheck checklists
-  meta(name='viewport', content='width=device-width, initial-scale=1.0')
-  link(rel='stylesheet', href='/bootstrap/dist/css/bootstrap.css')
-  link(rel='stylesheet', href='/stylesheets/style.css')
+  //- link(rel='stylesheet', href='/node_modules/datatables/media/css/jquery.dataTables.min.css')
+  link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  title RunCheck Checklists
 
 
 block content
@@ -12,7 +11,38 @@ block content
     h1= title
     p Welcome to title
 
+block content
+  .container
+    br
+    form.form-inline
+      .form-group
+        label(for='updateSubject') !{'Subject:&nbsp;'}
+        select.form-control#updateSubject
+          option(value='EE') EE
+          option(value='ME') ME
+          option(value='CRYO') CRYO
+          option(value='PHYS') PHYS
+          option(value='AM') AM
+      .form-group
+        label(for='updateStatus') !{'&nbsp;Status:&nbsp;'}
+        select.form-control#updateStatus
+          option(value='')
+          option(value='Y') Y
+          option(value='YC') YC
+          option(value='N') N
+        input.form-control(type='text', disabled)
+      button.btn.btn-primary(type='button') Update
+    br
+    .tab-pane.active#checklists
+      //- .table-responsive
+      //- .table-condensed
+      .bg-primary.hidden#checklists-message
+      table.table.table-bordered.table-hover.hidden#checklists-table
 
 block js
-  script(type='text/javascript', src='/jquery/dist/jquery.js')
-  script(type='text/javascript', src='/bootstrap/dist/js/bootstrap.js')
+  script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
+  script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/js/shared/webutil.js')
+  script(type='text/javascript', src='/js/datatablesutil.js')
+  script(type='text/javascript', src='/js/checklists-table.js')
+  script(type='text/javascript') var checklistTargetType = '#{targetType}'
