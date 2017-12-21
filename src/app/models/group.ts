@@ -5,13 +5,15 @@ import * as mongoose from 'mongoose';
 
 import * as history from '../shared/history';
 
+import { Checklist } from './checklist';
+
 type ObjectId = mongoose.Types.ObjectId;
 
 export interface IGroup {
   name: string;
   desc: string;
   memberType: string;
-  checklistId: ObjectId | null;
+  checklistId?: ObjectId;
 };
 
 export interface Group extends IGroup, history.Document<Group> {
@@ -45,7 +47,8 @@ const groupSchema = new Schema({
 
   checklistId: {
     type: ObjectId,
-    default: null,
+    ref: Checklist.modelName,
+    required: false,
   },
   //ARRChecklist: Mixed,
   //DRRChecklist: Mixed,
