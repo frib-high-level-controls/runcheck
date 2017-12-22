@@ -598,7 +598,6 @@ async function main() {
       name: row.name,
       desc: row.description,
       memberType: Slot.modelName,
-      checklistId: null,
     });
 
     try {
