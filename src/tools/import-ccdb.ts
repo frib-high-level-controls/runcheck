@@ -29,6 +29,7 @@ import {
   Checklist,
   ChecklistConfig,
   ChecklistStatus,
+  ChecklistSubject,
   IChecklist,
   IChecklistConfig,
   IChecklistStatus,
@@ -56,6 +57,7 @@ interface Config {
   ascareas?: {[key: string]: {} };
   ascdepts?: {[key: string]: {} };
   processes?: {[key: string]: {} };
+  subjects?: Array<{[key: string]: {}}>;
 };
 
 
@@ -1061,6 +1063,26 @@ async function main() {
     }
   }
 
+  let subjects: ChecklistSubject[] = [];
+
+  if (Array.isArray(cfg.subjects)) {
+    for (let doc of cfg.subjects) {
+      let subject = new ChecklistSubject(doc);
+
+      try {
+        await subject.validate();
+      } catch (err) {
+        error(err);
+        connection.end();
+        return;
+      }
+
+      subjects.push(subject);
+    }
+  } else {
+    console.warn('No default checklist subjects specified!');
+  }
+
   // Import Installation Data
 
   // mysql> desc installation_record;
@@ -1163,37 +1185,42 @@ async function main() {
   try {
     await Slot.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: Slot: ${err.message}`);
   }
   try {
     await Device.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: Device: ${err.message}`);
   }
   try {
     await Group.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: Group: ${err.message}`);
   }
   try {
     await Install.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: Install: ${err.message}`);
   }
   try {
     await Checklist.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: Checklist: ${err.message}`);
   }
   try {
     await ChecklistConfig.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: ChecklistConfig: ${err.message}`);
   }
   try {
     await ChecklistStatus.collection.drop();
   } catch (err) {
-    console.warn(`WARN: ${err.message}`);
+    console.warn(`WARN: ChecklistStatus: ${err.message}`);
+  }
+  try {
+    await ChecklistSubject.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ChecklistSubject: ${err.message}`);
   }
 
   for (let name in devices) {
@@ -1289,6 +1316,19 @@ async function main() {
       info('Saving checklist status: %s', id);
       try {
         await statuses[id].saveWithHistory('SYS:IMPORTCCDB');
+      } catch (err) {
+        console.error(err);
+        mongoose_disconnect();
+        return;
+      }
+    }
+  }
+
+  for (let id in subjects) {
+    if (subjects.hasOwnProperty(id)) {
+      info('Saving checklist subject: %s', id);
+      try {
+        await subjects[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
         console.error(err);
         mongoose_disconnect();
