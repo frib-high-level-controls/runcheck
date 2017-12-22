@@ -1150,18 +1150,41 @@ async function main() {
   info('Connected to Runcheck database');
 
   info('Clear Runcheck database');
+  // await mongoose.connection.db.dropDatabase();
   try {
-    // await mongoose.connection.db.dropDatabase();
     await Slot.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await Device.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await Group.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await Install.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await Checklist.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await ChecklistConfig.collection.drop();
+  } catch (err) {
+    console.warn(`WARN: ${err.message}`);
+  }
+  try {
     await ChecklistStatus.collection.drop();
   } catch (err) {
-    console.error(err);
-    return mongoose_disconnect();
+    console.warn(`WARN: ${err.message}`);
   }
 
   for (let name in devices) {
