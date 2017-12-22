@@ -20,7 +20,6 @@ import auth = require('./shared/auth');
 import forgapi = require('./shared/forgapi');
 import forgauth = require('./shared/forg-auth');
 
-import users_routes = require('./routes/users');
 import devices_routes = require('./routes/devices');
 import slots_routes = require('./routes/slots');
 import groups = require('./routes/groups');
@@ -358,7 +357,6 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.use('/status', status.router);
-  app.use('/users', users_routes);
   app.use('/devices', devices_routes.router);
   app.use('/slots', slots_routes.router);
   app.use('/groups', groups.router);
