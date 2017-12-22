@@ -133,17 +133,18 @@ declare namespace webapi {
     targetId: string;
     targetName?: string;
     targetDesc?: string;
-    type: string;
-    editable: boolean;
+    checklistType: string;
     subjects: ChecklistSubject[];
     statuses: ChecklistStatus[];
+    //canEdit: boolean;
   }
 
   interface ChecklistSubject {
-    id: string;
-    checklistType: string;
-    subject: string;
-    checklistId: string;
+    //id: string;
+    name: string;
+    desc: string;
+    //checklistId: string;
+    //checklistType: string;
     order: number;
     assignee: string[];
     required: boolean;
@@ -152,9 +153,9 @@ declare namespace webapi {
   }
 
   interface ChecklistStatus {
-    id: string;
-    checklistId: string;
-    subjectId: string;
+    //id: string;
+    //checklistId: string;
+    subjectName: string;
     value: string;
     comment: string;
     inputOn: string;

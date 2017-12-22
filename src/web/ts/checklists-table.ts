@@ -22,20 +22,20 @@ $(WebUtil.wrapCatchAll0(async () => {
   let checklists = pkg.data;
 
   let standardSubjects: string[] = [];
-  let hasCustomSubjects = false;
+  //let hasCustomSubjects = false;
 
 
   for (let checklist of checklists) {
     for (let subject of checklist.subjects) {
-      if (!subject.checklistId) {
+      // if (!subject.checklistId) {  // Is it custom?
         //console.log('Its a standard subject %s', subject.subject);
-        if (standardSubjects.indexOf(subject.subject) === -1) {
+        if (standardSubjects.indexOf(subject.name) === -1) {
           // TODO: ORDER!
-          standardSubjects.push(subject.subject);
+          standardSubjects.push(subject.name);
         }
-      } else {
-        hasCustomSubjects = true;
-      }
+      // } else {
+      //  hasCustomSubjects = true;
+      //}
     }
   }
 
@@ -299,18 +299,23 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: subjectName,
       data: <any> null,
       render: (row: webapi.Checklist) => {
+        let found = false;
         for (let subject of row.subjects) {
-          if (subject.subject === subjectName) {
+          if (subject.name === subjectName) {
             if (!subject.mandatory && !subject.required) {
               return 'N/A';
             }
+            found = true;
             break;
           }
+        }
+        if (!found) {
+          return '-';
         }
         let statusValue = 'N';
         for (let status of row.statuses) {
           //console.log('%s =? %s', status.subjectId, subjectName);
-          if (status.subjectId === subjectName) {
+          if (status.subjectName === subjectName) {
             statusValue = status.value;
             break;
           }
@@ -326,34 +331,34 @@ $(WebUtil.wrapCatchAll0(async () => {
     });
   }
 
-  if (hasCustomSubjects) {
-    checklistColumns.push({
-      title: 'Custom',
-      data: <any> null,
-      render: (row: webapi.Checklist) => {
-        let html = '';
-        for (let subject of row.subjects) {
-          if (!subject.checklistId) {
-            for (let status of row.statuses) {
-              if (status.subjectId === subject.subject) {
-                html += `<div>${subject.subject}:
-                  <span class="${status.value === 'Y' ? 'bg-success' : 'bg-danger'}">
-                    <strong>${status.value}</strong>
-                  </span></div>`;
-                break;
-              }
-            }
-          }
-        }
-        if (html === '') {
-          html = '-';
-        }
-        return html;
-      },
-      orderable: false,
-      searchable: false,
-    });
-  }
+  // if (hasCustomSubjects) {
+  //   checklistColumns.push({
+  //     title: 'Custom',
+  //     data: <any> null,
+  //     render: (row: webapi.Checklist) => {
+  //       let html = '';
+  //       for (let subject of row.subjects) {
+  //         if (!subject.checklistId) {
+  //           for (let status of row.statuses) {
+  //             if (status.subjectName === subject.name) {
+  //               html += `<div>${subject.name}:
+  //                 <span class="${status.value === 'Y' ? 'bg-success' : 'bg-danger'}">
+  //                   <strong>${status.value}</strong>
+  //                 </span></div>`;
+  //               break;
+  //             }
+  //           }
+  //         }
+  //       }
+  //       if (html === '') {
+  //         html = '-';
+  //       }
+  //       return html;
+  //     },
+  //     orderable: false,
+  //     searchable: false,
+  //   });
+  // }
 
 
   checklistColumns.push({

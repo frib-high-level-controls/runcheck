@@ -21,29 +21,6 @@ abstract class ChecklistUtil {
     `);
   }
 
-  /**
-   * Execute the function and log either
-   * the exception or the rejected promise.
-   * Note that 'Promise.resolve().then(f).catch(console.err)'
-   * has similar behavior to this function,
-   * but does NOT execute f() immediately.
-   */
-  protected static catchAndLog(f: () => Promise<void> | void): void {
-    try {
-      Promise.resolve(f()).catch(console.error);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  protected static wrapAsyncHandlerAndLog<A, B>(f: (a?: A, b?: B) => Promise<void> | void): (a?: A, b?: B) => void {
-    return (a, b) => {
-      ChecklistUtil.catchAndLog(() => {
-        f(a, b);
-      });
-    };
-  }
-
   protected static async renderTo(element: JQuery<HTMLElement>, checklistId: string, config?: boolean) {
     // show spinner to the user while checklist loads
     element.off().html(`
@@ -166,7 +143,7 @@ abstract class ChecklistUtil {
 
     let statuses: { [key: string]: webapi.ChecklistStatus  } = {};
     for (let status of checklist.statuses) {
-      statuses[status.subjectId] = status;
+      statuses[status.subjectName] = status;
     }
 
     // render the pre-compiled template
@@ -179,16 +156,16 @@ abstract class ChecklistUtil {
     // enable controls as permitted
     for (let subject of checklist.subjects) {
       // if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
-        let sel = parent.find(`#${subject.id} select`).removeAttr('disabled');
+        let sel = parent.find(`#${subject.name} select`).removeAttr('disabled');
         if (sel.val() === 'YC') {
-          parent.find(`#${subject.id} input`).removeAttr('disabled');
+          parent.find(`#${subject.name} input`).removeAttr('disabled');
         }
       // }
     }
 
-    if (checklist.editable) {
-      parent.find('.cl-update-edit').removeAttr('disabled');
-    }
+    //if (checklist.editable) {
+    parent.find('.cl-update-edit').removeAttr('disabled');
+    //}
 
     parent.find('.cl-subject-status-value').each((idx, elem) => {
       $(elem).change((evt) => {
@@ -232,12 +209,12 @@ abstract class ChecklistUtil {
 
         for (let subject of checklist.subjects) {
           // if (AuthUtil.hasAnyRole([ 'SYS:RUNCHECK' ].concat(subject.assignee))) {
-            let e = $(`#${subject.id}`);
+            let e = $(`#${subject.name}`);
             if (e) {
               updates.push({
                 value: $(e).find('.cl-subject-status-value').val(),
                 comment: $(e).find('.cl-subject-status-comment').val(),
-                subjectId: subject.id,
+                subjectId: subject.name,
               });
             }
           // }

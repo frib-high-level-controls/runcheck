@@ -36,6 +36,28 @@ export function catchAll(handler: RequestPromiseHandler): RequestHandler {
   };
 };
 
+/**
+ * 
+ * @param res 
+ * @param cbs 
+ */
+export function findQueryParam(req: Request, name: string): string | undefined {
+  // If name is an exact match then do not do case insensitive search.
+  if (req.query[name]) {
+    return String(req.query[name]);
+  }
+  name = name.toUpperCase();
+  for (let key in req.query) {
+    if (req.query.hasOwnProperty(key)) {
+      if (key.toUpperCase() === name) {
+        return String(req.query(key));
+      }
+    }
+  }
+  return;
+}
+
+
 // Wrap the Express format() method to support promises.
 // (For more details: http://expressjs.com/en/api.html#res.format)
 // In addition, this method provides more specific typings than the original.

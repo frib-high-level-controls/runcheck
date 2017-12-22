@@ -1,4 +1,6 @@
-
+/**
+ * Utilities for working with jQuery events
+ */
 
 abstract class WebUtil {
 
