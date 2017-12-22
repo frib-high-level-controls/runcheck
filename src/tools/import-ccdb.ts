@@ -412,6 +412,11 @@ async function main() {
       }
     }
 
+    // TODO: Fix CCDB data so that this default is not required!
+    if (!device.dept) {
+      device.dept = 'IFS:UNKNOWN';
+    }
+
     try {
       await device.validate();
     } catch (err) {
@@ -546,6 +551,11 @@ async function main() {
         }
         continue;
       }
+    }
+
+    // TODO: Fix CCDB data so that this default is not requried!
+    if (!slot.area) {
+      slot.area = 'ADB:UNKNOWN';
     }
 
     try {
