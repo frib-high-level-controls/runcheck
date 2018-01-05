@@ -60,6 +60,7 @@ router.get('/slot/:id', catchAll(async (req, res) => {
     id: ObjectId(group._id).toHexString(),
     name: group.name,
     desc: group.desc,
+    owner: group.owner,
     checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
   };
   res.render('slot-group', {

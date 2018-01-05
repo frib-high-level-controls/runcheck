@@ -126,6 +126,7 @@ declare namespace webapi {
     id: string;
     name: string;
     desc: string;
+    owner: string;
     checklistId?: string;
   }
 

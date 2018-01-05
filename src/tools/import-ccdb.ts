@@ -599,6 +599,8 @@ async function main() {
     let group = new Group(<IGroup> {
       name: row.name,
       desc: row.description,
+      // Temporary value to pass validation
+      owner: 'UNKNOWN',
       memberType: Slot.modelName,
     });
 
@@ -643,6 +645,9 @@ async function main() {
       connection.end();
       return;
     }
+
+    // Set the group owner with the slot area
+    group.owner = slot.area;
 
     slot.groupId = group._id;
   }
