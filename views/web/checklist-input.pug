@@ -8,10 +8,10 @@ form
         th.text-left.col-md-2 Subject
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
-        th.text-left.col-md-3 Assignee
+        th.text-left.col-md-3 Assignees
     tbody
       for subject in subjects
-        - var status = statuses[subject.subject]
+        - var status = statuses[subject.name]
         tr.form-group.cl-subject(id=subject.id)
           td.text-left.form-control-static
             if status && (status.history.updates.length > 0)
@@ -21,7 +21,7 @@ form
             span.btn.glyphicon.glyphicon-triangle-bottom.cl-subject-hide-history.hidden
           td.text-left
             //-input.form-control.cl-subject-id(type='hidden', value=subject.id)
-            .form-control-static.cl-subject-subject #{subject.subject}
+            .form-control-static.cl-subject-subject #{subject.desc}
           td.text-center
             if subject.mandatory || subject.required
               select.form-control.cl-subject-status-value(disabled='disabled')
@@ -48,8 +48,8 @@ form
             else
               | &nbsp;
           td.text-left
-            if subject.assignee
-              .form-control-static.cl-subject-assignee= subject.assignee 
+            if subject.assignees
+              .form-control-static.cl-subject-assignee= subject.assignees
             else
               .form-control-static.cl-subject-assignee UNASSIGNED
           if status && (status.history.updates.length > 0)
@@ -59,7 +59,7 @@ form
                   span.glyphicon.glyphicon-time
                 //-td.text-left.text-primary
                   span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
-                - var value = 'NONE', comment = 'NONE', inputBy = 'UNKNOWN', inputOn = 'UNKNOWN';
+                - var value = 'NONE', comment = 'NONE', inputBy = 'UNKNOWN', inputAt = 'UNKNOWN';
                 for path in update.paths
                   if path.name === 'value' && path.value
                     - value = path.value
@@ -67,10 +67,10 @@ form
                     - comment = path.value
                   if path.name === 'inputBy' && path.value
                     - inputBy = path.value
-                  if path.name === 'inputOn' && path.value
-                    - inputOn = path.value
+                  if path.name === 'inputAt' && path.value
+                    - inputAt = path.value
                 td.text-left.text-primary
-                  span(data-toggle='tooltip', title=moment(inputOn).format('MMM D YYYY, h:mm:ss A'))= moment(inputOn).fromNow()
+                  span(data-toggle='tooltip', title=moment(inputAt).format('MMM D YYYY, h:mm:ss A'))= moment(inputAt).fromNow()
                 td.text-center.text-primary
                   span= value
                 td.text-left.text-primary
