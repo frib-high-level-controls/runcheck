@@ -37,24 +37,33 @@ export function catchAll(handler: RequestPromiseHandler): RequestHandler {
 };
 
 /**
- * 
- * @param res 
- * @param cbs 
+ * Find the query parameter with the specified name using case-insensitive search.
+ * By default the parameter is converted to a string. This can be disabled using the 'raw' option.
  */
-export function findQueryParam(req: Request, name: string): string | undefined {
-  // If name is an exact match then do not do case insensitive search.
-  if (req.query[name]) {
-    return String(req.query[name]);
+export function findQueryParam(req: Request, name: string, caseSensitive: boolean, raw: true): any;
+export function findQueryParam(req: Request, name: string, caseSensitive?: boolean, raw?: false): string | undefined;
+export function findQueryParam(req: Request, name: string, caseSensitive?: boolean, raw?: boolean): any {
+  function safeToString(obj: any): any {
+    if (raw) {
+      return obj;
+    }
+    if (obj !== undefined) {
+      return String(obj);
+    }
   }
-  name = name.toUpperCase();
-  for (let key in req.query) {
-    if (req.query.hasOwnProperty(key)) {
-      if (key.toUpperCase() === name) {
-        return String(req.query(key));
+  if (req.query.hasOwnProperty(name)) {
+    return safeToString(req.query[name]);
+  }
+  if (!caseSensitive) {
+    name = name.toUpperCase();
+    for (let key in req.query) {
+      if (req.query.hasOwnProperty(key)) {
+        if (key.toUpperCase() === name) {
+          return safeToString(req.query[key]);
+        }
       }
     }
   }
-  return;
 }
 
 
@@ -146,6 +155,18 @@ export class RequestError extends Error implements HttpStatusError  {
   }
 };
 
+
+/**
+ * Ensure the request contains a valid web API package.
+ */
+export function ensurePackage(allowError?: boolean) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.body || (!req.body.data && allowError && !req.body.error)) {
+      next(new RequestError('Request body not a valid data package', HttpStatus.BAD_REQUEST));
+    }
+    next();
+  };
+};
 
 export function ensureAccepts(type: string): RequestHandler;
 export function ensureAccepts(type: string[]): RequestHandler;

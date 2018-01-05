@@ -12,6 +12,7 @@ import * as models from '../shared/models';
 import {
   catchAll,
   ensureAccepts,
+  findQueryParam,
   format,
   HttpStatus,
   RequestError,
@@ -40,9 +41,6 @@ import {
   // IChecklistSubject,
 } from '../models/checklist';
 
-type Request = express.Request;
-type Response = express.Response;
-type NextFunction = express.NextFunction;
 type ObjectId = mongoose.Types.ObjectId;
 
 interface Target {
@@ -103,31 +101,10 @@ const debug = dbg('runcheck:checklists');
 //   return datas;
 // };
 
-function findQueryParam(req: express.Request, name: string): string | undefined {
-  // If name is an exact match then no need for case-insensitive search.
-  if (req.query[name]) {
-    return String(req.query[name]);
-  }
-  name = name.toUpperCase();
-  for (let key in req.query) {
-    if (req.query.hasOwnProperty(key)) {
-      if (key.toUpperCase() === name) {
-        return String(req.query[key]);
-      }
-    }
-  }
-  return;
-}
 
-export function ensurePackage(allowError?: boolean) {
-  return  (req: Request, res: Response, next: NextFunction) => {
-    if (!req.body || (!req.body.data && allowError && !req.body.error)) {
-      next(new RequestError('Request body is not a valid data package', HttpStatus.BAD_REQUEST));
-    }
-    next();
-  };
-}
-
+/**
+ * Map the specified array of objects by checklist type property
+ */
 function mapByChecklistType<T extends { checklistType?: string }>(p: Promise<T[]>): Promise<Map<string, T[]>> {
   let m = new Map<string, T[]>();
   return p.then((docs) => {
@@ -145,16 +122,11 @@ function mapByChecklistType<T extends { checklistType?: string }>(p: Promise<T[]
   });
 }
 
-function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>, a?: Array<ObjectId | null>): Promise<Map<string, T[]>> {
+/**
+ * Map the specified array of objects by checklist ID property
+ */
+function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>): Promise<Map<string, T[]>> {
   let m = new Map<string, T[]>();
-  if (a) {
-    for (let aa of a) {
-      // let checklistId = aa.toHexString();
-      if (aa) {
-        m.set(aa.toHexString(), []);
-      }
-    }
-  }
   return p.then((docs) => {
     for (let doc of docs) {
       if (doc.checklistId) {
@@ -164,10 +136,6 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>,
           group.push(doc);
         } else {
           m.set(checklistId, [ doc ]);
-        }
-      } else {
-        for (let group of m.values()) {
-          group.push(doc);
         }
       }
     }
@@ -290,7 +258,7 @@ router.get('/', catchAll(async (req, res) => {
       let targets: Target[];
       let checklistVarRoles = new Map<string, Map<string, string>>();
 
-      switch (String(targetType).toUpperCase()) {
+      switch (targetType ? targetType.toUpperCase() : undefined) {
       case 'SLOT': {
         debug('Find Slots with assigned checklist (that are not group members)');
         let slots = await Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
