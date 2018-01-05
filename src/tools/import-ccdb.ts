@@ -1037,7 +1037,7 @@ async function main() {
           subjectName: subjectName,
           value: statusValue,
           comment: row.comment,
-          inputOn: row.modified_at,
+          inputAt: row.modified_at,
           inputBy: row.modified_by ? row.modified_by.toUpperCase() : 'IMPORTCCDB',
         });
         statuses.push(status);
