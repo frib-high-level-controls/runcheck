@@ -12,6 +12,7 @@ type ObjectId = mongoose.Types.ObjectId;
 export interface IGroup {
   name: string;
   desc: string;
+  owner: string;
   memberType: string;
   checklistId?: ObjectId;
 };
@@ -26,16 +27,18 @@ const ObjectId = Schema.Types.ObjectId;
 const groupSchema = new Schema({
   name: {
     type: String,
-    //index: true,
-    //unique: true,
+    // index: true,
+    // unique: true,
     required: true,
   },
   desc: {
     type: String,
     default: '',
   },
-  //area: String,
-  //description: String,
+  owner: {
+    type: String,
+    required: true,
+  },
   // memberIds: {
   //   type: [ObjectId],
   //   required: true,
@@ -44,7 +47,6 @@ const groupSchema = new Schema({
     type: String,
     required: true,
   },
-
   checklistId: {
     type: ObjectId,
     ref: Checklist.modelName,
