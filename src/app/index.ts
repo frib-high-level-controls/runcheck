@@ -17,10 +17,9 @@ import logging = require('./shared/logging');
 import status = require('./shared/status');
 import tasks = require('./shared/tasks');
 import auth = require('./shared/auth');
-import cfauth = require('./shared/cas-forg-auth');
 import forgapi = require('./shared/forgapi');
+import forgauth = require('./shared/forg-auth');
 
-import users_routes = require('./routes/users');
 import devices_routes = require('./routes/devices');
 import slots_routes = require('./routes/slots');
 import groups = require('./routes/groups');
@@ -273,14 +272,17 @@ async function doStart(): Promise<express.Application> {
   }
   info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
 
-  const cfAuthProvider = new cfauth.CasForgProvider(forgClient, {
+  const authProvider = new forgauth.ForgCasProvider(forgClient, {
     casUrl: String(cfg.cas.cas_url),
     casServiceUrl: String(cfg.cas.service_url),
     casAppendPath: cfg.cas.append_path === true ? true : false,
     casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
   });
 
-  auth.setProvider(cfAuthProvider);
+  // Use this provider for local development that DISABLES authentication!
+  // const authProvider = new forgauth.DevForgBasicProvider(forgClient, {});
+
+  auth.setProvider(authProvider);
 
   // view engine configuration
   app.set('views', path.resolve(__dirname, '..', 'views'));
@@ -327,9 +329,9 @@ async function doStart(): Promise<express.Application> {
   app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
   // authentication handlers
-  app.use(cfAuthProvider.initialize());
+  app.use(authProvider.initialize());
 
-  app.get('/login', cfAuthProvider.authenticate(), (req, res) => {
+  app.get('/login', authProvider.authenticate(), (req, res) => {
     if (req.query.bounce) {
       res.redirect(req.query.bounce);
       return;
@@ -338,8 +340,14 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.get('/logout', (req, res) => {
-    cfAuthProvider.logout(req);
-    const redirectUrl = cfAuthProvider.getCasLogoutUrl(true);
+    authProvider.logout(req);
+    if (typeof (<any> authProvider).getCasLogoutUrl !== 'function') {
+      // If the development provider is being used, then just redirect to index.
+      res.redirect('/');
+      return;
+    }
+    // TODO: Consider moving this to the provider's logout function.
+    const redirectUrl = (<any> authProvider).getCasLogoutUrl(true);
     info('Redirect to CAS logout: %s', redirectUrl);
     res.redirect(redirectUrl);
   });
@@ -349,7 +357,6 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.use('/status', status.router);
-  app.use('/users', users_routes);
   app.use('/devices', devices_routes.router);
   app.use('/slots', slots_routes.router);
   app.use('/groups', groups.router);
