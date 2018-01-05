@@ -360,8 +360,6 @@ router.get('/', catchAll(async (req, res) => {
         }
       }
 
-      debug('Find checklists for targets (length: %s)', checklistIds.length);
-
       let [ checklists, checklistSubjects, checklistConfigs, checklistStatuses ] = await Promise.all([
         models.mapById(Checklist.find({ _id: { $in: checklistIds } }).exec()),
         mapByChecklistType(ChecklistSubject.find({
@@ -371,7 +369,7 @@ router.get('/', catchAll(async (req, res) => {
         mapByChecklistId(ChecklistStatus.find({ checklistId: { $in: checklistIds } }).exec()),
       ]);
 
-      debug('Found checklists: ', checklists.size);
+      debug('Found Checklists: %s', checklists.size);
 
       let apiChecklists: webapi.ChecklistTableRow[] = [];
       for (let target of targets) {
@@ -526,9 +524,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   }
 
   let [subjects, configs, statuses ] = await pending;
-  debug('Checklist subjects: %s', subjects.length);
-  debug('Checklist configs: %s', configs.length);
-  debug('Checklist statuses: %s', statuses.length);
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
 
   let canUpdate = new Map<string, boolean>();
   let webSubjects: webapi.ChecklistSubject[] = [];
