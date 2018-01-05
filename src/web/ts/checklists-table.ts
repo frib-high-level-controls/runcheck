@@ -9,7 +9,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     .html('Loading Checklists...')
     .removeClass('hidden');
 
-  let pkg: webapi.Pkg<webapi.Checklist[]>;
+  let pkg: webapi.Pkg<webapi.ChecklistTableRow[]>;
 
   try {
     pkg = await $.ajax({
@@ -49,7 +49,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     {
       title: '',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
+      render: (row: webapi.ChecklistTableRow): string => {
         //return `<a href="/devices/${row.id}">${row.name}</a>`;
         return '<input type="checkbox"/>';
       },
@@ -57,7 +57,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }, {
       title: 'Name',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
+      render: (row: webapi.ChecklistTableRow): string => {
         //return `<a href="/devices/${row.id}">${row.name}</a>`;
         return row.targetName || row.targetId;
       },
@@ -65,7 +65,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }, {
       title: 'Description',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
+      render: (row: webapi.ChecklistTableRow): string => {
         //return String(row.desc ? row.desc : '-');
         return row.targetDesc || '';
       },
@@ -298,7 +298,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     checklistColumns.push({
       title: subjectName,
       data: <any> null,
-      render: (row: webapi.Checklist) => {
+      render: (row: webapi.ChecklistTableRow) => {
         let found = false;
         for (let subject of row.subjects) {
           if (subject.name === subjectName) {

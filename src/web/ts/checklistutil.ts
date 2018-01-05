@@ -40,7 +40,7 @@ abstract class ChecklistUtil {
     // }
     //$.get(document.location + '/checklist/json')
     $.get('/checklists/' + checklistId)
-      .done(function(data: webapi.Pkg<webapi.Checklist>) {
+      .done(function(data: webapi.Pkg<webapi.ChecklistDetails>) {
         if (config) {
           ChecklistUtil.renderEditTemplate(element, data.data);
         } else {
@@ -65,7 +65,7 @@ abstract class ChecklistUtil {
 
   }
 
-  protected static renderEditTemplate(parent: JQuery<HTMLElement>, checklist: webapi.Checklist) {
+  protected static renderEditTemplate(parent: JQuery<HTMLElement>, checklist: webapi.ChecklistDetails) {
     let count = 0;
 
     parent.off().html(checklistConfigTemplate({
@@ -138,10 +138,10 @@ abstract class ChecklistUtil {
 
 
   // Render the view for updating Checklist status.
-  protected static renderUpdateTemplate(parent: JQuery<HTMLElement>, checklist: webapi.Checklist) {
+  protected static renderUpdateTemplate(parent: JQuery<HTMLElement>, checklist: webapi.ChecklistDetails) {
     //let history = {};
 
-    let statuses: { [key: string]: webapi.ChecklistStatus  } = {};
+    let statuses: { [key: string]: webapi.ChecklistStatusDetails  } = {};
     for (let status of checklist.statuses) {
       statuses[status.subjectName] = status;
     }
@@ -220,7 +220,7 @@ abstract class ChecklistUtil {
           // }
         }
 
-        let data: webapi.Pkg<webapi.ChecklistStatus[]>;
+        let data: webapi.Pkg<webapi.ChecklistStatusDetails[]>;
         try {
           data = await $.ajax({
             url: `/checklists/${checklist.id}/statuses`,

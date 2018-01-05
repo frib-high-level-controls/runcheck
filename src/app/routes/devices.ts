@@ -136,7 +136,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     desc: device.desc,
     dept: device.dept,
     deviceType: device.deviceType,
-    checklistId: device.checklistId ? device.checklistId.toHexString() : null,
+    checklistId: device.checklistId ? device.checklistId.toHexString() : undefined,
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
     installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString().split('T')[0] : undefined,

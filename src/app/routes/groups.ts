@@ -60,9 +60,9 @@ router.get('/slot/:id', catchAll(async (req, res) => {
     id: ObjectId(group._id).toHexString(),
     name: group.name,
     desc: group.desc,
-    checklistId: group.checklistId ? group.checklistId.toHexString() : null,
+    checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
   };
-  res.render('slot-group',  {
+  res.render('slot-group', {
     group: apiGroup,
   });
 }));
@@ -83,7 +83,7 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
       desc: slot.desc,
       area: slot.area,
       deviceType: slot.deviceType,
-      checklistId: slot.checklistId ? ObjectId(slot.checklistId).toHexString() : null,
+      checklistId: slot.checklistId ? ObjectId(slot.checklistId).toHexString() : undefined,
       careLevel: slot.careLevel,
       safetyLevel: slot.safetyLevel,
       arr: slot.arr,

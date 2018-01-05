@@ -167,7 +167,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     desc: slot.desc,
     area: slot.area,
     deviceType: slot.deviceType,
-    checklistId: slot.checklistId ? slot.checklistId.toHexString() : null,
+    checklistId: slot.checklistId ? slot.checklistId.toHexString() : undefined,
     careLevel: slot.careLevel,
     safetyLevel: slot.safetyLevel,
     drr: slot.drr,

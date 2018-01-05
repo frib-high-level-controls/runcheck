@@ -90,7 +90,7 @@ declare namespace webapi {
     desc: string;
     dept: string;
     deviceType: string;
-    checklistId: string | null;
+    checklistId?: string;
     installSlotId?: string;
     installSlotOn?: string;
     installSlotBy?: string;
@@ -103,6 +103,7 @@ declare namespace webapi {
   }
 
   export interface SlotPerms {
+    //? canGroup?: boolean;
     canAssign?: boolean;
     canInstall?: boolean;
   }
@@ -113,7 +114,7 @@ declare namespace webapi {
     desc: string;
     area: string;
     deviceType: string;
-    checklistId: string | null;
+    checklistId?: string;
     careLevel: string;
     safetyLevel: string;
     arr: string;
@@ -125,41 +126,61 @@ declare namespace webapi {
     id: string;
     name: string;
     desc: string;
-    checklistId: string | null;
+    checklistId?: string;
   }
 
   interface Checklist {
     id: string;
     targetId: string;
-    targetName?: string;
-    targetDesc?: string;
+    targetType: string;
     checklistType: string;
+  }
+
+  interface ChecklistPerms {
+    canEdit: boolean
+  }
+
+  interface ChecklistTableRow extends Checklist {
+    targetName: string;
+    targetDesc: string;
     subjects: ChecklistSubject[];
-    statuses: ChecklistStatus[];
-    //canEdit: boolean;
+    statuses: ChecklistStatusTableRow[];
+  }
+
+  interface ChecklistDetails extends Checklist, ChecklistPerms {
+    subjects: ChecklistSubjectDetails[];
+    statuses: ChecklistStatusDetails[];
   }
 
   interface ChecklistSubject {
-    //id: string;
     name: string;
     desc: string;
-    //checklistId: string;
-    //checklistType: string;
     order: number;
-    assignee: string[];
+    assignees: string[];
+    final: boolean;
+    primary: boolean;
     required: boolean;
     mandatory: boolean;
-    final: boolean;
+  }
+
+  interface ChecklistSubjectDetails extends ChecklistSubject {
+    // history? //
   }
 
   interface ChecklistStatus {
-    //id: string;
-    //checklistId: string;
     subjectName: string;
     value: string;
     comment: string;
-    inputOn: string;
+    inputAt: string;
     inputBy: string;
+  }
+
+  interface ChecklistStatusTableRow extends ChecklistStatus {
+    canUpdate: boolean;
+  }
+
+  interface ChecklistStatusDetails extends ChecklistStatus {
+    canUpdate: boolean;
     history: History;
   }
 }

@@ -6,7 +6,7 @@ import * as express from 'express';
 import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
-import * as log from '../shared/logging';
+//import * as log from '../shared/logging';
 import * as models from '../shared/models';
 
 import {
@@ -31,13 +31,13 @@ import {
 
 import {
   Checklist,
-  CHECKLIST_VALUES,
+  // CHECKLIST_VALUES,
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
-  IChecklistConfig,
-  //IChecklistStatus,
-  IChecklistSubject,
+  // IChecklistConfig,
+  // IChecklistStatus,
+  // IChecklistSubject,
 } from '../models/checklist';
 
 type Request = express.Request;
@@ -48,7 +48,7 @@ type ObjectId = mongoose.Types.ObjectId;
 interface Target {
   name: string;
   desc: string;
-  checklistId?: ObjectId | null;
+  checklistId?: ObjectId;
 };
 
 
@@ -104,7 +104,7 @@ const debug = dbg('runcheck:checklists');
 // };
 
 function findQueryParam(req: express.Request, name: string): string | undefined {
-  // If name is an exact match then do not do case insensitive search.
+  // If name is an exact match then no need for case-insensitive search.
   if (req.query[name]) {
     return String(req.query[name]);
   }
@@ -112,18 +112,44 @@ function findQueryParam(req: express.Request, name: string): string | undefined 
   for (let key in req.query) {
     if (req.query.hasOwnProperty(key)) {
       if (key.toUpperCase() === name) {
-        return String(req.query(key));
+        return String(req.query[key]);
       }
     }
   }
   return;
 }
 
+export function ensurePackage(allowError?: boolean) {
+  return  (req: Request, res: Response, next: NextFunction) => {
+    if (!req.body || (!req.body.data && allowError && !req.body.error)) {
+      next(new RequestError('Request body is not a valid data package', HttpStatus.BAD_REQUEST));
+    }
+    next();
+  };
+}
+
+function mapByChecklistType<T extends { checklistType?: string }>(p: Promise<T[]>): Promise<Map<string, T[]>> {
+  let m = new Map<string, T[]>();
+  return p.then((docs) => {
+    for (let doc of docs) {
+      if (doc.checklistType) {
+        let group = m.get(doc.checklistType);
+        if (group) {
+          group.push(doc);
+        } else {
+          m.set(doc.checklistType, [ doc ]);
+        }
+      }
+    }
+    return m;
+  });
+}
+
 function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>, a?: Array<ObjectId | null>): Promise<Map<string, T[]>> {
   let m = new Map<string, T[]>();
   if (a) {
     for (let aa of a) {
-      //let checklistId = aa.toHexString();
+      // let checklistId = aa.toHexString();
       if (aa) {
         m.set(aa.toHexString(), []);
       }
@@ -149,15 +175,102 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>,
   });
 }
 
-
-export function ensurePackage(allowError?: boolean) {
-  return  (req: Request, res: Response, next: NextFunction) => {
-    if (!req.body || (!req.body.data && allowError && !req.body.error)) {
-      next(new RequestError('Request body is not a valid data package', HttpStatus.BAD_REQUEST));
+function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
+  if (cfg) {
+    if (typeof cfg.name === 'string') {
+      subject.name = cfg.name;
     }
-    next();
-  };
+    if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
+      subject.assignees = Array.from(cfg.assignees);
+    }
+    if (typeof cfg.required === 'boolean') {
+      subject.required = cfg.required;
+    }
+  }
 }
+
+// function newSubject(sub: ChecklistSubject, cfg?: ChecklistConfig): webapi.ChecklistSubject {
+//   let subject: webapi.ChecklistSubject = {
+//     //id: '', //String(subject.id),
+//     name: sub.name,
+//     desc: sub.desc,
+//     //checklistId: '', // subject.checklistId ? subject.checklistId.toHexString() : String(checklist.id),
+//     //checklistType: subject.checklistType,
+//     order: sub.order,
+//     assignees: sub.assignees,
+//     final: sub.final,
+//     primary: sub.primary,
+//     required: sub.required,
+//     mandatory: sub.mandatory,
+//   };
+//   if (cfg) {
+//     if (typeof cfg.name === 'string') {
+//       subject.name = cfg.name;
+//     }
+//     if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
+//       subject.assignees = Array.from(cfg.assignees);
+//     }
+//     if (typeof cfg.required === 'boolean') {
+//       subject.required = cfg.required;
+//     }
+//     // if (cfg.history.updatedAt) {
+//     //   if (!this.history.updatedAt || cfg.history.updatedAt > this.history.updatedAt) {
+//     //     this.history.updatedAt = cfg.history.updatedAt;
+//     //     this.history.updatedBy = cfg.history.updatedBy;
+//     //   }
+//     // }
+//     // if (cfg.history && Array.isArray(cfg.history.updateIds)) {
+//     //   if (this.history && Array.isArray(this.history.updateIds)) {
+//     //     this.history.updateIds = this.history.updateIds.concat(cfg.history.updateIds);
+//     //   } else {
+//     //     this.history.updateIds = Array.from(cfg.history.updateIds);
+//     //   }
+//     // }
+//     // if (Array.isArray(cfg.history.updates)) {
+//     //   if (Array.isArray(this.history.updates)) {
+//     //     this.history.updates = this.history.updates.concat(cfg.history.updates);
+//     //   } else {
+//     //     this.history.updates = Array.from(cfg.history.updates);
+//     //   }
+//     // }
+//   }
+//   return subject;
+// }
+
+/**
+ * Get the variable roles based on object type
+ */
+export function getVarRoles(obj: { dept?: string, area?: string, owner?: string, memberType?: string }): Map<string, string> {
+  let varRoles = new Map<string, string>();
+  if (obj.dept) {
+    varRoles.set(auth.formatRole('VAR', 'DEPT_LEADER'), auth.formatRole('GRP', obj.dept, 'LEADER'));
+  }
+  if (obj.area) {
+    varRoles.set(auth.formatRole('VAR', 'AREA_LEADER'), auth.formatRole('GRP', obj.area, 'LEADER'));
+  }
+  if (obj.owner) {
+    if (obj.memberType === Slot.modelName) {
+      varRoles.set(auth.formatRole('VAR', 'AREA_LEADER'), auth.formatRole('GRP', obj.owner, 'LEADER'));
+    }
+    if (obj.memberType === Device.modelName) {
+      varRoles.set(auth.formatRole('VAR', 'DEPT_LEADER'), auth.formatRole('GRP', obj.owner, 'LEADER'));
+    }
+  }
+  return varRoles;
+}
+
+function subVarRoles(roles: string[], varRoles: Map<string, string>): string[] {
+  let newRoles: string[] = [];
+  for (let role of roles) {
+    let varRole = varRoles.get(role);
+    if (varRole) {
+      newRoles.push(varRole);
+    } else {
+      newRoles.push(role);
+    }
+  }
+  return newRoles;
+};
 
 
 export const router = express.Router();
@@ -167,20 +280,6 @@ router.get('/', catchAll(async (req, res) => {
   let targetType = findQueryParam(req, 'type');
   debug('Checklist target type: %s', targetType);
 
-
-  // let qType: string | undefined;
-  // for (let name in req.query) {
-  //   if (req.query.hasOwnProperty(name)) {
-  //     if (name.toUpperCase() === 'TYPE') {
-  //       qType = String(req.query[name]).toUpperCase();
-  //     }
-  //   }
-  // }
-
-  // if (!targetType) {
-  //   return;
-  // }
-
   return format(res, {
     'text/html': () => {
       res.render('checklists', {
@@ -189,33 +288,72 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       let targets: Target[];
+      let checklistVarRoles = new Map<string, Map<string, string>>();
 
       switch (String(targetType).toUpperCase()) {
-      case 'SLOT':
-        debug('Find Slots with assigned checklist');
-        targets = await Slot.find({ checklistId: { $exists: true } /*, groupId: { $exists: false }*/}).exec();
-        break;
-      case 'DEVICE':
-        debug('Find Devices with assigned checklist');
-        targets = await Device.find({ checklistId: { $exists: true } }).exec();
-        break;
-      case 'SLOTGROUP':
-        debug('Find Groups with assigned checklist');
-        targets = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
-        break;
-      default:
-        targets = [];
-        let [ devices, slots, slotgroups ] = await Promise.all([
-          Device.find({ checklistId: { $exists: true } }).exec(),
-          Slot.find({ checklistId: { $exists: true } /*, groupId: { $exists: false }*/}).exec(),
-          Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec(),
-        ]);
-        targets = targets.concat(devices, slots, slotgroups);
-        debug(targets.length);
+      case 'SLOT': {
+        debug('Find Slots with assigned checklist (that are not group members)');
+        let slots = await Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
+        for (let slot of slots) {
+          if (slot.checklistId) {
+            checklistVarRoles.set(slot.checklistId.toHexString(), getVarRoles(slot));
+          }
+        }
+        targets = slots;
         break;
       }
+      case 'DEVICE': {
+        debug('Find Devices with assigned checklist');
+        let devices = await Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
+        for (let device of devices) {
+          if (device.checklistId) {
+            checklistVarRoles.set(device.checklistId.toHexString(), getVarRoles(device));
+          }
+        }
+        targets = devices;
+        break;
+      }
+      case 'SLOTGROUP': {
+        debug('Find Groups of Slots with assigned checklist');
+        let groups = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
+        for (let group of groups) {
+          if (group.checklistId) {
+            checklistVarRoles.set(group.checklistId.toHexString(), getVarRoles(group));
+          }
+        }
+        targets = groups;
+        break;
+      }
+      default: {
+        debug('Find Slots, Devices and Groups with assigned checklist');
+        let [ slots, devices, groups ] = await Promise.all([
+          Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Group.find({ checklistId: { $exists: true } }).exec(),
+        ]);
+        targets = [];
+        for (let slot of slots) {
+          if (slot.checklistId) {
+            targets.push(slot);
+            checklistVarRoles.set(slot.checklistId.toHexString(), getVarRoles(slot));
+          }
+        }
+        for (let device of devices) {
+          if (device.checklistId) {
+            targets.push(device);
+            checklistVarRoles.set(device.checklistId.toHexString(), getVarRoles(device));
+          }
+        }
+        for (let group of groups) {
+          if (group.checklistId) {
+            targets.push(group);
+            checklistVarRoles.set(group.checklistId.toHexString(), getVarRoles(group));
+          }
+        }
+        break;
+      }}
 
-      let checklistIds: Array<ObjectId | null> = [];
+      let checklistIds: ObjectId[] = [];
       for (let target of targets) {
         if (target.checklistId) {
           checklistIds.push(target.checklistId);
@@ -224,16 +362,18 @@ router.get('/', catchAll(async (req, res) => {
 
       debug('Find checklists for targets (length: %s)', checklistIds.length);
 
-      let [ checklists, subjects, configs, statuses ] = await Promise.all([
+      let [ checklists, checklistSubjects, checklistConfigs, checklistStatuses ] = await Promise.all([
         models.mapById(Checklist.find({ _id: { $in: checklistIds } }).exec()),
-        mapByChecklistId(ChecklistSubject.find({ $or: [{checklistId: { $exists: false }}, {checklistId: { $in: checklistIds.concat(null) }}]}).exec(), checklistIds),
+        mapByChecklistType(ChecklistSubject.find({
+          $or: [ {checklistId: { $exists: false }}, {checklistId: { $in: checklistIds }} ],
+        }).exec()),
         mapByChecklistId(ChecklistConfig.find({ checklistId: { $in: checklistIds } }).exec()),
         mapByChecklistId(ChecklistStatus.find({ checklistId: { $in: checklistIds } }).exec()),
       ]);
 
       debug('Found checklists: ', checklists.size);
 
-      let apiChecklists: webapi.Checklist[] = [];
+      let apiChecklists: webapi.ChecklistTableRow[] = [];
       for (let target of targets) {
         if (!target.checklistId) {
           continue;
@@ -242,233 +382,231 @@ router.get('/', catchAll(async (req, res) => {
         let checklistId = target.checklistId.toHexString();
 
         let checklist = checklists.get(checklistId);
-        if (!checklist) {
-          continue;
-        }
-        let checklistSubjects = subjects.get(checklistId);
-        if (!checklistSubjects) {
+        if (!checklist || !checklist.id) {
           continue;
         }
 
-        let checklistConfigs = configs.get(checklistId);
-        if (!checklistConfigs) {
-          checklistConfigs = [];
+        let subjects = checklistSubjects.get(checklist.checklistType);
+        if (!subjects) {
+          continue;
         }
 
-        let checklistStatuses = statuses.get(checklistId);
-        if (!checklistStatuses) {
-          checklistStatuses = [];
+        let configs = checklistConfigs.get(checklistId);
+        if (!configs) {
+          configs = [];
         }
 
-        let apiSubjects: webapi.ChecklistSubject[] = [];
-        for (let subject of checklistSubjects) {
-          for (let config of checklistConfigs) {
-            //debug('%s ?= %s', config.checklistId, subject._id);
-            //debug('%s ?= %s', config.subjectName, subject.name);
-            if (config.subjectName === subject.name) {
-              debug('Applying config!');
-              subject.applyCfg(config);
-              break;
-            }
-          }
+        let statuses = checklistStatuses.get(checklistId);
+        if (!statuses) {
+          statuses = [];
+        }
 
-          if (subject.checklistType === checklist.checklistType && (!subject.checklistId || subject.checklistId.equals(checklist._id))) {
-            apiSubjects.push({
-              //id: '', //String(subject.id),
+        let varRoles = checklistVarRoles.get(checklistId);
+        if (!varRoles) {
+          varRoles = new Map<string, string>();
+        }
+
+        let canUpdate = new Map<string, boolean>();
+        let webSubjects: webapi.ChecklistSubject[] = [];
+        for (let subject of subjects) {
+          if (!subject.checklistId || subject.checklistId.equals(checklist._id)) {
+
+            let webSubject: webapi.ChecklistSubject = {
               name: subject.name,
               desc: subject.desc,
-              //checklistId: '', // subject.checklistId ? subject.checklistId.toHexString() : String(checklist.id),
-              //checklistType: subject.checklistType,
               order: subject.order,
-              assignee: subject.assignees,
+              assignees: subject.assignees,
+              final: subject.final,
+              primary: subject.primary,
               required: subject.required,
               mandatory: subject.mandatory,
-              final: subject.final,
-            });
+            };
+
+            for (let config of configs) {
+              if (config.subjectName === subject.name) {
+                applyCfg(webSubject, config);
+                break;
+              }
+            }
+
+            webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+            canUpdate.set(subject.name, auth.hasAnyRole(req, webSubject.assignees));
+
+            webSubjects.push(webSubject);
           }
         }
 
-
-        let apiStatuses: webapi.ChecklistStatus[] = [];
-        for (let status of checklistStatuses) {
-          // if (status.checklistId.equals(checklist._id)) {
-            apiStatuses.push({
-              // id: '', // String(status.id),
-              // checklistId: '', //status.checklistId.toHexString(),
-              subjectName: status.subjectName,
-              value: status.value,
-              comment: status.comment,
-              inputBy: status.inputBy,
-              inputOn: status.inputAt.toISOString(),
-              history: {
-                updates: [],
-                updatedAt: '',
-                updatedBy: '',
-              },
-            });
-          // }
+        let webStatuses: webapi.ChecklistStatusTableRow[] = [];
+        for (let status of statuses) {
+          webStatuses.push({
+            subjectName: status.subjectName,
+            value: status.value,
+            comment: status.comment,
+            inputBy: status.inputBy,
+            inputAt: status.inputAt.toISOString(),
+            canUpdate: Boolean(canUpdate.get(status.subjectName)),
+          });
         }
 
         apiChecklists.push({
-          id: String(checklist.id),
+          id: checklist.id,
           targetId: checklist.targetId.toHexString(),
+          targetType: checklist.targetType,
           targetName: target.name,
           targetDesc: target.desc,
           checklistType: checklist.checklistType,
-          //editable: false,
-          subjects: apiSubjects,
-          statuses: apiStatuses,
+          subjects: webSubjects,
+          statuses: webStatuses,
         });
       }
 
       res.json(<webapi.Pkg<webapi.Checklist[]>> {
         data: apiChecklists,
       });
-
     },
   });
-
 }));
 
 
+/**
+ * Create a new checklsit for the specified target.
+ */
+// router.post('/', ensureAccepts('json'), ensureAuthenticated, catchAll(async () => {
+//
+// });
 
 router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);
-
   debug('Find Checklist with id: %s', id);
+
   let checklist = await Checklist.findById(id);
   if (!checklist || !checklist.id) {
     throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
   }
 
   // Defer these results until they are needed later.
-  let deferred = Promise.all([
-    //findChecklistSubjects(checklist),
-    ChecklistSubject.findWithHistory({
-      checklistType: checklist.checklistType,
-      checklistId: { $in: [null, checklist._id] },
-    }),
-    //findChecklistConfigs(checklist),
-    ChecklistConfig.findWithHistory({
-      checklistId : checklist._id,
-    }),
-    //findChecklistStatuses(checklist),
-    ChecklistStatus.findWithHistory({
-      checklistId : checklist._id,
-    }),
+  debug(checklist.checklistType);
+  let pending = Promise.all([
+    ChecklistSubject.findWithHistory(
+      
+      { checklistType: checklist.checklistType, checklistId: {$exists: false}},
+      //{
+      //$or: [
+     //   { checklistType: checklist.checklistType, checklistId: {$exists: false}},
+     //   { checklistType: checklist.checklistType, checklistId: checklist._id},
+    //  ],
+    //}
+    ),
+    ChecklistConfig.findWithHistory({ checklistId : checklist._id }),
+    ChecklistStatus.findWithHistory({ checklistId : checklist._id }),
   ]);
 
-  let ownerRole = '';
-  let varRoleMap = new Map<string, string>();
+  let varRoles: Map<string, string>;
 
-  if (checklist.targetType === Device.modelName) {
+  switch (checklist.targetType) {
+  case Device.modelName: {
     let device = await Device.findById(checklist.targetId).exec();
     if (!device || !device.id) {
       throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    ownerRole = 'GRP:' + device.dept + '#LEADER';
-    varRoleMap.set('VAR:DEPT_LEADER', ownerRole);
-  } else if (checklist.targetType === Slot.modelName) {
+    varRoles = getVarRoles(device);
+    break;
+  }
+  case Slot.modelName: {
     let slot = await Slot.findById(checklist.targetId).exec();
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
-  } else if (checklist.targetType === Group.modelName) {
-    let slot = await Slot.findOne({ groupId: checklist.targetId }).exec();
-    if (!slot || !slot.id) {
-      throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    varRoles = getVarRoles(slot);
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
-  } else {
+    varRoles = getVarRoles(group);
+    break;
+  }
+  default:
     throw new RequestError('Target type not supported: ' + checklist.targetType);
   }
 
-  let [subjects, configs, statuses ] = await deferred;
+  let [subjects, configs, statuses ] = await pending;
   debug('Checklist subjects: %s', subjects.length);
   debug('Checklist configs: %s', configs.length);
   debug('Checklist statuses: %s', statuses.length);
 
-  const webChecklist: webapi.Checklist = {
+  let canUpdate = new Map<string, boolean>();
+  let webSubjects: webapi.ChecklistSubject[] = [];
+  for (let subject of subjects) {
+
+    let webSubject = {
+      order: subject.order,
+      name: subject.name,
+      desc: subject.desc,
+      assignees: subject.assignees,
+      final: subject.final,
+      primary: subject.primary,
+      required: subject.required,
+      mandatory: subject.mandatory,
+    };
+
+    for (let config of configs) {
+      if (config.subjectName === subject.name) {
+        applyCfg(webSubject, config);
+        break;
+      }
+    }
+
+    subject.assignees = subVarRoles(subject.assignees, varRoles);
+
+    canUpdate.set(subject.name, auth.hasAnyRole(req, subject.assignees));
+
+    webSubjects.push(webSubject);
+  }
+
+  let webStatuses: webapi.ChecklistStatusDetails[] = [];
+  for (let status of statuses) {
+    const h = status.history;
+    let webHistory: webapi.History = {
+      updates: [],
+      updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
+      updatedBy: h.updatedBy || '',
+    };
+    if (h.updates) {
+      for (let update of h.updates) {
+        webHistory.updates.push({
+          at: String(update.at),
+          by: update.by,
+          paths: update.paths,
+        });
+      }
+    }
+
+    let webStatus: webapi.ChecklistStatusDetails = {
+      subjectName: status.subjectName,
+      value: status.value,
+      comment: status.comment,
+      inputBy: status.inputBy,
+      inputAt: status.inputAt.toISOString(),
+      canUpdate: Boolean(canUpdate.get(status.subjectName)),
+      history: webHistory,
+    };
+
+    webStatuses.push(webStatus);
+  }
+
+  const webChecklist: webapi.ChecklistDetails = {
     id: String(checklist.id),
     targetId: checklist.targetId.toHexString(),
+    targetType: checklist.targetType,
     checklistType: checklist.checklistType,
     // editable: auth.hasAnyRole(req, [ 'SYS:RUNCHECK', ownerRole ]),
-    subjects: [],
-    statuses: [],
+    canEdit: false,
+    subjects: webSubjects,
+    statuses: webStatuses,
   };
-
-  for (let subject of subjects) {
-    if (subject.id) {
-      for (let cfg of configs) {
-        if (cfg.subjectName === subject.name) {
-          subject.applyCfg(cfg);
-          break;
-        }
-      }
-
-      let assignees: string[] = [];
-      for (let assignee of subject.assignees) {
-        // TODO: use URL parser and handle fragment
-        let role = varRoleMap.get(assignee);
-        if (role) {
-          debug('Replace assignee: %s => %s', assignee, role);
-          assignees.push(role);
-        } else {
-          assignees.push(assignee);
-        }
-      }
-
-      webChecklist.subjects.push({
-        //id: subject.id,
-        //checklistType: subject.checklistType,
-        //checklistId: checklist.id,
-        order: subject.order,
-        name: subject.name,
-        desc: subject.desc,
-        assignee: assignees,
-        required: subject.required,
-        mandatory: subject.mandatory,
-        final: subject.final,
-      });
-    }
-  }
-
-  for (let status of statuses) {
-    if (status.id) {
-      //let webUpdate
-      //let webHistory: webapi.History | undefined;
-      //let webUpdates: webapi.Update[] = [];
-      const h = status.history;
-      let webHistory: webapi.History = {
-        updates: [],
-        updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
-        updatedBy: h.updatedBy || '',
-      };
-      if (h.updates) {
-        for (let update of h.updates) {
-          webHistory.updates.push({
-            at: String(update.at),
-            by: update.by,
-            paths: update.paths,
-          });
-        }
-      }
-
-      let webStatus = {
-        id: status.id,
-        checklistId: status.checklistId.toHexString(),
-        subjectName: status.subjectName,
-        value: status.value,
-        comment: status.comment,
-        inputBy: status.inputBy,
-        inputOn: status.inputAt.toISOString(),
-        history: webHistory,
-      };
-
-      webChecklist.statuses.push(webStatus);
-    }
-  }
 
   res.json(<webapi.Pkg<webapi.Checklist>> {
     data: webChecklist,
@@ -479,6 +617,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 /**
  * Create a custom checklist subject
  */
+/*
 router.post('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
   let id = String(req.params.id);
 
@@ -504,7 +643,9 @@ router.post('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, ca
 
 
 }));
+*/
 
+/*
 router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
   let id = String(req.params.id);
 
@@ -744,7 +885,9 @@ router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, cat
 
   res.status(200).json({});
 }));
+*/
 
+/*
 const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -1191,3 +1334,4 @@ router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.e
   //   data: data,
   // });
 }));
+*/
