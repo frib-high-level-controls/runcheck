@@ -485,18 +485,11 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   }
 
   // Defer these results until they are needed later.
-  debug(checklist.checklistType);
   let pending = Promise.all([
-    ChecklistSubject.findWithHistory(
-      
-      { checklistType: checklist.checklistType, checklistId: {$exists: false}},
-      //{
-      //$or: [
-     //   { checklistType: checklist.checklistType, checklistId: {$exists: false}},
-     //   { checklistType: checklist.checklistType, checklistId: checklist._id},
-    //  ],
-    //}
-    ),
+    ChecklistSubject.findWithHistory({
+      checklistType: checklist.checklistType,
+      $or: [{checklistId: {$exists: false}}, {checklistId: checklist._id}],
+    }),
     ChecklistConfig.findWithHistory({ checklistId : checklist._id }),
     ChecklistStatus.findWithHistory({ checklistId : checklist._id }),
   ]);
