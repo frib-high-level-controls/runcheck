@@ -118,7 +118,7 @@ const CL_SUBJECTS: IChecklistSubject[] = [
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ] },
   { name: 'AM',    desc: 'AM',    checklistType: 'slot-default', order: 7,
-    primary: false, final: false, mandatory: false, required: true,
+    primary: true, final: false, mandatory: true, required: true,
     assignees: [ 'VAR:AREA_LEADER' ] },
 ];
 

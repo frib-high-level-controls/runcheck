@@ -159,7 +159,7 @@ describe('Test device routes', () => {
       //{ name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
     ];
     for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name}`, async () => {
+      it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.name}`, async () => {
         //const nameOrId = await getSlotNameOrId(row);
         const agent = await requestFor(handler, row.user);
         await agent
@@ -172,26 +172,28 @@ describe('Test device routes', () => {
     }
   });
 
-  describe('Create custom checklist subjects', () => {
+  let customChecklistSubjects: Array<{target: string, name: string, desc: string}> = [];
+
+  describe('Create custom checklist subject', () => {
     let table = [
       // User unauthenticated
       { target: '/slots/FE_TEST:DEVA_D0001', user: '', data: {}, status: 302 },
       // User unauthorized
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM', data: { desc: 'SUB1', assignees: [] }, status: 403 },
       // Invalid data
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: '' }, status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB1' }, status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [] }, status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: 'NOT_AN_ARRAY' }, status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [ 'NOT_A_ROLE' ] }, status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: '' },                                   status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB1' },                               status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [] },                              status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: 'NOT_AN_ARRAY' },                  status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [ 'NOT_A_ROLE' ] },                status: 400 },
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 111, assignees: [ 'USER:USERNAME1' ] }, status: 400 },
-      // Subject Created
+      // Subject created
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB1', assignees: [ 'USR:USERNAME1' ] }, status: 201 },
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB2', assignees: [ 'USR:USERNAME2' ] }, status: 201 },
       { target: '/slots/FE_TEST:DEVB_D0002', user: 'FEAM', data: { desc: 'SUB1', assignees: [ 'USR:USERNAME1' ] }, status: 201 },
     ];
     for (let row of table) {
-      it(`User ${row.user || '\'Anonymous\''} modify checklist subject`, async () => {
+      it(`User ${row.user || '\'Anonymous\''} create checklist subject, data: ${JSON.stringify(row.data)}`, async () => {
         let checklistId: string | undefined;
         await request(handler)
           .get(row.target)
@@ -210,42 +212,69 @@ describe('Test device routes', () => {
           .set('Content-Type', 'application/json')
           .send({ data: row.data })
           .expect(row.status)
-          .expect(expectPackage());
+          .expect(expectPackage(row.data))
+          .expect((res: request.Response) => {
+            // Save the name of custom subjects for use in other tests!
+            if (res.status < 300) {
+              assert.isString(res.body.data.name);
+              assert.isString(res.body.data.desc);
+              customChecklistSubjects.push({
+                target: row.target,
+                name: String(res.body.data.name),
+                desc: String(res.body.data.desc),
+              });
+            }
+          });
       });
     }
   });
 
-
-
-  // describe('Modify checklist subjects', () => {
-  //   let table = [
-  //     { target: '/slots/FE_TEST:DEVA_D0001', user: '', subject: 'EE', data: { required: false }, status: 200 },
-  //   ];
-  //   for (let row of table) {
-  //     it(`User ${row.user || '\'Anonymous\''} modify checklist subject`, async () => {
-  //       let checklistId: string | undefined;
-  //       await request(handler)
-  //         .get(row.target)
-  //         .set('Accept', 'application/json')
-  //         .expect(200)
-  //         .expect((res: request.Response) => {
-  //           console.log(res.body);
-  //           assert.isObject(res.body);
-  //           assert.isObject(res.body.data);
-  //           assert.isString(res.body.data.checklistId);
-  //           checklistId = String(res.body.data.checklistId);
-  //         });
-  //       const agent = await requestFor(handler, row.user);
-  //       await agent
-  //         .put(`/checklists/${checklistId}/subject/${row.subject}`)
-  //         .set('Accept', 'application/json')
-  //         .set('Content-Type', 'application/json')
-  //         .send({ data: row.data })
-  //         .expect(row.status)
-  //         .expect(expectPackage());
-  //     });
-  //   }
-  // });
+  describe('Modify checklist subject', () => {
+    let table = [
+      // User unauthenticated
+      { target: '/slots/FE_TEST:DEVA_D0001', user: '', subject: 'EE', data: { }, status: 302 },
+      // User unauthorized
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM', subject: 'EE', data: { required: false }, status: 403 },
+      // Invalid data
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 0 },       status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 1 },       status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 'false' }, status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'AM',   data: { required: false },   status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'SUB1', data: { required: false },   status: 400 },
+      // Subject modified
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: false }, status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: true  }, status: 200 },
+    ];
+    for (let row of table) {
+      it(`User ${row.user || '\'Anonymous\''} modify checklist subject: ${row.subject}, data: ${JSON.stringify(row.data)}`, async () => {
+        let checklistId: string | undefined;
+        await request(handler)
+          .get(row.target)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body);
+            assert.isObject(res.body.data);
+            assert.isString(res.body.data.checklistId);
+            checklistId = String(res.body.data.checklistId);
+          });
+        for (let c of customChecklistSubjects) {
+          if (c.target === row.target && c.desc === row.subject) {
+            row.subject = c.name;
+            break;
+          }
+        }
+        const agent = await requestFor(handler, row.user);
+        await agent
+          .put(`/checklists/${checklistId}/subjects/${row.subject}`)
+          .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: row.data })
+          .expect(row.status)
+          .expect(expectPackage(row.data));
+      });
+    }
+  });
 
 
   // describe('Modify custom checklist subjects', () => {

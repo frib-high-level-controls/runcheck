@@ -38,6 +38,7 @@ import {
   ChecklistStatus,
   ChecklistSubject,
   IChecklistSubject,
+  IChecklistConfig,
   // IChecklistConfig,
   // IChecklistStatus,
   // IChecklistSubject,
@@ -645,7 +646,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
   }
   let assignees: string[] = [];
   for (let assignee of pkg.data.assignees) {
-    if (typeof assignee !== 'string' ||assignee === '') {
+    if (typeof assignee !== 'string' || assignee === '') {
       throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
     }
     let role = auth.parseRole(assignee);
@@ -670,58 +671,155 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
 
   await subject.saveWithHistory(username);
 
+  let webSubject: webapi.ChecklistSubjectDetails = {
+    name: subject.name,
+    desc: subject.desc,
+    order: subject.order,
+    final: subject.final,
+    primary: subject.primary,
+    required: subject.required,
+    mandatory: subject.mandatory,
+    assignees: subject.assignees,
+  };
+
   res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
-    data: {
-      name: subject.name,
-      desc: subject.desc,
-      order: subject.order,
-      primary: subject.primary,
-      required: subject.required,
-      mandatory: subject.mandatory,
-      assignees: subject.assignees,
-    },
+    data: webSubject,
   });
 }));
 
-/*
-router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let id = String(req.params.id);
+/**
+ * Update a checklist subject specified by name
+ */
+router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let id = String(req.params.id).toUpperCase();
+  let name = String(req.params.name).toUpperCase();
+  debug('Find Checklist with id: %s', id);
 
   let username = auth.getUsername(req);
   if (!username) {
-    throw new RequestError('No username on authenticated request.');
-  }
-
-  if (!Array.isArray(req.body.data)) {
-    throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
+    throw new RequestError('No username on authenticated request.', INTERNAL_SERVER_ERROR);
   }
 
   let checklist = await Checklist.findById(id).exec();
   if (!checklist) {
-    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Checklist not found', NOT_FOUND);
   }
 
-  // A checklist is custom if it is associated with a checklist
-  function isCustom(subject: ChecklistSubject): boolean {
-    if (!checklist || !subject.checklistId) {
-      return false;
-    }
-    return subject.checklistId.equals(checklist._id);
-  }
-
-  let deferred = Promise.all([
-    //findChecklistSubjects(checklist),
-    ChecklistSubject.findWithHistory({
+  let pending = Promise.all([
+    ChecklistSubject.find({
       checklistType: checklist.checklistType,
-      checklistId: { $in: [null, checklist._id] },
-    }),
-    //findChecklistConfigs(checklist),
-    ChecklistConfig.findWithHistory({
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
       checklistId: checklist._id,
-    }),
+    }).exec(),
   ]);
 
-  let varRoleMap = new Map<string, string>();
+  let ownerRole: string;
+
+  switch (checklist.targetType) {
+  case Device.modelName: {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+    }
+    ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+    break;
+  }
+  case Slot.modelName: {
+    let slot = await Slot.findById(checklist.targetId).exec();
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+    }
+    ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  }
+
+  let [subjects, configs ] = await pending;
+
+  let subject: IChecklistSubject | undefined;
+  for (let s of subjects) {
+    if (s.name === name) {
+      subject = s;
+      break;
+    }
+  }
+  if (!subject) {
+    throw new RequestError(`Checklist subject not found`, NOT_FOUND);
+  }
+
+  let config: ChecklistConfig | undefined;
+  for (let c of configs) {
+    if (c.subjectName === name) {
+      config = c;
+      break;
+    }
+  }
+
+  if (!auth.hasAnyRole(req, ownerRole)) {
+    throw new RequestError('Not permitted to modify subject', FORBIDDEN);
+  }
+
+  let pkg: webapi.Pkg<{ required?: {} /* assignees?: {} */}> = req.body;
+
+  if (pkg.data.required !== undefined) {
+    if (typeof pkg.data.required !== 'boolean') {
+      throw new RequestError('Subject required is invalid', BAD_REQUEST);
+    }
+    let required = Boolean(pkg.data.required);
+    if (subject.mandatory && !required) {
+      throw new RequestError('Subject is mandatory', BAD_REQUEST);
+    }
+    if (config) {
+      if (config.required !== required) {
+        config.required = required;
+      }
+    } else if (subject.required !== required) {
+      config = new ChecklistConfig(<IChecklistConfig> {
+        required: required,
+        subjectName: subject.name,
+        checklistId: checklist._id,
+      });
+    }
+  }
+
+  if (config) {
+    await config.saveWithHistory(username);
+  }
+
+  let webSubject: webapi.ChecklistSubjectDetails = {
+    name: subject.name,
+    desc: subject.desc,
+    order: subject.order,
+    final: subject.final,
+    primary: subject.primary,
+    required: subject.required,
+    mandatory: subject.mandatory,
+    assignees: subject.assignees,
+  };
+
+  if (config) {
+    applyCfg(webSubject, config);
+  }
+
+  res.json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
+    data: webSubject,
+  });
+
+  //let required = Boolean(pkg.data.required);
+
+  // let varRoleMap = new Map<string, string>();
 
   // let [ device, slot, group ] = await Promise.all([
   //   Device.findOne({ checklistId: id }).exec(),
@@ -744,192 +842,185 @@ router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, cat
 
 
 
-  if (checklist.targetType === Device.modelName) {
-    let device = await Device.findById(checklist.targetId).exec();
-    if (!device || !device.id) {
-      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
-  } else {
-    throw new RequestError('Target type not supported: ' + checklist.targetType);
-  }
+  // if (checklist.targetType === Device.modelName) {
+  //   let device = await Device.findById(checklist.targetId).exec();
+  //   if (!device || !device.id) {
+  //     throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
+  //   }
+  //   varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+  // } else {
+  //   throw new RequestError('Target type not supported: ' + checklist.targetType);
+  // }
 
-  let [subjects, configs ] = await deferred;
+  // let cfgMap = new Map<string, ChecklistConfig>();
+  // for (let config of configs) {
+  //   //if (config.subjectId) {
+  //   cfgMap.set(config.subjectName, config);
+  //   //}
+  // }
 
-  let cfgMap = new Map<string, ChecklistConfig>();
-  for (let config of configs) {
-    //if (config.subjectId) {
-    cfgMap.set(config.subjectName, config);
-    //}
-  }
+  // let subjectMap = new Map<string, ChecklistSubject>();
+  // for (let subject of subjects) {
+  //   if (subject.id) {
+  //     subjectMap.set(subject.name, subject);
+  //   }
+  // }
 
-  let subjectMap = new Map<string, ChecklistSubject>();
-  for (let subject of subjects) {
-    if (subject.id) {
-      subjectMap.set(subject.name, subject);
-    }
-  }
+  // let newItemSet = new Set<string>();
+  // let itemPms = new Array<Promise<ChecklistSubject>>();
+  // let cfgPms = new Array<Promise<ChecklistConfig>>();
+  // for (let newSubject of <webapi.ChecklistSubject[]> req.body.data) {
+  //   if (typeof newSubject.name !== 'string') {
+  //     log.warn('Submitted checklist item missing _id');
+  //     continue;
+  //   }
+  //   newItemSet.add(newSubject.name);
 
-  let newItemSet = new Set<string>();
-  let itemPms = new Array<Promise<ChecklistSubject>>();
-  let cfgPms = new Array<Promise<ChecklistConfig>>();
-  for (let newSubject of <webapi.ChecklistSubject[]> req.body.data) {
-    if (typeof newSubject.name !== 'string') {
-      log.warn('Submitted checklist item missing _id');
-      continue;
-    }
-    newItemSet.add(newSubject.name);
+  //   let subject = subjectMap.get(newSubject.name);
+  //   let cfg = cfgMap.get(newSubject.name);
+  //   if (subject) {
+  //     itemPms.push(Promise.resolve(new ChecklistSubject(subject)));
+  //     debug('Update ChecklistItem (%s) with subject: %s', subject._id, subject.name);
+  //   } else {
+  //     subject = new ChecklistSubject(<IChecklistSubject> {
+  //       //_id: models.generateId(),
+  //       checklistType: checklist.checklistType,
+  //       checklistId: models.ObjectId(checklist._id),
+  //       name: 'SUBJECT',
+  //     });
 
-    let subject = subjectMap.get(newSubject.name);
-    let cfg = cfgMap.get(newSubject.name);
-    if (subject) {
-      itemPms.push(Promise.resolve(new ChecklistSubject(subject)));
-      debug('Update ChecklistItem (%s) with subject: %s', subject._id, subject.name);
-    } else {
-      subject = new ChecklistSubject(<IChecklistSubject> {
-        //_id: models.generateId(),
-        checklistType: checklist.checklistType,
-        checklistId: models.ObjectId(checklist._id),
-        name: 'SUBJECT',
-      });
+  //     subject._id = models.generateId();
 
-      subject._id = models.generateId();
+  //     if (typeof newSubject.name === 'string') {
+  //       subject.name = newSubject.name;
+  //     }
 
-      if (typeof newSubject.name === 'string') {
-        subject.name = newSubject.name;
-      }
+  //     debug('Add new ChecklistItem (%s) with subject: %s', subject.id, subject.name);
 
-      debug('Add new ChecklistItem (%s) with subject: %s', subject.id, subject.name);
+  //     // let opts = {
+  //     //   userid: username,
+  //     //   desc: 'Add checklist item',
+  //     // };
 
-      // let opts = {
-      //   userid: username,
-      //   desc: 'Add checklist item',
-      // };
+  //     itemPms.push(subject.saveWithHistory(username).catch((err) => {
+  //       log.error('Error saving new ChecklistItem: ' + err);
+  //       return Promise.reject(err);
+  //     }));
+  //   }
 
-      itemPms.push(subject.saveWithHistory(username).catch((err) => {
-        log.error('Error saving new ChecklistItem: ' + err);
-        return Promise.reject(err);
-      }));
-    }
+  //   if (isCustom(subject)) {
+  //     if (typeof newSubject.name === 'string') {
+  //       if (cfg && (typeof cfg.name === 'string')) {
+  //         if (cfg.name !== newSubject.name) {
+  //           if (subject.name !== newSubject.name) {
+  //             cfg.name = newSubject.name;
+  //           } else {
+  //             cfg.name = undefined; // fallback to subject
+  //           }
+  //         }
+  //       } else {
+  //         if (subject.name !== newSubject.name) {
+  //           if (!cfg) {
+  //             cfg = new ChecklistConfig(<IChecklistConfig> {
+  //               subjectName: subject.name,
+  //               checklistType: checklist.checklistType,
+  //               checklistId: models.ObjectId(checklist._id),
+  //             });
+  //           }
+  //           cfg.name = newSubject.name;
+  //         }
+  //       }
+  //     } else {
+  //       log.error('warn: ChecklistSubject property, "name", expecting type String');
+  //     }
+  //   }
 
-    if (isCustom(subject)) {
-      if (typeof newSubject.name === 'string') {
-        if (cfg && (typeof cfg.name === 'string')) {
-          if (cfg.name !== newSubject.name) {
-            if (subject.name !== newSubject.name) {
-              cfg.name = newSubject.name;
-            } else {
-              cfg.name = undefined; // fallback to subject
-            }
-          }
-        } else {
-          if (subject.name !== newSubject.name) {
-            if (!cfg) {
-              cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectName: subject.name,
-                checklistType: checklist.checklistType,
-                checklistId: models.ObjectId(checklist._id),
-              });
-            }
-            cfg.name = newSubject.name;
-          }
-        }
-      } else {
-        log.error('warn: ChecklistSubject property, "name", expecting type String');
-      }
-    }
+  //   if (!subject.mandatory) {
+  //     if (typeof newSubject.required === 'boolean') {
+  //       if (cfg && (typeof cfg.required === 'boolean')) {
+  //         if (cfg.required !== newSubject.required) {
+  //           if (subject.required !== newSubject.required) {
+  //             cfg.required = newSubject.required;
+  //           } else {
+  //             cfg.required = undefined; // defer to item
+  //           }
+  //         }
+  //       } else {
+  //         if (subject.required !== newSubject.required) {
+  //           if (!cfg) {
+  //             cfg = new ChecklistConfig(<IChecklistConfig> {
+  //               subjectName: subject.name,
+  //               checklistType: checklist.checklistType,
+  //               checklistId: models.ObjectId(checklist._id),
+  //             });
+  //           }
+  //           cfg.required = newSubject.required;
+  //         }
+  //       }
+  //     } else {
+  //       log.error('warn: ChecklistItem property, "required", expecting type Boolean');
+  //     }
+  //   }
 
-    if (!subject.mandatory) {
-      if (typeof newSubject.required === 'boolean') {
-        if (cfg && (typeof cfg.required === 'boolean')) {
-          if (cfg.required !== newSubject.required) {
-            if (subject.required !== newSubject.required) {
-              cfg.required = newSubject.required;
-            } else {
-              cfg.required = undefined; // defer to item
-            }
-          }
-        } else {
-          if (subject.required !== newSubject.required) {
-            if (!cfg) {
-              cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectName: subject.name,
-                checklistType: checklist.checklistType,
-                checklistId: models.ObjectId(checklist._id),
-              });
-            }
-            cfg.required = newSubject.required;
-          }
-        }
-      } else {
-        log.error('warn: ChecklistItem property, "required", expecting type Boolean');
-      }
-    }
+  //   // if (typeof newSubject.assignee === 'string') {
+  //   //   if (cfg && (typeof cfg.assignee === 'string')) {
+  //   //     if (cfg.assignee !== newSubject.assignee) {
+  //   //       if (item.assignee !== newSubject.assignee) {
+  //   //         cfg.assignee = newSubject.assignee;
+  //   //       } else {
+  //   //         cfg.assignee = undefined; // defer to item
+  //   //       }
+  //   //     }
+  //   //   } else {
+  //   //     if (item.assignee !== newItem.assignee) {
+  //   //       if (!cfg) {
+  //   //         cfg = new ChecklistItemCfg({
+  //   //           item: item._id,
+  //   //           type: checklist.type,
+  //   //           checklist: checklist._id,
+  //   //         });
+  //   //       }
+  //   //       cfg.assignee = newSubject.assignee;
+  //   //     }
+  //   //   }
+  //   // } else {
+  //   //   log.error('warn: ChecklistItem property, "assignee", expecting String');
+  //   // }
 
-    // if (typeof newSubject.assignee === 'string') {
-    //   if (cfg && (typeof cfg.assignee === 'string')) {
-    //     if (cfg.assignee !== newSubject.assignee) {
-    //       if (item.assignee !== newSubject.assignee) {
-    //         cfg.assignee = newSubject.assignee;
-    //       } else {
-    //         cfg.assignee = undefined; // defer to item
-    //       }
-    //     }
-    //   } else {
-    //     if (item.assignee !== newItem.assignee) {
-    //       if (!cfg) {
-    //         cfg = new ChecklistItemCfg({
-    //           item: item._id,
-    //           type: checklist.type,
-    //           checklist: checklist._id,
-    //         });
-    //       }
-    //       cfg.assignee = newSubject.assignee;
-    //     }
-    //   }
-    // } else {
-    //   log.error('warn: ChecklistItem property, "assignee", expecting String');
-    // }
+  //   if (cfg) {
+  //     if (cfg.isModified()) {
+  //       debug('save ChecklistItemCfg: %s', cfg._id);
+  //       // let opts = {
+  //       //   userid: req.session.userid,
+  //       //   desc: 'Update checklist item',
+  //       // };
+  //       cfgPms.push(cfg.saveWithHistory(username).catch((err) => {
+  //         log.error('warn: Error saving ChecklistItemCfg (%s): %s', cfg ? cfg._id : 'undefined', err);
+  //         return Promise.reject(err);
+  //       }));
+  //     } else {
+  //       cfgPms.push(Promise.resolve(cfg));
+  //     }
+  //   }
+  // }
 
-    if (cfg) {
-      if (cfg.isModified()) {
-        debug('save ChecklistItemCfg: %s', cfg._id);
-        // let opts = {
-        //   userid: req.session.userid,
-        //   desc: 'Update checklist item',
-        // };
-        cfgPms.push(cfg.saveWithHistory(username).catch((err) => {
-          log.error('warn: Error saving ChecklistItemCfg (%s): %s', cfg ? cfg._id : 'undefined', err);
-          return Promise.reject(err);
-        }));
-      } else {
-        cfgPms.push(Promise.resolve(cfg));
-      }
-    }
-  }
+  // let rmItemPms = new Array<Promise<ChecklistSubject>>();
+  // for (let subject of subjects) {
+  //   if (isCustom(subject) && !newItemSet.has(subject._id)) {
+  //     rmItemPms.push(subject.remove().catch((err) => {
+  //       log.error('warn: Error removing ChecklistItem (%s):', subject.id, err);
+  //       return Promise.reject(err);
+  //     }));
+  //     debug('Remove ChecklistItem: %s', subject.id);
+  //   }
+  // }
 
-  let rmItemPms = new Array<Promise<ChecklistSubject>>();
-  for (let subject of subjects) {
-    if (isCustom(subject) && !newItemSet.has(subject._id)) {
-      rmItemPms.push(subject.remove().catch((err) => {
-        log.error('warn: Error removing ChecklistItem (%s):', subject.id, err);
-        return Promise.reject(err);
-      }));
-      debug('Remove ChecklistItem: %s', subject.id);
-    }
-  }
+  // await Promise.all([checklist, Promise.all(itemPms), Promise.all(cfgPms), Promise.all(rmItemPms)]);
 
-  await Promise.all([checklist, Promise.all(itemPms), Promise.all(cfgPms), Promise.all(rmItemPms)]);
-
-  res.status(200).json({});
+  // res.status(200).json({});
 }));
-*/
 
 /*
-const NOT_FOUND = HttpStatus.NOT_FOUND;
-const BAD_REQUEST = HttpStatus.BAD_REQUEST;
-const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
-
 router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.ensureAuthenticated, catchAll(async (req, res) => {
   let checklistId = String(req.params.id);
   let subjectName = String(req.params.name);
