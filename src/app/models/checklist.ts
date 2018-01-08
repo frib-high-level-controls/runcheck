@@ -28,7 +28,6 @@ export interface ChecklistSubject extends IChecklistSubject, history.Document<Ch
 export interface IChecklistConfig {
   checklistId: ObjectId;
   subjectName: string;
-  name?: string;
   required?: boolean;
   assignees?: string[];
 }
@@ -175,9 +174,6 @@ const checklistSubjectSchema = new Schema({
 
 checklistSubjectSchema.methods.applyCfg = function(this: ChecklistSubject, cfg?: ChecklistConfig): void {
   if (cfg) {
-    if (typeof cfg.name === 'string') {
-      this.name = cfg.name;
-    }
     if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
       this.assignees = Array.from(cfg.assignees);
     }
@@ -222,7 +218,6 @@ export const ChecklistSubject = history.model<ChecklistSubject>('ChecklistSubjec
 // A checklistConfig is configuration for a checklist subject:
 //   checklist: the checklist to which this configuration belongs
 //   subjectName: the checklist item to which this configuration applies
-//   name: alternative subject to override the item
 //   assignee: user id of person required to respond to this item
 //   required: indicate if the item must have a response
 const checklistConfigSchema = new Schema({
@@ -233,10 +228,6 @@ const checklistConfigSchema = new Schema({
   subjectName: {
     type: String,
     required: true,
-  },
-  name: {
-    type: String,
-    required: false,
   },
   assignee: {
     type: [String],
