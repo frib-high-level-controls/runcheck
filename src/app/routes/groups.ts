@@ -1,12 +1,14 @@
 /**
  * Route handlers for (slot) groups.
  */
+import * as dbg from 'debug';
 import * as express from 'express';
 
 //import * as auth from '../shared/auth';
 
 import {
   ObjectId,
+  isValidId,
 } from '../shared/models';
 
 import {
@@ -24,6 +26,7 @@ import {
   Group,
 } from '../models/group';
 
+const debug = dbg('runcheck:groups')
 
 export const router = express.Router();
 
@@ -50,12 +53,21 @@ router.get('/slot', catchAll(async (req, res) => {
 }));
 
 
-router.get('/slot/:id', catchAll(async (req, res) => {
-  const id = String(req.params.id);
-  const group = await Group.findById(id).exec();
-  if (!group) {
+router.get('/slot/:name_or_id', catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Group with name or id: %s', nameOrId);
+
+  let group: Group | null;
+  if (isValidId(nameOrId)) {
+    group = await Group.findById(nameOrId).exec();
+  } else {
+    group = await Group.findOne({ name: nameOrId.toUpperCase() });
+  }
+
+  if (!group || !group.id) {
     throw new RequestError('Group not found', HttpStatus.NOT_FOUND);
   }
+
   const apiGroup: webapi.Group = {
     id: ObjectId(group._id).toHexString(),
     name: group.name,
@@ -63,8 +75,18 @@ router.get('/slot/:id', catchAll(async (req, res) => {
     owner: group.owner,
     checklistId: group.checklistId ? group.checklistId.toHexString() : null,
   };
-  res.render('slot-group',  {
-    group: apiGroup,
+
+  return format(res, {
+    'text/html': () => {
+      res.render('slot-group', {
+        group: apiGroup,
+      });
+    },
+    'application/json': () => {
+      res.json(<webapi.Pkg<webapi.Group>> {
+        data: apiGroup,
+      });
+    },
   });
 }));
 
