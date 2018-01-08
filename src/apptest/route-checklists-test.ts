@@ -70,7 +70,7 @@ function expectPackage(data?: {}) {
         assert.isNumber((<any> pkg.error).code);
         assert.isString((<any> pkg.error).message);
         assert.isNotEmpty((<any> pkg.error).message);
-        console.error((<any> pkg.error).message)
+        console.error((<any> pkg.error).message);
       }
     }
   };
@@ -216,20 +216,40 @@ describe('Test Checklist routes', () => {
   describe('Create custom checklist subject', () => {
     let table = [
       // User unauthenticated
-      { target: '/slots/FE_TEST:DEVA_D0001', user: '', data: {}, status: 302 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: '', data: {}, status: 302 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: '', data: {}, status: 302 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: '', data: {}, status: 302 },
       // User unauthorized
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM', data: { desc: 'SUB1', assignees: [] }, status: 403 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEAM', data: { desc: 'SUB1', assignees: [ 'USR:ALTSME' ] }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEDM', data: { desc: 'SUB1', assignees: [ 'USR:ALTSME' ] }, status: 403 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEDM', data: { desc: 'SUB1', assignees: [ 'USR:ALTSME' ] }, status: 403 },
       // Invalid data
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: '' },                                   status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB1' },                               status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [] },                              status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: 'NOT_AN_ARRAY' },                  status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { assignees: [ 'NOT_A_ROLE' ] },                status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 111, assignees: [ 'USER:USERNAME1' ] }, status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { desc: '' },                               status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { desc: 'SUB1' },                           status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { assignees: [] },                          status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { assignees: 'NOT_AN_ARRAY' },              status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { assignees: [ 'NOT_A_ROLE' ] },            status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { desc: 111, assignees: [ 'USR:ALTSME' ] }, status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: '' },                               status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 'SUB1' },                           status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { assignees: [] },                          status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { assignees: 'NOT_AN_ARRAY' },              status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { assignees: [ 'NOT_A_ROLE' ] },            status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 111, assignees: [ 'USR:ALTSME' ] }, status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { desc: '' },                               status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { desc: 'SUB1' },                           status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { assignees: [] },                          status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { assignees: 'NOT_AN_ARRAY' },              status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { assignees: [ 'NOT_A_ROLE' ] },            status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { desc: 111, assignees: [ 'USR:ALTSME' ] }, status: 400 },
       // Subject created
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB1', assignees: [ 'USR:USERNAME1' ] }, status: 201 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', data: { desc: 'SUB2', assignees: [ 'USR:USERNAME2' ] }, status: 201 },
-      { target: '/slots/FE_TEST:DEVB_D0002', user: 'FEAM', data: { desc: 'SUB1', assignees: [ 'USR:USERNAME1' ] }, status: 201 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { desc: 'EE2', assignees: [ 'USR:EESME' ] },  status: 201 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM', data: { desc: 'ALT', assignees: [ 'USR:ALTSME' ] }, status: 201 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'FEDM', data: { desc: 'ME2', assignees: [ 'USR:MESME' ] },  status: 201 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 'EE2', assignees: [ 'USR:EESME' ] },  status: 201 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 'ALT', assignees: [ 'USR:ALTSME' ] }, status: 201 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', data: { desc: 'ME2', assignees: [ 'USR:MESME' ] },  status: 201 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           user: 'FEAM', data: { desc: 'ALT', assignees: [ 'USR:ALTSME' ] }, status: 201 },
     ];
     for (let row of table) {
       it(`User ${row.user || '\'Anonymous\''} create checklist subject, data: ${JSON.stringify(row.data)}`, async () => {
