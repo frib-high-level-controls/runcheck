@@ -229,7 +229,7 @@ const checklistConfigSchema = new Schema({
     type: String,
     required: true,
   },
-  assignee: {
+  assignees: {
     type: [String],
     required: false,
     // normal default is `[]`
