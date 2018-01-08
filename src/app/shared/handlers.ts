@@ -161,7 +161,7 @@ export class RequestError extends Error implements HttpStatusError  {
  */
 export function ensurePackage(allowError?: boolean) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.body || (!req.body.data && allowError && !req.body.error)) {
+    if (!req.body || (!req.body.data || (allowError && !req.body.error))) {
       next(new RequestError('Request body not a valid data package', HttpStatus.BAD_REQUEST));
     }
     next();
