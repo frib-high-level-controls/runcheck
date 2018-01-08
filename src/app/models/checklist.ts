@@ -7,9 +7,11 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
+export type ChecklistType =  'device-default' | 'slot-default' | 'slot-credited' | 'slot-eshimpact';
+
 export interface IChecklistSubject {
   checklistId?: ObjectId;
-  checklistType: 'device-default' | 'slot-default';
+  checklistType: ChecklistType;
   name: string;
   desc: string;
   order: number;
@@ -50,7 +52,7 @@ export interface ChecklistStatus extends IChecklistStatus, history.Document<Chec
 };
 
 export interface IChecklist {
-  checklistType: 'device-default' | 'slot-default';
+  checklistType: ChecklistType;
   targetType: string;
   targetId: ObjectId;
 };
@@ -66,7 +68,7 @@ const ObjectId = Schema.Types.ObjectId;
 
 export const CHECKLIST_VALUES = ['N', 'Y', 'YC'];
 
-export const CHECKLIST_TYPES = ['device-default', 'slot-default'];
+export const CHECKLIST_TYPES = ['device-default', 'slot-default', 'slot-credited', 'slot-eshimpact'];
 
 export function isChecklistValueValid(value?: string): boolean {
   return value ? CHECKLIST_VALUES.includes(value) : false;

@@ -33,6 +33,7 @@ import {
 } from '../models/group';
 
 import {
+  ChecklistType,
   Checklist,
   CHECKLIST_VALUES,
   ChecklistConfig,
@@ -473,34 +474,50 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
 
   let ownerRole: string | undefined;
   let checklistId: ObjectId | undefined;
-  let checklistType: 'device-default' | 'slot-default';
+  let checklistType: ChecklistType | undefined;
 
   switch (targetType) {
   case Slot.modelName.toUpperCase(): {
+    debug('Find slot with id: %s', targetId);
     slot = await Slot.findById(targetId).exec();
     if (!slot || !slot.id) {
       throw new RequestError('Checklist target (slot) not found', BAD_REQUEST);
     }
     targetId = slot.id;
     targetType = Slot.modelName;
+    switch (slot.safetyLevel) {
+    case 'NORMAL':
+    case 'CONTROL':
+    default:
+      checklistType = 'slot-default';
+      break;
+    case 'CREDITED':
+      checklistType = 'slot-credited';
+      break;
+    case 'ESHIMPACT':
+      checklistType = 'slot-eshimpact';
+      break;
+    }
     checklistType = 'slot-default';
     checklistId = slot.checklistId;
     ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
     break;
   }
   case Device.modelName.toUpperCase(): {
+    debug('Find device with id: %s', targetId);
     device = await Device.findById(targetId).exec();
     if (!device || !device.id) {
       throw new RequestError('Checklist target (device) not found', BAD_REQUEST);
     }
     targetId = device.id;
     targetType = Device.modelName;
-    checklistType = 'device-default';
+    checklistType = 'device-default';    
     checklistId = device.checklistId;
     ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
     break;
   }
   case Group.modelName.toUpperCase(): {
+    debug('Find group with id: %s', targetId);
     group = await Group.findById(targetId).exec();
     if (!group || !group.id) {
       throw new RequestError('Checklist target (group) not found', BAD_REQUEST);
@@ -528,6 +545,10 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
   debug('Assert user has any role: [%s]', ownerRole);
   if (!auth.hasAnyRole(req, ownerRole)) {
     throw new RequestError('Not permitted to assign checklist', FORBIDDEN);
+  }
+
+  if (slot && !slot.installDeviceId) {
+    throw new RequestError('Slot must have device installed', BAD_REQUEST);
   }
 
   if (checklistId) {

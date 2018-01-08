@@ -76,7 +76,7 @@ function expectPackage(data?: {}) {
   };
 };
 
-describe('Test device routes', () => {
+describe('Test Checklist routes', () => {
 
   let handler: express.Application;
 
@@ -91,86 +91,17 @@ describe('Test device routes', () => {
     await app.stop();
   });
 
-  describe('Install Device into Slots', () => {
+  describe('Assign checklist before device installation', () => {
     let table = [
       // User unauthenticated
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: '', status: 302, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: '', status: 302, by: 'ID' },
+      { target: '/slots/FE_TEST:DEVA_D0001', targetType: 'SLOT', user: '', status: 302 },
+      { target: '/slots/FE_TEST:DEVB_D0002', targetType: 'SLOT', user: '', status: 302 },
       // User unauthorized
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEDM', status: 403, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEDM', status: 403, by: 'ID' },
-      // Device type incompatible
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 400, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 400, by: 'ID' },
-      // Installation date missing or invalid
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: undefined,    user: 'FEAM', status: 400, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '',           user: 'FEAM', status: 400, by: 'ID' },
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVB-0009-0099-S00002', date: '2017',       user: 'FEAM', status: 400, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-13-20', user: 'FEAM', status: 400, by: 'ID' },
-      // Installation OK
-      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 200 },
-      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 200 },
-      // Already installed
-      //{ name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 400, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 400, by: 'ID' },
-    ];
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}', install device (${row.device} => ${row.name})`, async () => {
-        let deviceId: string | undefined;
-        await request(handler)
-          .get(`/devices/${row.device}`)
-          .set('Accept', 'application/json')
-          .expect(200)
-          .expect((res: request.Response) => {
-            assert.isObject(res.body);
-            assert.isObject(res.body.data);
-            assert.isString(res.body.data.id);
-            deviceId = String(res.body.data.id);
-          });
-        //const nameOrId = await getSlotNameOrId(row);
-        //const deviceId = await getDeviceId(row);
-        const agent = await requestFor(handler, row.user);
-        return agent
-          .put(`/slots/${row.name}/installation`)
-          .set('Accept', 'application/json')
-          .set('Content-Type', 'application/json')
-          .send({ data: {
-              installDeviceId: deviceId,
-              installDeviceOn: row.date,
-            },
-          })
-          .expect(row.status)
-          .expect(expectPackage({ installDeviceOn: row.date }));
-      });
-    }
-  });
-
-  describe('Assign checklist', () => {
-    let table = [
-      // User unauthenticated
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: '', status: 302 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: '', status: 302 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: '', status: 302 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: '', status: 302 },
-      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: '', status: 302 },
-      // User unauthorized
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEAM', status: 403 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEAM', status: 403 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEDM', status: 403 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEDM', status: 403 },
-      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001', targetType: 'SLOT', user: 'FEDM', status: 403 },
+      { target: '/slots/FE_TEST:DEVB_D0002', targetType: 'SLOT', user: 'FEDM', status: 403 },
       // Assign OK
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEDM', status: 201 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEDM', status: 201 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEAM', status: 201 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEAM', status: 201 },
-      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEAM', status: 201 },
-      // Already assigned
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEDM', status: 409 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEDM', status: 409 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEAM', status: 409 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEAM', status: 409 },
-      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+      { target: '/slots/FE_TEST:DEVA_D0001', targetType: 'SLOT', user: 'FEAM', status: 400 },
+      { target: '/slots/FE_TEST:DEVB_D0002', targetType: 'SLOT', user: 'FEAM', status: 400 },
     ];
     for (let row of table) {
       it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.target}`, async () => {
@@ -185,22 +116,95 @@ describe('Test device routes', () => {
             assert.isString(res.body.data.id);
             targetId = String(res.body.data.id);
           });
-        let targetType: string | undefined;
-        if (row.target.startsWith('/slots/')) {
-          targetType = 'SLOT';
-        } else if (row.target.startsWith('/devices/')) {
-          targetType = 'DEVICE';
-        } else if (row.target.startsWith('/groups/')) {
-          targetType = 'GROUP';
-        } else {
-          assert.fail();
-        }
         const agent = await requestFor(handler, row.user);
         await agent
           .post(`/checklists`)
           .set('Accept', 'application/json')
           .set('Content-Type', 'application/json')
-          .send({ data: { targetId: targetId, targetType: targetType }})
+          .send({ data: { targetId: targetId, targetType: row.targetType }})
+          .expect(row.status)
+          .expect(expectPackage());
+      });
+    }
+  });
+
+  describe('Install Device into Slots', () => {
+    let table = [
+      // Installation OK
+      { name: 'FE_TEST:DEVA_D0001', device: 'T99999-DEVA-0009-0099-S00001', date: '2017-11-20', user: 'FEAM', status: 200 },
+      { name: 'FE_TEST:DEVB_D0002', device: 'T99999-DEVB-0009-0099-S00002', date: '2017-11-20', user: 'FEAM', status: 200 },
+    ];
+    for (let row of table) {
+      it(`User '${row.user || 'Anonymous'}', install device (${row.device} => ${row.name})`, async () => {
+        let deviceId: string | undefined;
+        await request(handler)
+          .get(`/devices/${row.device}`)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body);
+            assert.isObject(res.body.data);
+            assert.isString(res.body.data.id);
+            deviceId = String(res.body.data.id);
+          });
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .put(`/slots/${row.name}/installation`)
+          .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: { installDeviceId: deviceId, installDeviceOn: row.date } })
+          .expect(row.status)
+          .expect(expectPackage({ installDeviceOn: row.date }));
+      });
+    }
+  });
+
+  describe('Assign checklist', () => {
+    let table = [
+      // User unauthenticated
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', checklistType: 'device-default', user: '', status: 302 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', checklistType: 'device-default', user: '', status: 302 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   checklistType: 'slot-default',   user: '', status: 302 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   checklistType: 'slot-default',   user: '', status: 302 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           targetType: 'GROUP',  checklistType: 'slot-default',   user: '', status: 302 },
+      // User unauthorized
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEAM', status: 403 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEAM', status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           targetType: 'GROUP',  checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      // Assign OK
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEDM', status: 201 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEDM', status: 201 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEAM', status: 201 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEAM', status: 201 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           targetType: 'GROUP',  checklistType: 'slot-default',   user: 'FEAM', status: 201 },
+      // Already assigned
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEDM', status: 409 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', checklistType: 'device-default', user: 'FEDM', status: 409 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',           targetType: 'GROUP',  checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+    ];
+    for (let row of table) {
+      it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.target}`, async () => {
+        let targetId: string | undefined;
+        await request(handler)
+          .get(row.target)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body);
+            assert.isObject(res.body.data);
+            assert.isString(res.body.data.id);
+            targetId = String(res.body.data.id);
+          });
+        const agent = await requestFor(handler, row.user);
+        await agent
+          .post(`/checklists`)
+          .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: { targetId: targetId, targetType: row.targetType }})
           .expect(row.status)
           .expect(expectPackage({ checklistType: row.checklistType }));
       });
