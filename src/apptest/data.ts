@@ -15,6 +15,11 @@ import {
 } from '../app/models/slot';
 
 import {
+  Group,
+  IGroup,
+} from '../app/models/group';
+
+import {
   ChecklistSubject,
   IChecklistSubject,
 } from '../app/models/checklist';
@@ -46,6 +51,12 @@ export const USERS: forgapi.User[] = [
     firstname: '',
     fullname: 'ME Subject Matter Expert',
     roles: [ 'USR:MESME', 'GRP:ISF:LAB.DIV.ME', 'GRP:ISF:LAB.DIV.ME#LEADER' ],
+  }, {
+    uid: 'ALTSME',
+    lastname: '',
+    firstname: '',
+    fullname: 'Alternative Subject Matter Expert',
+    roles: [ 'USR:ALTSME', 'GRP:ISF:LAB.DIV.GRP' ],
   },
 ];
 
@@ -82,6 +93,15 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: 'MEDIUM',
     safetyLevel: 'CONTROL',
+  },
+];
+
+export const GROUPS: IGroup[] = [
+  {
+    name: 'FE_SLOT_GROUP1',
+    desc: 'Front End Slot Group #1',
+    owner: 'ADB:FRONT_END',
+    memberType: Slot.modelName,
   },
 ];
 
@@ -140,6 +160,10 @@ async function doInititialize(): Promise<void> {
 
   for (let slot of SLOTS) {
     await new Slot(slot).saveWithHistory('SYS:TEST');
+  }
+
+  for (let group of GROUPS) {
+    await new Group(group).saveWithHistory('SYS:TEST');
   }
 
   for (let subject of CL_SUBJECTS) {

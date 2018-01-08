@@ -70,6 +70,7 @@ function expectPackage(data?: {}) {
         assert.isNumber((<any> pkg.error).code);
         assert.isString((<any> pkg.error).message);
         assert.isNotEmpty((<any> pkg.error).message);
+        console.error((<any> pkg.error).message)
       }
     }
   };
@@ -146,28 +147,62 @@ describe('Test device routes', () => {
 
   describe('Assign checklist', () => {
     let table = [
+      // User unauthenticated
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: '', status: 302 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: '', status: 302 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: '', status: 302 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: '', status: 302 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: '', status: 302 },
       // User unauthorized
-      //{ name: 'FE_TEST:DEVA_D0001', user: '',     status: 403, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', user: '',     status: 403, by: 'ID' },
-      //{ name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEAM', status: 403 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEAM', status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEDM', status: 403 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEDM', status: 403 },
       // Assign OK
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 201 },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 201 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEDM', status: 201 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEDM', status: 201 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEAM', status: 201 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEAM', status: 201 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEAM', status: 201 },
       // Already assigned
-      //{ name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
-      //{ name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', checklistType: 'device-default', user: 'FEDM', status: 409 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', checklistType: 'device-default', user: 'FEDM', status: 409 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             checklistType: 'slot-default',   user: 'FEAM', status: 409 },
+      { target: '/groups/slot/FE_SLOT_GROUP1',                checklistType: 'slot-default',   user: 'FEAM', status: 409 },
     ];
     for (let row of table) {
-      it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.name}`, async () => {
-        //const nameOrId = await getSlotNameOrId(row);
+      it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.target}`, async () => {
+        let targetId: string | undefined;
+        await request(handler)
+          .get(row.target)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body);
+            assert.isObject(res.body.data);
+            assert.isString(res.body.data.id);
+            targetId = String(res.body.data.id);
+          });
+        let targetType: string | undefined;
+        if (row.target.startsWith('/slots/')) {
+          targetType = 'SLOT';
+        } else if (row.target.startsWith('/devices/')) {
+          targetType = 'DEVICE';
+        } else if (row.target.startsWith('/groups/')) {
+          targetType = 'GROUP';
+        } else {
+          assert.fail();
+        }
         const agent = await requestFor(handler, row.user);
         await agent
-          .put(`/slots/${row.name}/checklistId`)
+          .post(`/checklists`)
           .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: { targetId: targetId, targetType: targetType }})
           .expect(row.status)
-          .expect(expectPackage());
-          // TODO: Confirm the checklist TYPE!!
+          .expect(expectPackage({ checklistType: row.checklistType }));
       });
     }
   });
@@ -236,19 +271,19 @@ describe('Test device routes', () => {
       // User unauthorized
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM', subject: 'EE', data: { required: false }, status: 403 },
       // Invalid data
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 0 },                 status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 1 },                 status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 'false' },           status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'AM',   data: { required: false },             status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'SUB1', data: { required: false },             status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'NOT_AN_ARRAY' },   status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'USR:USERNAME1' },  status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 0 },                status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 1 },                status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 'false' },          status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'AM',   data: { required: false },            status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'SUB1', data: { required: false },            status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'NOT_AN_ARRAY' },  status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'USR:ALTSME' },    status: 400 },
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees:  ['NOT_A_ROLE'] }, status: 400 },
       // Subject modified
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: false },                              status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: true  },                              status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { assignees: ['USR:USERNAME1'] },                 status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'ME', data: { required: true, assignees: ['USR:USERNAME2'] }, status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: false },                           status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: true  },                           status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { assignees: ['USR:ALTSME'] },                 status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'ME', data: { required: true, assignees: ['USR:ALTSME'] }, status: 200 },
     ];
     for (let row of table) {
       it(`User ${row.user || '\'Anonymous\''} modify checklist subject: ${row.subject}, data: ${JSON.stringify(row.data)}`, async () => {
@@ -291,16 +326,17 @@ describe('Test device routes', () => {
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'EE', data: { value: 'Y' }, status: 403 },
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'DO', data: { value: 'Y' }, status: 403 },
       // Invalid data
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'EESME', subject: 'EE',   data: { value: 'YES' },     status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO',   data: { value: 'NO' },      status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM',   data: { value: true },      status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO',   data: { value: 'YC' },      status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM',   data: { comment: 'Test!' }, status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'ALTSME', subject: 'EE',   data: { value: 'YES' },     status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',   subject: 'DO',   data: { value: 'NO' },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',   subject: 'AM',   data: { value: true },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',   subject: 'DO',   data: { value: 'YC' },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',   subject: 'AM',   data: { comment: 'Test!' }, status: 400 },
       // Status updated
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'EESME', subject: 'EE', data: { value: 'N' },                       status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'MESME', subject: 'ME', data: { value: 'Y' },                       status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO', data: { value: 'YC', comment: 'Test!' },    status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM', data: { value: 'YC', comment: 'Comment!' }, status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'ALTSME', subject: 'EE', data: { value: 'N' },                       status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'ALTSME', subject: 'EE', data: { value: 'Y' },                       status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'ALTSME', subject: 'ME', data: { value: 'Y' },                       status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',   subject: 'DO', data: { value: 'YC', comment: 'Test!' },    status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',   subject: 'AM', data: { value: 'YC', comment: 'Comment!' }, status: 200 },
       // Status of AM subject must be YC if 'basic' subjects are YC!
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM', data: { value: 'Y' }, status: 400 },
     ];

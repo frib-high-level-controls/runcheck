@@ -38,6 +38,7 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  IChecklist,
   IChecklistConfig,
   IChecklistStatus,
   IChecklistSubject,
@@ -55,6 +56,7 @@ interface Target {
 const debug = dbg('runcheck:checklists');
 
 const CREATED = HttpStatus.CREATED;
+const CONFLICT = HttpStatus.CONFLICT;
 const FORBIDDEN = HttpStatus.FORBIDDEN;
 const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
@@ -443,11 +445,155 @@ router.get('/', catchAll(async (req, res) => {
 
 
 /**
- * Create a new checklsit for the specified target.
+ * Create a new checklist for the specified target.
  */
-// router.post('/', ensureAccepts('json'), ensureAuthenticated, catchAll(async () => {
-//
-// });
+router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request', INTERNAL_SERVER_ERROR);
+  }
+
+  let pkg: webapi.Pkg<{ targetId?: {}, targetType?: {} }> = req.body;
+
+  let targetId = pkg.data.targetId ? String(pkg.data.targetId) : undefined;
+  debug('New Checklist targetId: %s', targetId);
+  if (!targetId) {
+    throw new RequestError('Checklist target ID is required', BAD_REQUEST);
+  }
+
+  let targetType = pkg.data.targetType ? String(pkg.data.targetType).toUpperCase() : undefined;
+  debug('New Checklist targetType: %s', targetType);
+  if (!targetType) {
+    throw new RequestError('Checklist target type is required', BAD_REQUEST);
+  }
+
+  let slot: Slot | null = null;
+  let device: Device | null = null;
+  let group: Group | null = null;
+
+  let ownerRole: string | undefined;
+  let checklistId: ObjectId | undefined;
+  let checklistType: 'device-default' | 'slot-default';
+
+  switch (targetType) {
+  case Slot.modelName.toUpperCase(): {
+    slot = await Slot.findById(targetId).exec();
+    if (!slot || !slot.id) {
+      throw new RequestError('Checklist target (slot) not found', BAD_REQUEST);
+    }
+    targetId = slot.id;
+    targetType = Slot.modelName;
+    checklistType = 'slot-default';
+    checklistId = slot.checklistId;
+    ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+    break;
+  }
+  case Device.modelName.toUpperCase(): {
+    device = await Device.findById(targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Checklist target (device) not found', BAD_REQUEST);
+    }
+    targetId = device.id;
+    targetType = Device.modelName;
+    checklistType = 'device-default';
+    checklistId = device.checklistId;
+    ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+    break;
+  }
+  case Group.modelName.toUpperCase(): {
+    group = await Group.findById(targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Checklist target (group) not found', BAD_REQUEST);
+    }
+    targetId = group.id;
+    targetType = Group.modelName;
+    checklistId = group.checklistId;
+    switch (group.memberType) {
+    case Slot.modelName:
+      checklistType = 'slot-default';
+      break;
+    case Device.modelName:
+      checklistType = 'device-default';
+      break;
+    default:
+      throw new RequestError(`Group member type '${group.memberType}' not supported`, INTERNAL_SERVER_ERROR);
+    }
+    ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
+    break;
+  }
+  default:
+    throw new RequestError('Checklist target type is invalid', BAD_REQUEST);
+  }
+
+  debug('Assert user has any role: [%s]', ownerRole);
+  if (!auth.hasAnyRole(req, ownerRole)) {
+    throw new RequestError('Not permitted to assign checklist', FORBIDDEN);
+  }
+
+  if (checklistId) {
+    throw new RequestError('Target already assigned checklist', CONFLICT);
+  }
+
+  const doc: IChecklist = {
+    checklistType: checklistType,
+    targetType: targetType,
+    targetId: models.ObjectId(targetId),
+  };
+
+  debug('Create new Checklist with type: %s', doc.checklistType);
+  const checklist = await Checklist.create(doc);
+
+  let pending = ChecklistSubject.find({
+    checklistType: checklistType,
+    checklistId: {$exists: false},
+  }).exec();
+
+  if (slot) {
+    debug('Update target (slot) with new checklist id: %s', checklist._id);
+    slot.checklistId = models.ObjectId(checklist._id);
+    await slot.saveWithHistory(auth.formatRole('USR', username));
+  }
+  if (device) {
+    debug('Update target (device) with new checklist id: %s', checklist._id);
+    device.checklistId = models.ObjectId(checklist._id);
+    await device.saveWithHistory(auth.formatRole('USR', username));
+  }
+  if (group) {
+    debug('Update target (group) with new checklist id: %s', checklist._id);
+    group.checklistId = models.ObjectId(checklist._id);
+    await group.saveWithHistory(auth.formatRole('USR', username));
+  }
+
+  let subjects = await pending;
+
+  let webSubjects: webapi.ChecklistSubjectDetails[] = [];
+  for (let subject of subjects) {
+    webSubjects.push({
+      name: subject.name,
+      desc: subject.desc,
+      order: subject.order,
+      final: subject.final,
+      primary: subject.primary,
+      required: subject.required,
+      mandatory: subject.mandatory,
+      assignees: subject.assignees,
+    });
+  }
+
+  let webChecklist: webapi.ChecklistDetails = {
+    id: String(checklist.id),
+    targetId: targetId,
+    targetType: targetType,
+    checklistType: checklist.checklistType,
+    canEdit: false,
+    subjects: webSubjects,
+    statuses: [],
+  };
+
+  res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistDetails>> {
+    data: webChecklist,
+  });
+}));
 
 /**
  * Get checklist details for the checklist with the specified ID.
@@ -585,6 +731,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 /**
  * Create a new (custom) checklist subject.
  */
+// tslint:disable-next-line:max-line-length
 router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
   debug('Find Checklist with id: %s', id);
@@ -1171,6 +1318,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
 
   subject.assignees = subVarRoles(subject.assignees, varRoles);
 
+  debug('Assert user has any role: [%s]', subject.assignees);
   if (!auth.hasAnyRole(req, subject.assignees)) {
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
