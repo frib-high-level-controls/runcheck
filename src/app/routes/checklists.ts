@@ -34,15 +34,13 @@ import {
 
 import {
   Checklist,
-  // CHECKLIST_VALUES,
+  CHECKLIST_VALUES,
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
-  IChecklistSubject,
   IChecklistConfig,
-  // IChecklistConfig,
-  // IChecklistStatus,
-  // IChecklistSubject,
+  IChecklistStatus,
+  IChecklistSubject,
 } from '../models/checklist';
 
 type ObjectId = mongoose.Types.ObjectId;
@@ -163,6 +161,7 @@ function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
     if (typeof cfg.required === 'boolean') {
       subject.required = cfg.required;
     }
+    // HISTORY!!!
   }
 }
 
@@ -691,6 +690,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
 /**
  * Update a checklist subject specified by name
  */
+// tslint:disable-next-line:max-line-length
 router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id).toUpperCase();
   let name = String(req.params.name).toUpperCase();
@@ -1055,44 +1055,213 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
   // res.status(200).json({});
 }));
 
-/*
-router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let checklistId = String(req.params.id);
-  let subjectName = String(req.params.name);
+/**
+ * Update subject status for the given checklist and subject.
+ */
+// tslint:disable-next-line:max-line-length
+router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let id = String(req.params.id);
+  let name = String(req.params.name).toUpperCase();
+  debug('Find Checklist with id: %s', id);
 
   let username = auth.getUsername(req);
   if (!username) {
-    throw new RequestError('No username on authenticated request.');
+    throw new RequestError('No username on authenticated request.', INTERNAL_SERVER_ERROR);
+  }
+
+  let checklist = await Checklist.findById(id).exec();
+  if (!checklist) {
+    throw new RequestError('Checklist not found', NOT_FOUND);
+  }
+
+  let pending = Promise.all([
+    ChecklistSubject.find({
+      checklistType: checklist.checklistType,
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).exec(),
+    ChecklistStatus.findWithHistory({
+      checklistId: checklist._id,
+    }),
+  ]);
+
+  let varRoles: Map<string, string>;
+
+  switch (checklist.targetType) {
+  case Device.modelName: {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = getVarRoles(device);
+    break;
+  }
+  case Slot.modelName: {
+    let slot = await Slot.findById(checklist.targetId).exec();
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = getVarRoles(slot);
+    if (slot.installDeviceId) {
+      let device = await Device.findById(slot.installDeviceId).exec();
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      let varRoles2 = getVarRoles(device);
+      for (let entry of varRoles2.entries()) {
+        varRoles.set(entry[0], entry[1]);
+      }
+    }
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = getVarRoles(group);
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  }
+
+  let [subjects, configs, statuses ] = await pending;
+
+  // Need to track 'basic' (ie non-primary, non-final) subjects 
+  let basic: string[] = [];
+
+  let subject: IChecklistSubject | undefined;
+  for (let s of subjects) {
+    if (s.name === name) {
+      subject = s;
+    }
+    if ((s.mandatory || s.required) && !s.primary && !s.final) {
+      basic.push(s.name);
+    }
+  }
+  if (!subject) {
+    throw new RequestError(`Checklist subject not found`, NOT_FOUND);
+  }
+
+  let config: ChecklistConfig | undefined;
+  for (let c of configs) {
+    if (c.subjectName === name) {
+      config = c;
+      break;
+    }
+  }
+  if (config) {
+    debug('Apply config to subject: %s', subject.name);
+    applyCfg(<webapi.ChecklistSubject> subject, config);
+  }
+
+  let forceYC = false;
+  let status: ChecklistStatus | undefined
+  for (let s of statuses) {
+    if (s.subjectName === name) {
+      status = s;
+    }
+    if (basic.includes(s.subjectName)) {
+      forceYC = forceYC || (s.value === 'YC');
+    }
+  }
+
+  subject.assignees = subVarRoles(subject.assignees, varRoles);
+
+  if (!auth.hasAnyRole(req, subject.assignees)) {
+    throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
   let pkg = <webapi.Pkg<{ value?: {}, comment?: {} }>> req.body;
 
-  // validate the request data
+  if (!subject.mandatory && !subject.required) {
+    throw new RequestError('Checklsit status is not required', BAD_REQUEST);
+  }
 
-  let statusValue = pkg.data.value ? String(pkg.data.value).trim().toUpperCase() : undefined;
-  if (!statusValue) {
+  let value = pkg.data.value ? String(pkg.data.value).trim().toUpperCase() : undefined;
+  debug('Checklist Status value: %s', value);
+  if (!value) {
     throw new RequestError(`Checklist status value required`, BAD_REQUEST);
   }
-  if (!CHECKLIST_VALUES.includes(statusValue)) {
-    // if (isChecklistValueValid(statusValue)) {
-    throw new RequestError(`Checklist status value invalid: ${statusValue}`, BAD_REQUEST);
+  if (!CHECKLIST_VALUES.includes(value)) {
+    throw new RequestError(`Checklist status value invalid: ${value}`, BAD_REQUEST);
+  }
+  if (forceYC && (value !== 'YC')) {
+    throw new RequestError(`Checklist status value must be YC`, BAD_REQUEST);
   }
 
-  let statusComment = pkg.data.comment ? String(pkg.data.comment).trim() : undefined;
-  if (statusValue === 'YC' && !statusComment) {
-    // if (isChecklistValueApproved(statusValue, true) && !statusComment)
+  let comment = pkg.data.comment ? String(pkg.data.comment).trim() : '';
+  debug('Checklist status comment: "%s"', comment);
+  if (value !== 'YC') {
+    comment = ''; // Comment is cleared if the value is not YC!
+  } else if (comment === '') {
     throw new RequestError(`Checklist status comment is required`, BAD_REQUEST);
   }
+
+  if (status) {
+    if (status.value !== value) {
+      status.value = value;
+    }
+    if (status.comment !== comment) {
+      status.comment = comment;
+    }
+  } else {
+    status = new ChecklistStatus(<IChecklistStatus> {
+      value: value,
+      comment: comment,
+      subjectName: name,
+      checklistId: checklist._id,
+    });
+  }
+
+  if (status.isModified()) {
+    status.inputBy = username;
+    status.inputAt = new Date();
+    await status.saveWithHistory(username);
+  }
+
+  const h = status.history;
+  let webHistory: webapi.History = {
+    updates: [],
+    updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
+    updatedBy: h.updatedBy || '',
+  };
+  if (h.updates) {
+    for (let update of h.updates) {
+      webHistory.updates.push({
+        at: String(update.at),
+        by: update.by,
+        paths: update.paths,
+      });
+    }
+  }
+
+  let webStatus: webapi.ChecklistStatusDetails = {
+    subjectName: status.subjectName,
+    value: status.value,
+    comment: status.comment,
+    inputBy: status.inputBy,
+    inputAt: status.inputAt.toISOString(),
+    canUpdate: true,
+    history: webHistory,
+  };
+
+  res.json(<webapi.Pkg<webapi.ChecklistStatusDetails>> {
+    data: webStatus,
+  });
 
   // if (!Array.isArray(req.body.data)) {
   //   throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
   // }
 
-  debug('Find checklist by ID: %s', checklistId);
-  let checklist = await Checklist.findById(checklistId).exec();
-  if (!checklist) {
-    throw new RequestError('Checklist not found', NOT_FOUND);
-  }
+  // debug('Find checklist by ID: %s', checklistId);
+  // let checklist = await Checklist.findById(checklistId).exec();
+  // if (!checklist) {
+  //   throw new RequestError('Checklist not found', NOT_FOUND);
+  // }
 
   // let deferred = Promise.all([
   //   //findChecklistSubjects(checklist),
@@ -1124,120 +1293,120 @@ router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.e
 
   // let [ subjects, configs, statuses ] = await deferred;
 
-  let deferredSlot: Promise<Slot | null> = Promise.resolve(null);
-  let deferredGroup: Promise<Group | null> = Promise.resolve(null);
-  let deferredDevice: Promise<Device | null> = Promise.resolve(null);
+  // let deferredSlot: Promise<Slot | null> = Promise.resolve(null);
+  // let deferredGroup: Promise<Group | null> = Promise.resolve(null);
+  // let deferredDevice: Promise<Device | null> = Promise.resolve(null);
 
-  switch (checklist.targetType) {
-  case Slot.modelName:
-    debug('Find slot with ID: %s', checklist.targetId);
-    deferredSlot = Slot.findById(checklist.targetId).exec();
-    break;
-  case Group.modelName:
-    debug('Find group with ID: %s', checklist.targetId);
-    deferredGroup = Group.findById(checklist.targetId).exec();
-    break;
-  case Device.modelName:
-    debug('Find device with ID: %s', checklist.targetId);
-    deferredDevice = Device.findById(checklist.targetId).exec();
-    break;
-  default:
-    throw new RequestError(`Checklist target type invalid: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
-  }
+  // switch (checklist.targetType) {
+  // case Slot.modelName:
+  //   debug('Find slot with ID: %s', checklist.targetId);
+  //   deferredSlot = Slot.findById(checklist.targetId).exec();
+  //   break;
+  // case Group.modelName:
+  //   debug('Find group with ID: %s', checklist.targetId);
+  //   deferredGroup = Group.findById(checklist.targetId).exec();
+  //   break;
+  // case Device.modelName:
+  //   debug('Find device with ID: %s', checklist.targetId);
+  //   deferredDevice = Device.findById(checklist.targetId).exec();
+  //   break;
+  // default:
+  //   throw new RequestError(`Checklist target type invalid: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  // }
 
-  let [ subjects, configs, statuses, device, slot, group ] = await Promise.all([
-    models.mapById(ChecklistSubject.find({
-      $or: [{
-        checklistType: checklist.checklistType,
-        checklistId: { $exists: false }, // TODO: exists(false)
-        name: subjectName,
-      }, {
-        checklistType: checklist.checklistType,
-        checklistId: { $in: [null, checklist._id] }, // TODO: exists(false)
-        name: subjectName,
-      }],
-    }).exec()),
-    models.mapByPath('subjectName', ChecklistConfig.find({
-      checklistId: checklist._id,
-      subjectName: subjectName,
-    }).exec()),
-    models.mapByPath('subjectName', ChecklistStatus.find({
-      checklistId: checklist._id,
-      subjectName: subjectName,
-    }).exec()),
-    deferredDevice, deferredSlot, deferredGroup,
-  ]);
+  // let [ subjects, configs, statuses, device, slot, group ] = await Promise.all([
+  //   models.mapById(ChecklistSubject.find({
+  //     $or: [{
+  //       checklistType: checklist.checklistType,
+  //       checklistId: { $exists: false }, // TODO: exists(false)
+  //       name: subjectName,
+  //     }, {
+  //       checklistType: checklist.checklistType,
+  //       checklistId: { $in: [null, checklist._id] }, // TODO: exists(false)
+  //       name: subjectName,
+  //     }],
+  //   }).exec()),
+  //   models.mapByPath('subjectName', ChecklistConfig.find({
+  //     checklistId: checklist._id,
+  //     subjectName: subjectName,
+  //   }).exec()),
+  //   models.mapByPath('subjectName', ChecklistStatus.find({
+  //     checklistId: checklist._id,
+  //     subjectName: subjectName,
+  //   }).exec()),
+  //   deferredDevice, deferredSlot, deferredGroup,
+  // ]);
 
-  if (!subjects.has(subjectName)) {
-    throw new RequestError('Checklist subject not found', NOT_FOUND);
-  }
+  // if (!subjects.has(subjectName)) {
+  //   throw new RequestError('Checklist subject not found', NOT_FOUND);
+  // }
 
-  let varRoleMap = new Map<string, string>();
+  // let varRoleMap = new Map<string, string>();
 
-  switch (checklist.targetType) {
-  case Slot.modelName:
-    if (slot) {
-      //debug('')
-      //let role = auth.formatRole('GRP', slot.area, 'LEADER');
-      //debug('')
-      varRoleMap.set('AREA_LEADER', auth.formatRole('GRP', slot.area, 'LEADER'));
-    } else {
-      throw new RequestError('Slot not found', NOT_FOUND);
-    }
+  // switch (checklist.targetType) {
+  // case Slot.modelName:
+  //   if (slot) {
+  //     //debug('')
+  //     //let role = auth.formatRole('GRP', slot.area, 'LEADER');
+  //     //debug('')
+  //     varRoleMap.set('AREA_LEADER', auth.formatRole('GRP', slot.area, 'LEADER'));
+  //   } else {
+  //     throw new RequestError('Slot not found', NOT_FOUND);
+  //   }
     
-    break;
-  case Device.modelName:
-    if (!device) {
-      throw new RequestError('Device not found', NOT_FOUND);
-    }
-    varRoleMap.set('DEPT_LEADER', auth.formatRole('GRP', device.dept, 'LEADER'));
-    break;
-  case Group.modelName:
-    if (!group) {
-      throw new RequestError('Group not found', NOT_FOUND);
-    }
-    switch (group.memberType) {
-    case Slot.modelName:
-      varRoleMap.set('AREA_LEADER', auth.formatRole('GRP', 'TODO', 'LEADER'));
-      break;
-    case Device.modelName:
-      varRoleMap.set('DEPT_LEADER', auth.formatRole('GRP', 'TODO', 'LEADER'));
-      break;
-    default:
-      throw new RequestError(`Group member type invalid: ${group.memberType}`, INTERNAL_SERVER_ERROR);
-    }
-    break;
-  default:
-    throw new RequestError(`Checklist target type invalid: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
-  }
+  //   break;
+  // case Device.modelName:
+  //   if (!device) {
+  //     throw new RequestError('Device not found', NOT_FOUND);
+  //   }
+  //   varRoleMap.set('DEPT_LEADER', auth.formatRole('GRP', device.dept, 'LEADER'));
+  //   break;
+  // case Group.modelName:
+  //   if (!group) {
+  //     throw new RequestError('Group not found', NOT_FOUND);
+  //   }
+  //   switch (group.memberType) {
+  //   case Slot.modelName:
+  //     varRoleMap.set('AREA_LEADER', auth.formatRole('GRP', 'TODO', 'LEADER'));
+  //     break;
+  //   case Device.modelName:
+  //     varRoleMap.set('DEPT_LEADER', auth.formatRole('GRP', 'TODO', 'LEADER'));
+  //     break;
+  //   default:
+  //     throw new RequestError(`Group member type invalid: ${group.memberType}`, INTERNAL_SERVER_ERROR);
+  //   }
+  //   break;
+  // default:
+  //   throw new RequestError(`Checklist target type invalid: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  // }
 
-  // TODO: Common function
-  for (let subject of subjects.values()) {
-    let config = configs.get(subject.name);
-    if (config) {
-      subject.applyCfg(config);
-    }
-    let assignees: string[] = [];
-    for (let assignee of subject.assignees) {
-      let role = auth.parseRole(assignee);
-      if (!role) {
-        // RequestError('Assignee role is malformed', INTERNAL_SERVER_ERROR);
-        // LOG!
-        continue;
-      }
-      if (role.scheme !== 'VAR') {
-        assignees.push(auth.formatRole(role));
-        continue;
-      }
-      let varRole = varRoleMap.get(role.identifier);
-      if (!varRole) {
-        // LOG throw new RequestError('Variable role is undefined', INTERNAL_SERVER_ERROR);
-        continue
-      }
-      assignees.push(varRole);
-    }
-    subject.assignees = assignees;
-  }
+  // // TODO: Common function
+  // for (let subject of subjects.values()) {
+  //   let config = configs.get(subject.name);
+  //   if (config) {
+  //     subject.applyCfg(config);
+  //   }
+  //   let assignees: string[] = [];
+  //   for (let assignee of subject.assignees) {
+  //     let role = auth.parseRole(assignee);
+  //     if (!role) {
+  //       // RequestError('Assignee role is malformed', INTERNAL_SERVER_ERROR);
+  //       // LOG!
+  //       continue;
+  //     }
+  //     if (role.scheme !== 'VAR') {
+  //       assignees.push(auth.formatRole(role));
+  //       continue;
+  //     }
+  //     let varRole = varRoleMap.get(role.identifier);
+  //     if (!varRole) {
+  //       // LOG throw new RequestError('Variable role is undefined', INTERNAL_SERVER_ERROR);
+  //       continue
+  //     }
+  //     assignees.push(varRole);
+  //   }
+  //   subject.assignees = assignees;
+  // }
 
   // const configMap = new Map<string, ChecklistConfig>();
   // for (let config of configs) {
@@ -1282,55 +1451,55 @@ router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.e
   // subject.assignees = subjectAssignees;
 
 
-  // If all primary subjects are approved,
-  // then the checklist is frozen
-  let frozen = true;
-  for (let subject of subjects.values()) {
-    if (subject.primary) {
-      let status = statuses.get(subject.name);
-      if (status) {
-        frozen = frozen && status.isApproved();
-      }
-    }
-  }
+  // // If all primary subjects are approved,
+  // // then the checklist is frozen
+  // let frozen = true;
+  // for (let subject of subjects.values()) {
+  //   if (subject.primary) {
+  //     let status = statuses.get(subject.name);
+  //     if (status) {
+  //       frozen = frozen && status.isApproved();
+  //     }
+  //   }
+  // }
 
-  // If the checklist is frozen AND the subject is NOT final,
-  // then updates to the status are not allowed.
-  let subject = subjects.get(subjectName);
-  if (subject && frozen && !subject.final) {
-    throw new RequestError('Not permitted', HttpStatus.FORBIDDEN);
-  }
+  // // If the checklist is frozen AND the subject is NOT final,
+  // // then updates to the status are not allowed.
+  // let subject = subjects.get(subjectName);
+  // if (subject && frozen && !subject.final) {
+  //   throw new RequestError('Not permitted', HttpStatus.FORBIDDEN);
+  // }
 
-  // If the the subject is NOT mandatory and NOT required,
-  // then updates to the status are not allowed.
-  if (subject && !subject.mandatory && !subject.required) {
-    throw new RequestError('Not permitted', HttpStatus.FORBIDDEN);
-  }
+  // // If the the subject is NOT mandatory and NOT required,
+  // // then updates to the status are not allowed.
+  // if (subject && !subject.mandatory && !subject.required) {
+  //   throw new RequestError('Not permitted', HttpStatus.FORBIDDEN);
+  // }
 
-  // If the current user does not have a role in the subject assignees,
-  // then updates to the status are not allowed.
-  if (subject && !auth.hasAnyRole(req, subject.assignees)) {
-    throw new RequestError('Not permitted to set status for subject: ${subjectName}', HttpStatus.FORBIDDEN);
-  }
+  // // If the current user does not have a role in the subject assignees,
+  // // then updates to the status are not allowed.
+  // if (subject && !auth.hasAnyRole(req, subject.assignees)) {
+  //   throw new RequestError('Not permitted to set status for subject: ${subjectName}', HttpStatus.FORBIDDEN);
+  // }
 
 
   // What about when Subject is YC then AM/DO must also be YC, ADD new data field primary!
 
-  let status = statuses.get(subjectName);
+  // let status = statuses.get(subjectName);
 
-  if (!status) {
-    status = new ChecklistStatus({
-      value: statusValue,
-      comment: statusComment,
-      inputAt: new Date(),
-      inputBy: username,
-    });
-  } else {
-    status.value = statusValue;
-    status.comment = statusComment ? statusComment : '';
-    status.inputAt = new Date();
-    status.inputBy = username;
-  }
+  // if (!status) {
+  //   status = new ChecklistStatus({
+  //     value: statusValue,
+  //     comment: statusComment,
+  //     inputAt: new Date(),
+  //     inputBy: username,
+  //   });
+  // } else {
+  //   status.value = statusValue;
+  //   status.comment = statusComment ? statusComment : '';
+  //   status.inputAt = new Date();
+  //   status.inputBy = username;
+  // }
 
 
   // status.value = newStatusValue;
@@ -1339,14 +1508,14 @@ router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.e
   //   status.comment = statusComment;
   // }
 
-  await status.saveWithHistory(status.inputBy);
+  // await status.saveWithHistory(status.inputBy);
 
 
-  res.json(<webapi.Pkg<webapi.ChecklistStatus>> {
-    data: {
+  // res.json(<webapi.Pkg<webapi.ChecklistStatus>> {
+  //   data: {
       
-    },
-  });
+  //   },
+  // });
 
   // let statusMap = new Map<string, ChecklistStatus>();
   // for (let status of statuses) {
@@ -1498,4 +1667,3 @@ router.put('/:id/statuses/:name', ensureAccepts('json'), ensurePackage(), auth.e
   //   data: data,
   // });
 }));
-*/

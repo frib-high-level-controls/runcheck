@@ -34,6 +34,18 @@ export const USERS: forgapi.User[] = [
     firstname: '',
     fullname: 'FE Dept Manager',
     roles: [ 'USR:FEDM', 'GRP:ISF:LAB.DIV.FE', 'GRP:ISF:LAB.DIV.FE#LEADER' ],
+  }, {
+    uid: 'EESME',
+    lastname: '',
+    firstname: '',
+    fullname: 'EE Subject Matter Expert',
+    roles: [ 'USR:EESME', 'GRP:ISF:LAB.DIV.EE', 'GRP:ISF:LAB.DIV.EE#LEADER' ],
+  }, {
+    uid: 'MESME',
+    lastname: '',
+    firstname: '',
+    fullname: 'ME Subject Matter Expert',
+    roles: [ 'USR:MESME', 'GRP:ISF:LAB.DIV.ME', 'GRP:ISF:LAB.DIV.ME#LEADER' ],
   },
 ];
 
@@ -74,52 +86,35 @@ export const SLOTS: ISlot[] = [
 ];
 
 const CL_SUBJECTS: IChecklistSubject[] = [
-  { name: 'EE',    desc: 'EE', checklistType: 'device-default', order: 0,
+  {
+    name: 'EE', desc: 'EE', checklistType: 'device-default', order: 0,
     primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ] },
-  { name: 'ME',    desc: 'ME', checklistType: 'device-default', order: 1,
+    assignees: [ 'USR:EESME' ],
+  }, {
+    name: 'ME', desc: 'ME', checklistType: 'device-default', order: 1,
     primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ] },
-  { name: 'CRYO',  desc: 'CRYO', checklistType: 'device-default', order: 2,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ] },
-  { name: 'PHYS',  desc: 'PHYS', checklistType: 'device-default', order: 3,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ] },
-  { name: 'CTRLS', desc: 'CTRLS', checklistType: 'device-default', order: 4,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ] },
-  { name: 'ESHQ',  desc: 'ESHQ', checklistType: 'device-default', order: 5,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ] },
-  { name: 'DO',    desc: 'DO', checklistType: 'device-default', order: 6,
+    assignees: [ 'USR:MESME' ],
+  }, {
+    name: 'DO', desc: 'DO', checklistType: 'device-default', order: 2,
     primary: true, final: true, mandatory: true, required: true,
-    assignees: [ 'VAR:DEPT_LEADER' ] },
-
-  { name: 'DO',    desc: 'DO',    checklistType: 'slot-default', order: 0,
+    assignees: [ 'VAR:DEPT_LEADER' ],
+  }, {
+    name: 'DO', desc: 'DO', checklistType: 'slot-default', order: 0,
     primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'VAR:DEPT_LEADER' ] },
-  { name: 'EE',    desc: 'EE',    checklistType: 'slot-default', order: 1,
+    assignees: [ 'VAR:DEPT_LEADER' ],
+  }, {
+    name: 'EE', desc: 'EE', checklistType: 'slot-default', order: 1,
     primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ] },
-  { name: 'ME',    desc: 'ME',    checklistType: 'slot-default', order: 2,
+    assignees: [ 'USR:EESME' ],
+  }, {
+    name: 'ME', desc: 'ME', checklistType: 'slot-default', order: 2,
     primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ] },
-  { name: 'CRYO',  desc: 'CRYO',  checklistType: 'slot-default', order: 3,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ] },
-  { name: 'PHYS',  desc: 'PHYS',  checklistType: 'slot-default', order: 4,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ] },
-  { name: 'CTRLS', desc: 'CTRLS', checklistType: 'slot-default', order: 5,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ] },
-  { name: 'ESHQ',  desc: 'ESHQ',  checklistType: 'slot-default', order: 6,
-    primary: false, final: false, mandatory: false, required: true,
-    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ] },
-  { name: 'AM',    desc: 'AM',    checklistType: 'slot-default', order: 7,
+    assignees: [ 'USR:MESME' ],
+  }, {
+    name: 'AM', desc: 'AM', checklistType: 'slot-default', order: 3,
     primary: true, final: false, mandatory: true, required: true,
-    assignees: [ 'VAR:AREA_LEADER' ] },
+    assignees: [ 'VAR:AREA_LEADER' ],
+  },
 ];
 
 

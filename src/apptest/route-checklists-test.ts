@@ -281,6 +281,59 @@ describe('Test device routes', () => {
     }
   });
 
+  describe('Update checklist status', () => {
+    let table = [
+      // User unauthenticated
+      { target: '/slots/FE_TEST:DEVA_D0001', user: '', subject: 'EE', data: { value: 'Y' }, status: 302 },
+      // User unauthorized
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'EE', data: { value: 'Y' }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'EESME', subject: 'ME', data: { value: 'Y' }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'EE', data: { value: 'Y' }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'DO', data: { value: 'Y' }, status: 403 },
+      // Invalid data
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'EESME', subject: 'EE',   data: { value: 'YES' },     status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO',   data: { value: 'NO' },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM',   data: { value: true },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO',   data: { value: 'YC' },      status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM',   data: { comment: 'Test!' }, status: 400 },
+      // Status updated
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'EESME', subject: 'EE', data: { value: 'N' },                       status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'MESME', subject: 'ME', data: { value: 'Y' },                       status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM',  subject: 'DO', data: { value: 'YC', comment: 'Test!' },    status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM', data: { value: 'YC', comment: 'Comment!' }, status: 200 },
+      // Status of AM subject must be YC if 'basic' subjects are YC!
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM',  subject: 'AM', data: { value: 'Y' }, status: 400 },
+    ];
+    for (let row of table) {
+      it(`User ${row.user || '\'Anonymous\''} update checklist status: ${row.subject}, data: ${JSON.stringify(row.data)}`, async () => {
+        let checklistId: string | undefined;
+        await request(handler)
+          .get(row.target)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body);
+            assert.isObject(res.body.data);
+            assert.isString(res.body.data.checklistId);
+            checklistId = String(res.body.data.checklistId);
+          });
+        for (let c of customChecklistSubjects) {
+          if (c.target === row.target && c.desc === row.subject) {
+            row.subject = c.name;
+            break;
+          }
+        }
+        const agent = await requestFor(handler, row.user);
+        await agent
+          .put(`/checklists/${checklistId}/statuses/${row.subject}`)
+          .set('Accept', 'application/json')
+          .set('Content-Type', 'application/json')
+          .send({ data: row.data })
+          .expect(row.status)
+          .expect(expectPackage(row.data));
+      });
+    }
+  });
 
   // describe('Modify custom checklist subjects', () => {
   //   let table = [
