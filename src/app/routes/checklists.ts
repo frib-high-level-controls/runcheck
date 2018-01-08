@@ -3,6 +3,7 @@
  */
 import * as dbg  from 'debug';
 import * as express from 'express';
+import * as lodash from 'lodash';
 import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
@@ -153,9 +154,9 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>)
 
 function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
   if (cfg) {
-    if (typeof cfg.name === 'string') {
-      subject.name = cfg.name;
-    }
+    // if (typeof cfg.name === 'string') {
+    //   subject.name = cfg.name;
+    // }
     if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
       subject.assignees = Array.from(cfg.assignees);
     }
@@ -771,21 +772,21 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
-  let pkg: webapi.Pkg<{ required?: {} /* assignees?: {} */}> = req.body;
+  let pkg: webapi.Pkg<{ required?: {}, assignees?: {} }> = req.body;
 
   if (pkg.data.required !== undefined) {
     if (typeof pkg.data.required !== 'boolean') {
       throw new RequestError('Subject required is invalid', BAD_REQUEST);
     }
-    let required = Boolean(pkg.data.required);
-    if (subject.mandatory && !required) {
-      throw new RequestError('Subject is mandatory', BAD_REQUEST);
-    }
+    let required = pkg.data.required;
     if (config) {
       if (config.required !== required) {
         config.required = required;
       }
     } else if (subject.required !== required) {
+      if (subject.mandatory) {
+        throw new RequestError('Subject is not editable', BAD_REQUEST);
+      }
       config = new ChecklistConfig(<IChecklistConfig> {
         required: required,
         subjectName: subject.name,
@@ -794,7 +795,40 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     }
   }
 
-  if (config) {
+  if (pkg.data.assignees !== undefined) {
+    if (!Array.isArray(pkg.data.assignees)) {
+      throw new RequestError('Subject assignees are invalid', BAD_REQUEST);
+    }
+
+    let assignees: string[] = [];
+    for (let assignee of pkg.data.assignees) {
+      if (typeof assignee !== 'string' || assignee === '') {
+        throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+      }
+      let role = auth.parseRole(assignee);
+      if (!role) {
+        throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+      }
+      assignees.push(auth.formatRole(role));
+    }
+    if (config) {
+      if (!lodash.isEqual(config.assignees, assignees)) {
+        config.assignees = assignees;
+      }
+    } else if (!lodash.isEqual(subject.assignees, assignees)) {
+      if (subject.mandatory) {
+        throw new RequestError('Subject is not editable', BAD_REQUEST);
+      }
+      config = new ChecklistConfig(<IChecklistConfig> {
+        assignees: assignees,
+        subjectName: subject.name,
+        checklistId: checklist._id,
+      });
+    }
+  }
+
+  if (config && config.isModified()) {
+    debug('Save subject configuration: %s', config.subjectName);
     await config.saveWithHistory(username);
   }
 
@@ -810,6 +844,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
   };
 
   if (config) {
+    debug('Apply config to subject: %s', subject.name);
     applyCfg(webSubject, config);
   }
 

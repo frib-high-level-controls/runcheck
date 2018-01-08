@@ -236,14 +236,19 @@ describe('Test device routes', () => {
       // User unauthorized
       { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEDM', subject: 'EE', data: { required: false }, status: 403 },
       // Invalid data
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 0 },       status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 1 },       status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 'false' }, status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'AM',   data: { required: false },   status: 400 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'SUB1', data: { required: false },   status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 0 },                 status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 1 },                 status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { required: 'false' },           status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'AM',   data: { required: false },             status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'SUB1', data: { required: false },             status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'NOT_AN_ARRAY' },   status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees: 'USR:USERNAME1' },  status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE',   data: { assignees:  ['NOT_A_ROLE'] }, status: 400 },
       // Subject modified
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: false }, status: 200 },
-      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: true  }, status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: false },                              status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { required: true  },                              status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'EE', data: { assignees: ['USR:USERNAME1'] },                 status: 200 },
+      { target: '/slots/FE_TEST:DEVA_D0001', user: 'FEAM', subject: 'ME', data: { required: true, assignees: ['USR:USERNAME2'] }, status: 200 },
     ];
     for (let row of table) {
       it(`User ${row.user || '\'Anonymous\''} modify checklist subject: ${row.subject}, data: ${JSON.stringify(row.data)}`, async () => {
