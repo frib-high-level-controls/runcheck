@@ -66,6 +66,7 @@ declare namespace webapi {
     drr: string;
     arr: string;
     installDeviceName?: string;
+    groupId?: string;
   }
 
   export interface GroupTableRow {

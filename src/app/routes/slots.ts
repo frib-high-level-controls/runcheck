@@ -16,6 +16,7 @@ import {
   format,
   HttpStatus,
   RequestError,
+  findQueryParam,
 } from '../shared/handlers';
 
 import {
@@ -26,9 +27,9 @@ import {
   Device,
 } from '../models/device';
 
-// import {
-//   Group,
-// } from '../models/group';
+import {
+  Group,
+} from '../models/group';
 
 import {
   IInstall,
@@ -75,8 +76,14 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
+      let conds: { area?: string } = {};
+      let groupId = findQueryParam(req, 'GROUPID', false, false);
+      if (groupId) {
+        let group = await Group.find({_id: groupId}).exec();
+        conds.area = group[0].owner;
+      }
       const [ slots, devices ] = await Promise.all([
-        Slot.find().exec(),
+        Slot.find(conds).exec(),
         models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
       ]);
       for (let slot of slots) {
@@ -89,6 +96,7 @@ router.get('/', catchAll(async (req, res) => {
           careLevel: slot.careLevel,
           drr: slot.drr,
           arr: slot.arr,
+          groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
         };
         if (slot.installDeviceId) {
           const deviceId = slot.installDeviceId.toHexString();
