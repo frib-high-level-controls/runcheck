@@ -208,83 +208,48 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
 // });
 
 
-// slotGroups.post('/:gid/addSlots', function (req, res) {
-//   var passData = req.body.passData;
-//   var count = 0;
-//   var errMsg = [];
-//   var doneMsg = [];
-//   passData.forEach(function(d){
-//     Slot.update({_id: d.id, inGroup: null}, {inGroup: req.params.gid}, function(err,raw) {
-//       if(err || raw.nModified == 0) {
-//         var msg = err ? err.message : d.name + ' not matched';
-//         log.error(msg);
-//         errMsg.push('Failed: ' + d.name + msg);
-//         count++;
-//         if (count === passData.length ) {
-//           return res.status(201).json({
-//             errMsg: errMsg,
-//             doneMsg: doneMsg
-//           });
-//         }
-//       }else {
-//         SlotGroup.update({_id: req.params.gid}, {$addToSet: {slots: d.id} }, function(err,raw) {
-//           count++;
-//           if(err || raw.nModified == 0) {
-//             var msg = err ? err.message : 'group not matched';
-//             log.error(msg);
-//             errMsg = errMsg.push('Failed: ' + msg);
-//           }else {
-//             doneMsg.push('Success: ' + d.name + ' is added.');
-//           }
-//           if (count === passData.length ) {
-//             return res.status(201).json({
-//               errMsg: errMsg,
-//               doneMsg: doneMsg
-//             });
-//           }
-//         })
-//       }
-//     });
-//   });
-// });
+router.post('/:gid/addSlots', function (req, res) {
+  let passData = req.body.passData;
+  let count = 0;
+  let errMsg: string[] = [];
+  let doneMsg: string[] = [];
+  passData.forEach(function(d: any){
+    Slot.update({_id: d.id, groupId: null}, {groupId: req.params.gid}, function(err,raw) {
+      if(err || raw.nModified == 0) {
+        let msg = err ? err.message : d.name + ' not matched';
+        console.error(msg);
+        errMsg.push('Failed: ' + d.name + msg);
+        count++;
+        if (count === passData.length ) {
+          return res.status(201).json({
+            errMsg: errMsg,
+            doneMsg: doneMsg
+          });
+        }
+      }
+    });
+  });
+});
 
-
-// slotGroups.post('/:gid/removeSlots', function (req, res) {
-//   var passData = req.body.passData;
-//   var count = 0;
-//   var errMsg = [];
-//   var doneMsg = [];
-//   passData.forEach(function(d){
-//     Slot.update({_id: d.id, inGroup: { $ne : null }}, {inGroup: null}, function(err, raw) {
-//       if(err || raw.nModified == 0) {
-//         count++;
-//         var msg = err ? err.message : d.name + ' not matched';
-//         log.error(msg);
-//         errMsg.push('Failed: ' + msg);
-//         if (count === passData.length ) {
-//           return res.status(201).json({
-//             errMsg: errMsg,
-//             doneMsg: doneMsg
-//           });
-//         }
-//       }else {
-//         SlotGroup.update({_id: req.params.gid}, {$pull: {slots: d.id} }, function(err,raw) {
-//           count++;
-//           if(err || raw.nModified == 0) {
-//             var msg = err ? err.message : 'group not matched';
-//             log.error(msg);
-//             errMsg = errMsg.push('Failed: ' + msg);
-//           }else {
-//             doneMsg.push('Success: ' + d.name + ' is removed.');
-//           }
-//           if (count === passData.length ) {
-//             return res.status(200).json({
-//               errMsg: errMsg,
-//               doneMsg: doneMsg
-//             });
-//           }
-//         })
-//       }
-//     });
-//   });
-// });
+router.post('/:gid/removeSlots', function (req, res) {
+  let passData = req.body.passData;
+  let count = 0;
+  let errMsg: string[] = [];
+  let doneMsg: string[] = [];
+  passData.forEach(function(d: any){
+    Slot.update({_id: d.id, groupId: { $ne : null }}, {groupId: null}, function(err, raw) {
+      if(err || raw.nModified == 0) {
+        count++;
+        let msg = err ? err.message : d.name + ' not matched';
+        console.error(msg);
+        errMsg.push('Failed: ' + msg);
+        if (count === passData.length ) {
+          return res.status(201).json({
+            errMsg: errMsg,
+            doneMsg: doneMsg
+          });
+        }
+      }
+    });
+  });
+});
