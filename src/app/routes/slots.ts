@@ -78,9 +78,11 @@ router.get('/', catchAll(async (req, res) => {
       const rows: webapi.SlotTableRow[] = [];
       let conds: { area?: string } = {};
       let groupId = findQueryParam(req, 'GROUPID', false, false);
+      console.log('groupid %s queryparam %s', groupId, req.query['GROUPID']);
       if (groupId) {
         let group = await Group.find({_id: groupId}).exec();
         conds.area = group[0].owner;
+        console.log('group owner %s groupid %s', group[0].owner, groupId);
       }
       const [ slots, devices ] = await Promise.all([
         Slot.find(conds).exec(),
@@ -109,6 +111,17 @@ router.get('/', catchAll(async (req, res) => {
         }
         rows.push(row);
       }
+      rows.push({
+        id: '0xaaaaaaaaaaa',
+        name: 'tanvi',
+        desc: 'desc',
+        area: 'area',
+        deviceType: 'deviceType',
+        careLevel: 'careLevel',
+        drr: 'slot.drr',
+        arr: 'slot.arr',
+        groupId: undefined,
+      });
       res.json(<webapi.Pkg<webapi.SlotTableRow[]>> {
         data: rows,
       });

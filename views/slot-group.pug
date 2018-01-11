@@ -8,11 +8,17 @@ block head
 block content
   .container
     #message
-    //- #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+    #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
       .modal-dialog
         .modal-content
           .modal-header
             h3#modalLabel
+          .modal-body
+            .panel
+            select
+              //form.form-inline
+                label Please select one slot:
+                select.form-control
           .modal-footer
     #slot-group-details
       h3 Slot Group
@@ -86,6 +92,7 @@ block content
           table#spec-slots-table.table.table-bordered.table-hover
 block js
   //- script(type='text/javascript', src='/holderjs/holder.min.js')
+  script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
   script(type='text/javascript', src='/js/datatablesutil.js')
