@@ -98,8 +98,13 @@ export const SLOTS: ISlot[] = [
 
 export const GROUPS: IGroup[] = [
   {
-    name: 'FE_SLOT_GROUP1',
+    name: 'FE_SLOT_GROUP01',
     desc: 'Front End Slot Group #1',
+    owner: 'ADB:FRONT_END',
+    memberType: Slot.modelName,
+  }, {
+    name: 'FE_SLOT_GROUP02',
+    desc: 'Front End Slot Group #2',
     owner: 'ADB:FRONT_END',
     memberType: Slot.modelName,
   },

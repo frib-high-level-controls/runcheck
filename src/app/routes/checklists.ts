@@ -33,16 +33,17 @@ import {
 } from '../models/group';
 
 import {
-  ChecklistType,
   Checklist,
   CHECKLIST_VALUES,
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  ChecklistType,
   IChecklist,
   IChecklistConfig,
   IChecklistStatus,
   IChecklistSubject,
+  isChecklistValueApproved,
 } from '../models/checklist';
 
 type ObjectId = mongoose.Types.ObjectId;
@@ -241,6 +242,21 @@ export function getVarRoles(obj: { dept?: string, area?: string, owner?: string,
 function subVarRoles(roles: string[], varRoles: Map<string, string>): string[] {
   let newRoles: string[] = [];
   for (let role of roles) {
+
+    // let r = auth.parseRole(role);
+    
+    // if (r && r.scheme === 'VAR') {
+    //   let varRole = varRoles.get(r.identifier)
+    //   if (varRole) {
+    //     newRoles.push(varRole);
+    //   } else {
+    //     newRoles.push(role);
+    //   }
+    // } else {
+
+    // }
+
+
     let varRole = varRoles.get(role);
     if (varRole) {
       newRoles.push(varRole);
@@ -1300,6 +1316,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
 
   // Need to track 'basic' (ie non-primary, non-final) subjects 
   let basic: string[] = [];
+  let primary: string[] = [];
 
   let subject: IChecklistSubject | undefined;
   for (let s of subjects) {
@@ -1309,7 +1326,11 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if ((s.mandatory || s.required) && !s.primary && !s.final) {
       basic.push(s.name);
     }
+    if (s.primary) {
+      primary.push(s.name);
+    }
   }
+  debug('Primary: [%s]', primary);
   if (!subject) {
     throw new RequestError(`Checklist subject not found`, NOT_FOUND);
   }
@@ -1326,14 +1347,21 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     applyCfg(<webapi.ChecklistSubject> subject, config);
   }
 
-  let forceYC = false;
-  let status: ChecklistStatus | undefined
+  let basicComment = false;
+  let primaryApproved: boolean | undefined;
+  let status: ChecklistStatus | undefined;
   for (let s of statuses) {
     if (s.subjectName === name) {
       status = s;
     }
     if (basic.includes(s.subjectName)) {
-      forceYC = forceYC || (s.value === 'YC');
+      basicComment = basicComment || isChecklistValueApproved(s.value, true);
+    }
+    if (primary.includes(s.subjectName)) {
+      if (primaryApproved === undefined) {
+        primaryApproved = true;
+      }
+      primaryApproved = primaryApproved && isChecklistValueApproved(s.value);
     }
   }
 
@@ -1346,8 +1374,14 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
 
   let pkg = <webapi.Pkg<{ value?: {}, comment?: {} }>> req.body;
 
+  // If primary subject(s) is approved than basic subjects are locked.
+  if (primaryApproved && basic.includes(subject.name)) {
+    throw new RequestError('Checklist status is locked', BAD_REQUEST);
+  }
+
+  // Non-mandatory and non-required subjects can not be updated.
   if (!subject.mandatory && !subject.required) {
-    throw new RequestError('Checklsit status is not required', BAD_REQUEST);
+    throw new RequestError('Checklist status is not required', BAD_REQUEST);
   }
 
   let value = pkg.data.value ? String(pkg.data.value).trim().toUpperCase() : undefined;
@@ -1358,13 +1392,15 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
   if (!CHECKLIST_VALUES.includes(value)) {
     throw new RequestError(`Checklist status value invalid: ${value}`, BAD_REQUEST);
   }
-  if (forceYC && (value !== 'YC')) {
-    throw new RequestError(`Checklist status value must be YC`, BAD_REQUEST);
+  // If a basic subject is approved with comment than primary subject requires a comment.
+  if (basicComment && primary.includes(subject.name)
+      && isChecklistValueApproved(value) && !isChecklistValueApproved(value, true)) {
+    throw new RequestError(`Checklist status requires a comment`, BAD_REQUEST);
   }
 
   let comment = pkg.data.comment ? String(pkg.data.comment).trim() : '';
   debug('Checklist status comment: "%s"', comment);
-  if (value !== 'YC') {
+  if (!isChecklistValueApproved(value, true)) {
     comment = ''; // Comment is cleared if the value is not YC!
   } else if (comment === '') {
     throw new RequestError(`Checklist status comment is required`, BAD_REQUEST);
