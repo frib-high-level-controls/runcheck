@@ -232,7 +232,7 @@ router.post('/:gid/addSlots', catchAll(async (req, res) => {
   });
 }));
 
-router.post('/:gid/removeSlots', function (req, res) {
+router.post('/:gid/removeSlots', catchAll(async (req, res) => {
   let passData = req.body.passData;
   let count = 0;
   let errMsg: string[] = [];
@@ -253,4 +253,4 @@ router.post('/:gid/removeSlots', function (req, res) {
       }
     });
   });
-});
+}));
