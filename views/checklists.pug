@@ -12,26 +12,46 @@ block content
     p Welcome to title
 
 block content
+  
   .container
     br
-    form.form-inline
+    form.form-inline(data-bind='enable: canUpdate')
       .form-group
         label(for='updateSubject') !{'Subject:&nbsp;'}
-        select.form-control#updateSubject
-          option(value='EE') EE
-          option(value='ME') ME
-          option(value='CRYO') CRYO
-          option(value='PHYS') PHYS
-          option(value='AM') AM
+        select.form-control#updateSubject(data-bind='options: subjects, enable: canUpdate, value: updateStatusSubject')
+          // option(value='EE') EE
+          // option(value='ME') ME
+          // option(value='CRYO') CRYO
+          // option(value='PHYS') PHYS
+          // option(value='AM') AM
       .form-group
         label(for='updateStatus') !{'&nbsp;Status:&nbsp;'}
-        select.form-control#updateStatus
-          option(value='')
-          option(value='Y') Y
-          option(value='YC') YC
-          option(value='N') N
-        input.form-control(type='text', disabled)
-      button.btn.btn-primary(type='button') Update
+        select.form-control#updateStatus(data-bind='options: updateValueOptions, enable: canUpdate, value: updateValue')
+          // option(value='')
+          // option(value='Y') Y
+          // option(value='YC') YC
+          // option(value='N') N
+        input.form-control(type='text', data-bind='enable: canUpdate, enable: requireComment, value: updateComment')
+      button.btn.btn-primary(type='button' data-bind='enable: canUpdate' data-toggle='modal' data-target='#statusUpdateModal') Update
+    .modal.fade#statusUpdateModal(role='dialog', tabindex=-1)
+      .modal-dialog
+        .modal-content
+          .modal-header Update Status
+          .modal-body
+            table.table
+              thead
+                tr
+                  th Name
+                  th(data-bind='text: updateStatusSubject')
+                  th Status
+              tbody(data-bind='foreach: updateStatusSelectedRows')
+                tr
+                  td(data-bind='text: data.targetName')
+                  td(data-bind='text: $parent.updateValue')
+                  td
+                    span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "PENDING", "fa-spin": status() === "PENDING", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL", "text-success": status() === "DONE", "text-danger": status() === "FAIL" }')
+          .modal-footer
+            button.btn.btn-primary(type='button' data-bind='click: updateStatus') Submit
     br
     .tab-pane.active#checklists
       //- .table-responsive
@@ -42,6 +62,7 @@ block content
 block js
   script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/node_modules/knockout/build/output/knockout-latest.js')
   script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/js/datatablesutil.js')
   script(type='text/javascript', src='/js/checklists-table.js')
