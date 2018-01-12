@@ -271,16 +271,16 @@ async function doStart(): Promise<express.Application> {
     throw new Error('CAS service URL not configured');
   }
   info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
-
+/*
   const authProvider = new forgauth.ForgCasProvider(forgClient, {
     casUrl: String(cfg.cas.cas_url),
     casServiceUrl: String(cfg.cas.service_url),
     casAppendPath: cfg.cas.append_path === true ? true : false,
     casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
   });
-
+*/
   // Use this provider for local development that DISABLES authentication!
-  // const authProvider = new forgauth.DevForgBasicProvider(forgClient, {});
+  const authProvider = new forgauth.DevForgBasicProvider(forgClient, {});
 
   auth.setProvider(authProvider);
 

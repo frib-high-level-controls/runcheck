@@ -193,20 +193,16 @@ $(() => {
 // }
 
   //add group functions start
-  //let passData: webapi.SlotTableRow[];
-  let selectedSlot: {id: string | undefined} = {id: undefined};
+  let selectedSlot: { id: string | undefined } = { id: undefined };
   let d: webapi.SlotTableRow;
   $('#addGroup').click(WebUtil.wrapCatchAll1(async (evt) => {
     evt.preventDefault();
     let groupName = group ? group.name : '';
     let sLabel = 'Add New Slots to ' + groupName;
     let sError = 'Error: All slots are in other groups.';
-    //var sWarning = 'Warning: group conflict! the following slots have been in other groups.';
     let sSuccess = 'Select Slot to Add';
-    //let sField = 'Validaton failed: ';
     let pkg: webapi.Pkg<webapi.SlotTableRow[]>;
-    let availableSlots: {id: string, name: string}[] = [];
-    
+
     try {
       pkg = await $.ajax({
         url: '/slots',
@@ -215,69 +211,44 @@ $(() => {
         data: { 'GROUPID': group ? group.id : '' },
       });
     } catch (xhr) {
+      $('#modal').modal('hide');
+      reset();
+      $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + 'Failed to get Slots' + xhr.responseText + '</div>');
       return;
     }
-      
+
     $('#modalLabel').html(sLabel);
-      // panel and footer
-    console.log('data[0].id %s data[0].name %s', pkg.data[0].id, pkg.data[0].name);
+    // panel and footer
     let panelClass;
     let panel;
-      if (pkg.data.length === 0) {
-        panelClass = 'panel-danger';
-        panel = '<div class="panel-heading">' + sError + '</div>';
-      }else {
-        panelClass = 'panel-success';
-        panel = '<div class="panel-heading">' + sSuccess + '</div>';
-      }
-      $('.modal-body .panel').addClass(panelClass);
+    if (pkg.data.length === 0) {
+      panelClass = 'panel-danger';
+      panel = '<div class="panel-heading">' + sError + '</div>';
+    } else {
+      panelClass = 'panel-success';
+      panel = '<div class="panel-heading">' + sSuccess + '</div>';
+    }
+    $('.modal-body .panel').addClass(panelClass);
 
-      let footer = '<button data-dismiss="modal" aria-hidden="true" class="btn" id="modal-cancel">Cancel</button>';
-      $('#modal .modal-footer').html(footer);
+    let footer = '<button data-dismiss="modal" aria-hidden="true" class="btn" id="modal-cancel">Cancel</button>';
+    $('#modal .modal-footer').html(footer);
 
-      let option = '<option>...</option>';
-      if (pkg && Array.isArray(pkg.data)) {
-        for (d of pkg.data) {
-          availableSlots.push({id: d.id, name: d.name});
+    let option = '<option>...</option>';
+    if (pkg && Array.isArray(pkg.data)) {
+      for (d of pkg.data) {
+        if (!d.groupId) {
           option = option + '<option name="' + d.id + '">' + d.name + '</option>';
         }
       }
-      console.log('option %s', option);
-      
-      $('.modal-body select').html(option);
-      $('#modal').modal('show');
-      $('.modal-body .panel').html(panel);
-  /*
-    }).fail(function (jqXHR) {
-      $('#modal').modal('hide');
-      reset();
-      $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + sField + jqXHR.responseText + '</div>');
-    });
-*/
+    }
 
-    //   // select option
-    //   $.ajax({
-    //     url: '/slotGroups/json',
-    //     type: 'GET',
-    //     dataType: 'json'
-    //   }).done(function (data) {
-    //     var option = '<option>...</option>';
-    //     data.forEach(function (d) {
-    //       option = option + '<option name="' + d._id + '">' + d.name + '</option>';
-    //     });
-    //     $('.modal-body select').html(option);
-    //     $('#modal').modal('show');
-    //   }).fail(function (jqXHR) {
-    //     $('#modal').modal('hide');
-    //     reset();
-    //     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button> Get slot groups failed ' + jqXHR.responseText + '</div>');
-    //   });
-    // });
+    $('.modal-body select').html(option);
+    $('#modal').modal('show');
+    $('.modal-body .panel').html(panel);
 
     // not show submit button until group selected in add group functon
     $('.modal-body').on('change', 'select', function () {
       selectedSlot.id = $('option:selected').attr('name');
-      console.log('selectedslot %s',selectedSlot.id);
       if (selectedSlot.id) {
         var footer = '<button id="modal-submit" class="btn btn-primary" data-dismiss="modal">Confirm</button>' +
           '<button data-dismiss="modal" aria-hidden="true" class="btn" id="modal-cancel">Cancel</button>';
@@ -302,14 +273,13 @@ $(() => {
       }).done(function (data) {
         if (data.doneMsg.length) {
           $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + data.doneMsg + '</div>');
+          location.reload();
         }
         if (data.errMsg.length) {
           $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + data.errorMsg + '</div>');
         }
       }).fail(function (jqXHR) {
         $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
-      }).always(function () {
-        reset();
       });
     });
 
@@ -321,9 +291,9 @@ $(() => {
         '<label>Please select one slot group:</label> ' +
         '<select class="form-control"></select> ' +
         '</form>');
-      $('.row-selected input').prop('checked', false);
-      $('.row-selected').removeClass('row-selected');
-      //passData = null;
+      // $('.row-selected input').prop('checked', false);
+      // $('.row-selected').removeClass('row-selected');
+      pkg.data = [];
       selectedSlot.id = undefined;
     }
     // add group functions end

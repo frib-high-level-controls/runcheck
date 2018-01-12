@@ -4,7 +4,7 @@
 import * as dbg from 'debug';
 import * as express from 'express';
 
-//import * as auth from '../shared/auth';
+import * as auth from '../shared/auth';
 
 import {
   ObjectId,
@@ -207,19 +207,42 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
 //   });
 // });
 
+/**
+ * Compute the permissions of the current user for the specified slot.
+ *
+ * @param req HTTP Request
+ * @param slot Model
+ */
+function getPermissionsToAddSlot(req: express.Request, slot: Slot) {
+  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
+  const assign = auth.hasAnyRole(req, roles);
+  const install = assign;
+  if (debug.enabled) {
+    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
+    debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
+  }
+  return {
+    assign: assign,
+    install: install,
+  };
+};
 
-router.post('/:gid/addSlots', catchAll(async (req, res) => {
+router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res) => {
   let passData: {id: string | undefined} = req.body.passData;
   let errMsg: string = '';
   if (!passData.id) {
     throw new RequestError('Slot to Add is not found', HttpStatus.NOT_FOUND);
   }
-  console.log('Adding slot %s to groupId %s', passData.id, req.params.gid);
+  const username = auth.getUsername(req);
+  const permissions = getPermissionsToAddSlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
+  if (!username || !permissions.assign) {
+    throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
+  }
   Slot.update({_id: passData.id, groupId: null}, {groupId: req.params.gid}, function(err,raw) {
     if(err || raw.nModified == 0) {
       let msg = err ? err.message : passData.id + ' not matched';
       console.error(msg);
-      errMsg = 'Failed to Add: ' + passData.id + msg;
+      errMsg = 'Failed to Add ' + passData.id + msg;
       return res.status(201).json({
           errMsg: errMsg,
           doneMsg: ''
