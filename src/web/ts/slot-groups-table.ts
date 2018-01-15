@@ -75,7 +75,7 @@ $(() => {
       [2, 'asc'],
     ],
   });
-  DataTablesUtil.addFilterHead('#slot-group-table', slotGroupColumns);
+  DataTablesUtil.addFilterHead('#slot-groups-table', slotGroupColumns);
   //Table.addFilterFoot('#slot-group-table', slotGroupColumns);
   //Table.filterEvent();
   //Table.selectEvent();

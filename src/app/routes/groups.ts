@@ -213,7 +213,7 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
  * @param req HTTP Request
  * @param slot Model
  */
-function getPermissionsToAddSlot(req: express.Request, slot: Slot) {
+function getPermissionsToModifySlot(req: express.Request, slot: Slot) {
   const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
   const assign = auth.hasAnyRole(req, roles);
   const install = assign;
@@ -234,7 +234,7 @@ router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res
     throw new RequestError('Slot to Add is not found', HttpStatus.NOT_FOUND);
   }
   const username = auth.getUsername(req);
-  const permissions = getPermissionsToAddSlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
+  const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
   if (!username || !permissions.assign) {
     throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
   }
@@ -242,7 +242,7 @@ router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res
     if(err || raw.nModified == 0) {
       let msg = err ? err.message : passData.id + ' not matched';
       console.error(msg);
-      errMsg = 'Failed to Add ' + passData.id + msg;
+      errMsg = 'Failed to add ' + passData.id + msg;
       return res.status(201).json({
           errMsg: errMsg,
           doneMsg: ''
@@ -255,25 +255,50 @@ router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res
   });
 }));
 
-router.post('/:gid/removeSlots', catchAll(async (req, res) => {
-  let passData = req.body.passData;
-  let count = 0;
-  let errMsg: string[] = [];
-  let doneMsg: string[] = [];
-  passData.forEach(function(d: any){
-    Slot.update({_id: d.id, groupId: { $ne : null }}, {groupId: null}, function(err, raw) {
-      if(err || raw.nModified == 0) {
-        count++;
-        let msg = err ? err.message : d.name + ' not matched';
-        console.error(msg);
-        errMsg.push('Failed: ' + msg);
-        if (count === passData.length ) {
-          return res.status(201).json({
-            errMsg: errMsg,
-            doneMsg: doneMsg
-          });
-        }
-      }
+router.post('/:gid/removeSlots', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let passData: {id: string | undefined} = req.body.passData;
+  let errMsg: string = '';
+  if (!passData.id) {
+    throw new RequestError('Slot to Add is not found', HttpStatus.NOT_FOUND);
+  }
+  const username = auth.getUsername(req);
+  const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
+  if (!username || !permissions.assign) {
+    throw new RequestError('Not permitted to remove this slot', HttpStatus.FORBIDDEN);
+  }
+  Slot.update({ _id: passData.id, groupId: { $ne: null } }, { groupId: null }, function (err, raw) {
+    if (err || raw.nModified == 0) {
+      let msg = err ? err.message : passData.id + ' not matched';
+      console.error(msg);
+      errMsg = 'Failed to remove ' + msg;
+      return res.status(201).json({
+        errMsg: errMsg,
+        doneMsg: ''
+      });
+    }
+    return res.status(200).json({
+      errMsg: '',
+      doneMsg: 'Removed successfully'
     });
+  });
+}));
+
+router.post('/slotGroups/new', catchAll(async (req, res) => {
+  let passData: {name: string, owner: string, description: string | undefined, memberType: string} = req.body.passData;
+  let errMsg: string = '';
+  
+  let alreadyExist = await Group.findOne({name: passData.name}).exec();
+  if (alreadyExist) {
+    throw new RequestError('This group name already exists', HttpStatus.FORBIDDEN);
+  }
+
+  Group.create({name: passData.name, owner: passData.owner, desc: passData.description, memberType: passData.memberType}, function (err: any, raw: any) {
+    if (err || raw.nModified == 0) {
+      let msg = err ? err.message : passData.name + ' not matched';
+      console.error(msg);
+      errMsg = 'Failed to add slot group ' + msg;
+      return res.status(201).json(errMsg);
+    }
+    return res.status(200).json(passData.name + ' added successfully');
   });
 }));

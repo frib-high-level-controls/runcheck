@@ -9,34 +9,33 @@ block content
   .container
     br
     #message
-      //-#modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+      #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
         .modal-dialog
           .modal-content
             .modal-header
-              h3 Create new sot group
+              h3 Create new slot group
             .modal-body
               form.form-horizontal
                 .form-group
                   label.col-sm-2.control-label Name
                   .col-sm-10
-                    input#c-name.form-control(type='text', placeholder='Slot group Name')
+                    input#c-name.form-control(type='text', placeholder='Slot Group Name')
                 .form-group
-                  label.col-sm-2.control-label Area
+                  label.col-sm-2.control-label Owner
                   .col-sm-10
-                    input#c-area.form-control(type='text', placeholder='Area')
+                    input#c-owner.form-control(type='text', placeholder='Group Owner')
                 .form-group
                   label.col-sm-2.control-label Description
                   .col-sm-10
                     input#c-description.form-control(type='text', placeholder='A brief description')
                 .form-group
                   .col-sm-offset-2.col-sm-10
-                    button#c-confirm.btn.btn-space.btn-primary(type='submit') Confrm
-                    button#c-cancel.btn.btn-defalt Cancel
+                    button#c-confirm.btn.btn-space.btn-primary(type='submit') Confirm
+                    button#c-cancel.btn(type='submit') Cancel
               #message2
-    //-form.form-inline
-      button.btn.btn-primary#new
+    form.form-inline.clearfix
+      button.btn.btn-primary.pull-right#new
         | New Group
-    //-br
     .tab-pane.active#slot-groups
       .table-responsive
         table.table.table-condensed.table-bordered.table-hover#slot-groups-table
@@ -48,7 +47,11 @@ block js
   //- script(type='text/javascript', src='/javascripts/table.js')
   //- script(type='text/javascript', src='/javascripts/slot-groups-table.js')
   //- script(type='text/javascript', src='/javascripts/slot-groups-action.js')
+  script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
   script(type='text/javascript', src='/js/datatablesutil.js')
   script(type='text/javascript', src='/js/slot-groups-table.js')
+  script(type='text/javascript', src='/js/slot-groups-action.js')
+  script(type='text/javascript', src='/js/authutil.js')
+  //- script(type='text/javascript') group = !{JSON.stringify(group)};

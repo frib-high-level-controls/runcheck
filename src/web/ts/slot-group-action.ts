@@ -192,7 +192,7 @@ $(() => {
 //   passData = null;
 // }
 
-  //add group functions start
+  //add slots to group functions start
   let selectedSlot: { id: string | undefined } = { id: undefined };
   let d: webapi.SlotTableRow;
   $('#addGroup').click(WebUtil.wrapCatchAll1(async (evt) => {
@@ -291,8 +291,6 @@ $(() => {
         '<label>Please select one slot group:</label> ' +
         '<select class="form-control"></select> ' +
         '</form>');
-      // $('.row-selected input').prop('checked', false);
-      // $('.row-selected').removeClass('row-selected');
       pkg.data = [];
       selectedSlot.id = undefined;
     }
