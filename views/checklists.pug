@@ -15,48 +15,47 @@ block content
   
   .container
     br
-    form.form-inline(data-bind='enable: canUpdate')
+    form.form-inline#updateStatusForm(data-bind='with: updateStatusForm')
       .form-group
         label(for='updateSubject') !{'Subject:&nbsp;'}
-        select.form-control#updateSubject(data-bind='options: subjects, enable: canUpdate, value: updateStatusSubject')
-          // option(value='EE') EE
-          // option(value='ME') ME
-          // option(value='CRYO') CRYO
-          // option(value='PHYS') PHYS
-          // option(value='AM') AM
+        select.form-control(data-bind='options: subjectOptions, optionsValue: "name", optionsText: "desc", value: subject')
       .form-group
         label(for='updateStatus') !{'&nbsp;Status:&nbsp;'}
-        select.form-control#updateStatus(data-bind='options: updateValueOptions, enable: canUpdate, value: updateValue')
-          // option(value='')
-          // option(value='Y') Y
-          // option(value='YC') YC
-          // option(value='N') N
-        input.form-control(type='text', data-bind='enable: canUpdate, enable: requireComment, value: updateComment')
-      button.btn.btn-primary(type='button' data-bind='enable: canUpdate' data-toggle='modal' data-target='#statusUpdateModal') Update
-    .modal.fade#statusUpdateModal(role='dialog', tabindex=-1)
+        select.form-control(data-bind='options: valueOptions, value: value')
+        input.form-control(type='text', data-bind='enable: requireComment, textInput: comment')
+      .form-group
+        button.btn.btn-primary(type='button' data-bind='enable: canUpdate, click: update') Update
+    // Modal dialog for confirm update status
+    .modal.fade#updateStatusModal(role='dialog', tabindex=-1, data-bind='with: updateStatusModal')
       .modal-dialog
         .modal-content
-          .modal-header Update Status
+          .modal-header Update Checklist Status
           .modal-body
             table.table
               thead
                 tr
-                  th Name
-                  th(data-bind='text: updateStatusSubject')
-                  th Status
-              tbody(data-bind='foreach: updateStatusSelectedRows')
+                  th
+                    span Name
+                  th
+                    span(data-bind='text: subject().name')
+                  th
+                    span Status
+              tbody(data-bind='foreach: rows')
                 tr
-                  td(data-bind='text: data.targetName')
-                  td(data-bind='text: $parent.updateValue')
                   td
-                    span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "PENDING", "fa-spin": status() === "PENDING", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL", "text-success": status() === "DONE", "text-danger": status() === "FAIL" }')
+                    span(data-bind='text: data.targetName')
+                  td
+                    span(data-bind='text: $parent.value')
+                  td
+                    span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL", "text-success": status() === "DONE", "text-danger": status() === "FAIL" }, attr: { title: message }')
           .modal-footer
-            button.btn.btn-primary(type='button' data-bind='click: updateStatus') Submit
+            button.btn.btn-primary(type='button' data-bind='click: update, enable: canUpdate') Update
+            button.btn.btn-default(type='button' data-bind='click: close, enable: canClose') Close
     br
     .tab-pane.active#checklists
       //- .table-responsive
       //- .table-condensed
-      .bg-primary.hidden#checklists-message
+      .hidden#checklists-message
       table.table.table-bordered.table-hover.hidden#checklists-table
 
 block js

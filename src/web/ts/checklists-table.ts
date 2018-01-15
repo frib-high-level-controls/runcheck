@@ -2,131 +2,280 @@
  * Checklists table view
  */
 
-
 $(WebUtil.wrapCatchAll0(async () => {
+
+  type ChecklistTableRow = webapi.ChecklistTableRow & { selected?: boolean };
+
+  type ChecklistSubjectOption = { name: string, desc: string, count: number };
 
   // Define the view model
 
+  /**
+   * Defines the full view model for this page.
+   */
+  class ChecklistsTableViewModel {
+    public updateStatusForm = new UpdateStatusFormViewModel(this);
+    public updateStatusModal = new UpdateStatusModalViewModel(this);
+    public selectedRows = ko.observableArray<DataTables.RowMethods>();
 
+    constructor() {
+      this.selectedRows.subscribe((rows) => {
+        // Find the set of subjects that are common to the selected checklists.
+        let subjectOptions: ChecklistSubjectOption[] = [];
+        for (let r of rows) {
+          // Cast required because 'object' type is used.
+          let data = <ChecklistTableRow> r.data();
 
+          for (let subject of data.subjects) {
+            // TODO: Check if can Update
+            // canUpdate = true;
+            let found = false;
+            for (let opt of subjectOptions) {
+              if (subject.name === opt.name) {
+                opt.count += 1;
+                found = true;
+                break;
+              }
+            }
 
+            if (!found) {
+              subjectOptions.push({
+                name: subject.name,
+                desc: subject.desc,
+                count: 1,
+              });
+            }
+          }
+        }
 
-  class UpdateStatusSelectedRow {
-    public row: DataTables.RowMethods;
-    public name: KnockoutObservable<string>;
-    public data: webapi.ChecklistTableRow;
-    public status = ko.observable<'NONE' | 'PENDING' | 'DONE' | 'FAIL'>('NONE');
-
-    constructor(row: DataTables.RowMethods) {
-      this.row = row;
-      // Need to cast from object to actual data type!
-      this.data = <webapi.ChecklistTableRow> row.data();
-      this.name = ko.observable(this.data.targetName);
-      //this.status = ko.observable('NONE');
-      console.log("ROW CONST: " + this.data.targetName);
+        let commonSubjectOptions: ChecklistSubjectOption[] = [];
+        for (let option of subjectOptions) {
+          if (option.count === rows.length) {
+            commonSubjectOptions.push(option);
+          }
+        }
+        this.updateStatusForm.subjectOptions(commonSubjectOptions);
+      });
     }
 
-    public async updateStatus() {
-      let data = <webapi.ChecklistTableRow> this.row.data();
-      console.log('Update Status for Row!!');
-      let d;
+    /**
+     * Add a row (in order by index) to the array of selected rows.
+     */
+    public selectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <ChecklistTableRow> row.data();
+      data.selected = true;
+      let found = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          found = true;
+          break;
+        }
+        if (r.index() > row.index()) {
+          rows.push(row);
+        }
+        rows.push(r);
+      }
+      if (!found) {
+        if (rows.length === this.selectedRows().length) {
+          this.selectedRows.push(row);
+        } else {
+          this.selectedRows(rows);
+        }
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+
+    /**
+     * Remove a row (by index) from the array of selected rows.
+     */
+    public deselectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <ChecklistTableRow> row.data();
+      data.selected = false;
+      let found = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          found = true;
+          continue;
+        }
+        rows.push(r);
+      }
+      if (found) {
+        this.selectedRows(rows);
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+  }
+
+  /**
+   * Defines the view model for the update status form.
+   */
+  class UpdateStatusFormViewModel {
+    public value = ko.observable<string>();
+    public comment = ko.observable<string>();
+    public subject = ko.observable<string>();
+
+    public valueOptions = ko.observableArray(['N', 'Y', 'YC']);
+    public subjectOptions = ko.observableArray<ChecklistSubjectOption>();
+
+    public canUpdate = ko.observable(false);
+    public requireComment = ko.observable(false);
+
+    private parent: ChecklistsTableViewModel;
+
+    constructor(parent: ChecklistsTableViewModel) {
+      this.parent = parent;
+
+      let refreshCanUpdate = () => {
+        if (!this.subject()) {
+          this.canUpdate(false);
+        } else if (!this.value()) {
+          this.canUpdate(false);
+        } else if (this.requireComment() && !this.comment()) {
+          this.canUpdate(false);
+        } else {
+          this.canUpdate(true);
+        }
+      };
+
+      this.value.subscribe((v) => {
+        this.requireComment(v === 'YC');
+        refreshCanUpdate();
+      });
+      this.comment.subscribe(refreshCanUpdate);
+      this.subject.subscribe(refreshCanUpdate);
+    }
+
+    public update() {
+      let subject: ChecklistSubjectOption | undefined;
+      for (let option of this.subjectOptions()) {
+        if (option.name === this.subject()) {
+          subject = option;
+        }
+      }
+      if (subject) {
+        this.parent.updateStatusModal.show(this.value(), this.comment(), subject);
+      } else {
+        console.error('Subject option not found: %s', this.subject());
+      }
+    }
+  }
+
+  /**
+   * Defines the view model for the update status modal dialog.
+   */
+  class UpdateStatusModalViewModel {
+    public canUpdate = ko.observable(true);
+    public canClose = ko.observable(true);
+
+    public value = ko.observable<string>();
+    public comment = ko.observable<string>();
+    public subject = ko.observable<ChecklistSubjectOption>({ name: '', desc: '', count: 0});
+
+    public rows = ko.observableArray<UpdateStatusModalRowViewModel>();
+
+    private parent: ChecklistsTableViewModel;
+
+    constructor(parent: ChecklistsTableViewModel) {
+      this.parent = parent;
+    }
+
+    public update() {
+      WebUtil.catchAll(async () => {
+        this.canUpdate(false);
+        this.canClose(false);
+        for (let r of this.rows()) {
+          await r.update();
+        }
+        this.canClose(true);
+      });
+    }
+
+    public close() {
+      this.hide();
+    }
+
+    public show(value: string, comment: string, subject: ChecklistSubjectOption) {
+      this.value(value);
+      this.comment(comment);
+      this.subject(subject);
+
+      let rows: UpdateStatusModalRowViewModel[] = [];
+      for (let row of this.parent.selectedRows()) {
+        rows.push(new UpdateStatusModalRowViewModel(this, row));
+      }
+      this.rows(rows);
+
+      this.canUpdate(true);
+      this.canClose(true);
+
+      $('#updateStatusModal').modal('show');
+    }
+
+    public hide() {
+      $('#updateStatusModal').modal('hide');
+    }
+  }
+
+  /**
+   * Defines the view model for a row in the update status model dialog.
+   */
+  class UpdateStatusModalRowViewModel {
+    public row: DataTables.RowMethods;
+    public data: webapi.ChecklistTableRow;
+    public status = ko.observable<'NONE' | 'WAIT' | 'DONE' | 'FAIL'>('NONE');
+    public message = ko.observable<string>('');
+
+    private parent: UpdateStatusModalViewModel;
+
+    constructor(parent: UpdateStatusModalViewModel, row: DataTables.RowMethods) {
+      this.parent = parent;
+      this.row = row;
+      // Need to cast because 'object' type is used.
+      this.data = <webapi.ChecklistTableRow> row.data();
+    }
+
+    public async update() {
+      let pkg: webapi.Pkg<webapi.ChecklistStatusDetails>;
       try {
-        this.status('PENDING');
-        d = await $.ajax({
-          url: `/checklists/${data.id}/statuses/${statusUpdateVM.updateStatusSubject()}`,
+        this.status('WAIT');
+        pkg = await $.ajax({
+          url: `/checklists/${this.data.id}/statuses/${this.parent.subject().name}`,
           method: 'PUT',
           dataType: 'json',
           contentType: 'application/json',
           data: JSON.stringify({
             data: {
-              value: statusUpdateVM.updateValue(),
-              comment: statusUpdateVM.updateComment(),
+              value: this.parent.value(),
+              comment: this.parent.comment(),
             },
           }),
         });
-      } catch (err) {
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = `Unknown error updating checklist status`;
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        this.message(message);
         this.status('FAIL');
-        console.error(err);
         return;
       }
 
-
-      this.status('DONE');
-      console.log(d);
-
-      for (let idx = 0; idx < data.statuses.length; idx += 1) {
-        if (data.statuses[idx].subjectName === d.data.subjectName) {
-          data.statuses[idx] = d.data;
+      // Update the local checklist status data
+      for (let idx = 0; idx < this.data.statuses.length; idx += 1) {
+        if (this.data.statuses[idx].subjectName === pkg.data.subjectName) {
+          this.data.statuses[idx] = pkg.data;
           this.row.invalidate();
-
-          console.log($('#checklists-table').find('tr').length);
-          console.log($('#checklists-table').find('tr.selected').length);
-          console.log($('#checklists-table').find('tr.selected').find('.row-select-box').length);
-
-          $('#checklist-tables').find('tr.selected').find('.row-select-box').prop('checked', true);
-
-          
-
           break;
         }
       }
 
-      // for (let subject of data.subjects) {
-      //   if (subject.name === d.data.subjectName) {
-
-      //   }
-      // }
-
-      // this.row.data(d.data);
-
-
-      console.log('success!');
-    }
-  }
-
-  class StatusUpdateViewModel {
-
-    public canUpdate: KnockoutObservable<boolean>;
-
-    public requireComment = ko.observable(false);
-
-    public updateComment = ko.observable<string>();
-
-    public updateValue = ko.observable<string>();
-
-    public updateStatusSubject = ko.observable<string>();
-
-    public subjects: KnockoutObservableArray<string>;
-
-    public updateValueOptions = ko.observableArray(['N', 'Y', 'YC']);
-
-    public updateStatusSelectedRows = ko.observableArray<UpdateStatusSelectedRow>();
-
-
-    //public selected: webapi.ChecklistStatusTableRow[] = [];
-
-    constructor() {
-      this.subjects = ko.observableArray();
-      this.canUpdate = ko.observable(false);
-
-      this.updateValue.subscribe((v) => {
-        this.requireComment(v === 'YC');
-      });
-    }
-
-    public updateStatus() {
-      console.log('UpdateSTATUS!1');
-      for (let r of this.updateStatusSelectedRows()) {
-      
-        r.updateStatus();
-      }
-      // Open Modal with table, submit each update!
-      // for (let row of this.selected) {
-      //   await $.ajax({
-      //     path: `/checklists/${row.id}/statuses/${this.update}`,
-      //     method: 'PUT',
-      //   })
-      // }
+      this.message('Success');
+      this.status('DONE');
     }
   }
 
@@ -134,11 +283,14 @@ $(WebUtil.wrapCatchAll0(async () => {
     return Boolean(subject.name.match(/C\w{8}/));
   }
 
-  const statusUpdateVM = new StatusUpdateViewModel();
-  ko.applyBindings(statusUpdateVM);
+  const vm = new ChecklistsTableViewModel();
+  ko.applyBindings(vm);
 
   $('#checklists-message')
-    .html('Loading Checklists...')
+    .html(`<div class="alert alert-info">
+        <span>Loading Checklists...</span>
+      </div>
+    `)
     .removeClass('hidden');
 
   let pkg: webapi.Pkg<webapi.ChecklistTableRow[]>;
@@ -148,14 +300,23 @@ $(WebUtil.wrapCatchAll0(async () => {
       dataType: 'json',
     });
   } catch (xhr) {
+    pkg = xhr.responseJSON;
+    let message = 'Unknown error loading checklists';
+    if (pkg && pkg.error && pkg.error.message) {
+      message = pkg.error.message;
+    }
+    $('#checklists-message')
+      .html(`<div class="alert alert-danger">
+        <span>Error Loading Checklists: ${message}</span>
+      </div>
+    `).removeClass('hidden');
     return;
   }
 
   let checklists = pkg.data;
 
-  let standardSubjects: string[] = [];
   let customSubjects: string[] = [];
-
+  let standardSubjects: string[] = [];
 
   for (let checklist of checklists) {
     for (let subject of checklist.subjects) {
@@ -172,34 +333,35 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
   }
 
-
-  //let targetType = String((<any> window).checklistTargetType);
-
-
-
   const checklistTableColumns: ColumnSettings[] = [
     {
       title: '',
       data: <any> null,
-      render: (row: webapi.ChecklistTableRow): string => {
-        //return `<a href="/devices/${row.id}">${row.name}</a>`;
-        return '<input type="checkbox" class="row-select-box"/>';
+      render: (row: ChecklistTableRow): string => {
+        return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
       },
       searching: false,
     }, {
       title: 'Name',
       data: <any> null,
-      render: (row: webapi.ChecklistTableRow): string => {
-        //return `<a href="/devices/${row.id}">${row.name}</a>`;
-        return row.targetName || row.targetId;
+      render: (row: ChecklistTableRow): string => {
+        switch (row.targetType.toUpperCase()) {
+        case 'SLOT':
+          return `<a href="/slots/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        case 'DEVICE':
+          return `<a href="/devices/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        case 'GROUP':
+          return `<a href="/groups/slot/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        default:
+          return String(row.targetName || row.targetId);
+        }
       },
       searching: true,
     }, {
       title: 'Description',
       data: <any> null,
-      render: (row: webapi.ChecklistTableRow): string => {
-        //return String(row.desc ? row.desc : '-');
-        return row.targetDesc || '';
+      render: (row: ChecklistTableRow): string => {
+        return String(row.targetDesc || '');
       },
       searching: true,
     },
@@ -209,7 +371,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     checklistTableColumns.push({
       title: subjectName,
       data: <any> null,
-      render: (row: webapi.ChecklistTableRow) => {
+      render: (row: ChecklistTableRow) => {
         let found = false;
         for (let subject of row.subjects) {
           if (subject.name === subjectName) {
@@ -225,17 +387,14 @@ $(WebUtil.wrapCatchAll0(async () => {
         }
         let statusValue = 'N';
         for (let status of row.statuses) {
-          //console.log('%s =? %s', status.subjectId, subjectName);
           if (status.subjectName === subjectName) {
             statusValue = status.value;
             break;
           }
         }
-
-        return `<span class="${statusValue === 'Y' ? 'bg-success' : 'bg-danger'}">
+        return `<span class="${statusValue === 'N' ? 'bg-danger' : 'bg-success'}">
                   <strong>${statusValue}</strong>
                 </span>`;
-        //'<span class="bg-success"><strong>Y</strong></span>';
       },
       orderable: false,
       searchable: false,
@@ -253,7 +412,7 @@ $(WebUtil.wrapCatchAll0(async () => {
             for (let status of row.statuses) {
               if (status.subjectName === subject.name) {
                 html += `<div>${subject.name}:
-                  <span class="${status.value === 'Y' ? 'bg-success' : 'bg-danger'}">
+                  <span class="${status.value === 'N' ? 'bg-danger' : 'bg-success'}">
                     <strong>${status.value}</strong>
                   </span></div>`;
                 break;
@@ -271,7 +430,6 @@ $(WebUtil.wrapCatchAll0(async () => {
     });
   }
 
-
   checklistTableColumns.push({
     title: 'Approved',
     data: <any> null,
@@ -279,7 +437,6 @@ $(WebUtil.wrapCatchAll0(async () => {
        return 'No';
     },
   });
-
 
   let checklistTable = $('#checklists-table').DataTable({
     data: checklists,
@@ -290,11 +447,6 @@ $(WebUtil.wrapCatchAll0(async () => {
     //   dataSrc: 'data',
     // },
     dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
-    // initComplete: function () {
-    //   Holder.run({
-    //     images: '.user img'
-    //   });
-    // },
     autoWidth: false,
     processing: true,
     pageLength: 25,
@@ -313,88 +465,24 @@ $(WebUtil.wrapCatchAll0(async () => {
   });
 
   DataTablesUtil.addFilterHead('#checklists-table', checklistTableColumns);
-  //Table.filterEvent();
-  //Table.selectEvent();
 
   $('#checklists-table').removeClass('hidden');
+
   $('#checklists-message').addClass('hidden');
 
-
-
   $('#checklists-table').on('click', '.row-select-box', WebUtil.wrapCatchAll1((event) => {
-
-    $(event.target).parents('tr').first().toggleClass('selected').toggleClass('active');
-
-    let data = checklistTable.rows('.selected');
-
-
-    console.log(checklistTable.row('.selected'));
-
-    //data.row(1).inva
-
-    let canUpdate = false;
-    let subjects: string[] = [];
-    let rows: UpdateStatusSelectedRow[] = [];
-
-    
-
-
-    //for (let idx = 0; idx < data.length; idx += 1) {
-    data.every(function (idx) {
-
-
-      let row = checklistTable.row(idx);
-      
-      let d = <webapi.ChecklistTableRow & { selected?: boolean }> row.data();
-
-      console.log(d);
-
-      //let row = data.row(idx);
-
-      rows.push(new UpdateStatusSelectedRow(row));
-
-      //let d = <webapi.ChecklistTableRow> row.data();
-
-      console.log('INDEX: %s', idx);
-      console.log('NAME: %s', d.targetName);
-
-    //data.each((d: webapi.ChecklistTableRow) => {
-
-      
-      for (let subject of d.subjects) {
-        // TODO: Check if can Update
-        canUpdate = true;
-        if (subjects.indexOf(subject.name) === -1) {
-          subjects.push(subject.name);
-        }
-      }
-    });
-
-    console.log(rows.length);
-    statusUpdateVM.updateStatusSelectedRows(rows);
-
-    statusUpdateVM.canUpdate(canUpdate);
-    statusUpdateVM.subjects(subjects);
-
-
-    // console.log($('#checklists-table').find('tr.selected').length);
-
-    // console.log($('#checklists-table').DataTable().rows('.selected').data().length);
-
-    // console.log(checklistTable.rows('.selected').data().length);
-
-    //$(event.target).parents('tr')
-
-    // let data = table.row($(event.target).parents('tr').get(0)).data();
-    // if (Array.isArray(data)) {
-    //   console.log(data.length);
-    // } else {
-    //   console.log('?');
-    // }
-
-
-    console.log('CLICK');
+    let selectbox = $(event.target);
+    if (selectbox.is(':checked')) {
+      let tr = selectbox.parents('tr').first();
+      tr.addClass('selected active');
+      let row = checklistTable.row(tr.get(0));
+      vm.selectRow(row);
+    } else {
+      let tr = selectbox.parents('tr').first();
+      tr.removeClass('selected active');
+      let row = checklistTable.row(tr.get(0));
+      vm.deselectRow(row);
+    }
   }));
-
 
 }));

@@ -12,6 +12,7 @@
     "postinstall": "cd ./public && npm install"
   },
   "dependencies": {
+    "@types/bootstrap": "^3.3.36",
     "body-parser": "^1.15.1",
     "bunyan": "1.8.1",
     "cas.js": "0.1.0",
