@@ -25,6 +25,7 @@ import {
 } from '../models/device';
 
 import {
+  SafetyLevel,
   Slot,
 } from '../models/slot';
 
@@ -152,6 +153,29 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>)
     }
     return m;
   });
+}
+
+/**
+ * Get the checklist type for a slot (or slot group)
+ */
+function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
+  switch (safetyLevel) {
+  case 'NORMAL':
+  case 'CONTROL':
+  default:
+    return 'slot-default';
+  case 'CREDITED':
+    return 'slot-credited';
+  case 'ESHIMPACT':
+    return 'slot-eshimpact';
+  }
+}
+
+/**
+ * Get the checklist type for a device
+ */
+function getDeviceChecklistType(): ChecklistType {
+  return 'device-default';
 }
 
 function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
@@ -501,20 +525,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     }
     targetId = slot.id;
     targetType = Slot.modelName;
-    switch (slot.safetyLevel) {
-    case 'NORMAL':
-    case 'CONTROL':
-    default:
-      checklistType = 'slot-default';
-      break;
-    case 'CREDITED':
-      checklistType = 'slot-credited';
-      break;
-    case 'ESHIMPACT':
-      checklistType = 'slot-eshimpact';
-      break;
-    }
-    checklistType = 'slot-default';
+    checklistType = getSlotChecklistType(slot.safetyLevel);
     checklistId = slot.checklistId;
     varRoles = getVarRoles(slot);
     ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
@@ -528,7 +539,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     }
     targetId = device.id;
     targetType = Device.modelName;
-    checklistType = 'device-default';
+    checklistType = getDeviceChecklistType();
     checklistId = device.checklistId;
     varRoles = getVarRoles(device);
     ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
@@ -545,10 +556,12 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     checklistId = group.checklistId;
     switch (group.memberType) {
     case Slot.modelName:
-      checklistType = 'slot-default';
+      // TODO: Need to get safety level for slot
+      // checklistType = getSlotChecklistType(group.safetyLevel);
+      checklistType = getSlotChecklistType();
       break;
     case Device.modelName:
-      checklistType = 'device-default';
+      checklistType = getDeviceChecklistType();
       break;
     default:
       throw new RequestError(`Group member type '${group.memberType}' not supported`, INTERNAL_SERVER_ERROR);
