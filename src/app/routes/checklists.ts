@@ -65,6 +65,17 @@ const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
+
+let adminRoles: string[] = [ 'ADM:RUNCHECK' ];
+
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
+
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
+
 // async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]> {
 //   let query = ChecklistSubject.find({
 //     checklistType: cl.checklistType,
@@ -447,7 +458,7 @@ router.get('/', catchAll(async (req, res) => {
             }
 
             webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-            webSubject.canUpdate = auth.hasAnyRole(req, webSubject.assignees);
+            webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
 
             webSubjects.push(webSubject);
           }
@@ -575,7 +586,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
   }
 
   debug('Assert user has any role: %s', ownerRole);
-  if (!auth.hasAnyRole(req, ownerRole)) {
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
     throw new RequestError('Not permitted to assign checklist', FORBIDDEN);
   }
 
@@ -634,7 +645,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     };
 
     webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-    webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
+    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
 
     webSubjects.push(webSubject);
   }
@@ -733,7 +744,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     }
 
     webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-    webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
+    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
 
     webSubjects.push(webSubject);
   }
@@ -838,7 +849,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
   }
 
-  if (!auth.hasAnyRole(req, ownerRole)) {
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
     throw new RequestError('Not permitted to create subject', FORBIDDEN);
   }
 
@@ -877,7 +888,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
   };
   let subject = new ChecklistSubject(doc);
 
-  await subject.saveWithHistory(username);
+  await subject.saveWithHistory(auth.formatRole('USR', username));
 
   let webSubject: webapi.ChecklistSubjectDetails = {
     name: subject.name,
@@ -892,7 +903,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
   };
 
   webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-  webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
+  webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
 
   res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -984,7 +995,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     }
   }
 
-  if (!auth.hasAnyRole(req, ownerRole)) {
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
@@ -1045,7 +1056,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
 
   if (config && config.isModified()) {
     debug('Save subject configuration: %s', config.subjectName);
-    await config.saveWithHistory(username);
+    await config.saveWithHistory(auth.formatRole('USR', username));
   }
 
   let webSubject: webapi.ChecklistSubjectDetails = {
@@ -1066,7 +1077,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
   }
 
   webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-  webSubject.canUpdate = auth.hasAnyRole(req, webSubject.assignees);
+  webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
 
   res.json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -1350,7 +1361,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
 
   let [subjects, configs, statuses ] = await pending;
 
-  // Need to track 'basic' (ie non-primary, non-final) subjects 
+  // Need to track 'basic' (ie non-primary, non-final) subjects
   let basic: string[] = [];
   let primary: string[] = [];
 
@@ -1404,7 +1415,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
   subject.assignees = subVarRoles(subject.assignees, varRoles);
 
   debug('Assert user has any role: [%s]', subject.assignees);
-  if (!auth.hasAnyRole(req, subject.assignees)) {
+  if (!auth.hasAnyRole(req, adminRoles, subject.assignees)) {
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
@@ -1461,7 +1472,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
   if (status.isModified()) {
     status.inputBy = username;
     status.inputAt = new Date();
-    await status.saveWithHistory(username);
+    await status.saveWithHistory(auth.formatRole('USR', username));
   }
 
   const h = status.history;

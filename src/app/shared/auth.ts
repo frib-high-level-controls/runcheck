@@ -34,11 +34,11 @@ export interface IProvider {
 
   getRoles(req: Request): string[] | undefined;
 
-  hasUsername(req: Request, username: string | string[]): boolean;
+  hasUsername(req: Request, ...username: Array<(string | string[])>): boolean;
 
-  hasRole(req: Request, role: string | string[]): boolean;
+  hasRole(req: Request, ...role: Array<(string | string[])>): boolean;
 
-  hasAnyRole(req: Request, role: string | string[]): boolean;
+  hasAnyRole(req: Request, ...role: Array<(string | string[])>): boolean;
 };
 
 const debug = dbg('webapp:auth');
@@ -56,7 +56,8 @@ export abstract class AbstractProvider implements IProvider {
 
   public abstract getRoles(req: Request): string[] | undefined;
 
-  public hasUsername(req: Request, username: string | string[]): boolean {
+  public hasUsername(req: Request, ...username: Array<(string | string[])>): boolean {
+    username = (<string[]> []).concat(...username);
     const name = this.getUsername(req);
     if (!name) {
       return false;
@@ -65,28 +66,30 @@ export abstract class AbstractProvider implements IProvider {
     const usernames = new Set<string>();
     if (Array.isArray(username)) {
       for (let u of username) {
-        usernames.add(u.toUpperCase());
+        usernames.add(String(u).toUpperCase());
       }
-    } else {
-      usernames.add(username.toUpperCase());
     }
 
     return usernames.has(name.toUpperCase());
   };
 
-  public hasRole(req: Request, role: string | string[]): boolean {
+  public hasRole(req: Request, ...role: Array<(string | string[])>): boolean {
+    role = (<string[]> []).concat(...role);
     const userRoles = this.getRoles(req);
     if (!userRoles) {
       return false;
     }
 
+    const userRoleSet = new Set<string>();
+    for (let ur of userRoles) {
+      userRoleSet.add(ur.toUpperCase());
+    }
+
     const roles = new Set<string>();
     if (Array.isArray(role)) {
       for (let r of role) {
-        roles.add(r.toUpperCase());
+        roles.add(String(r).toUpperCase());
       }
-    } else {
-      roles.add(role.toUpperCase());
     }
 
     for (let userRole of userRoles) {
@@ -97,7 +100,8 @@ export abstract class AbstractProvider implements IProvider {
     return true;
   };
 
-  public hasAnyRole(req: Request, role: string | string[]): boolean {
+  public hasAnyRole(req: Request, ...role: Array<(string | string[])>): boolean {
+    role = (<string[]> []).concat(...role);
     const userRoles = this.getRoles(req);
     if (!userRoles) {
       return false;
@@ -106,10 +110,8 @@ export abstract class AbstractProvider implements IProvider {
     const roles = new Set<string>();
     if (Array.isArray(role)) {
       for (let r of role) {
-        roles.add(r.toUpperCase());
+        roles.add(String(r).toUpperCase());
       }
-    } else {
-      roles.add(role.toUpperCase());
     }
 
     for (let userRole of userRoles) {
@@ -193,16 +195,16 @@ export function getUsername(req: Request): string | undefined {
   return getProvider().getUsername(req);
 };
 
-export function hasUsername(req: Request, username: string | string[]): boolean {
-  return getProvider().hasUsername(req, username);
+export function hasUsername(req: Request, ...username: Array<(string | string[])>): boolean {
+  return getProvider().hasUsername(req, ...username);
 };
 
-export function hasRole(req: Request, role: string | string[]): boolean {
-  return getProvider().hasRole(req, role);
+export function hasRole(req: Request, ...role: Array<(string | string[])>): boolean {
+  return getProvider().hasRole(req, ...role);
 };
 
-export function hasAnyRole(req: Request, role: string | string[]): boolean {
-  return getProvider().hasAnyRole(req, role);
+export function hasAnyRole(req: Request, ...role: Array<(string | string[])>): boolean {
+  return getProvider().hasAnyRole(req, ...role);
 };
 
 // TODO: Consider making this a function that returns a request handler.
@@ -217,10 +219,10 @@ export function ensureAuthenticated(req: Request, res: Response, next: NextFunct
   next();
 };
 
-export function ensureHasUsername(username: string | string[]): RequestHandler {
+export function ensureHasUsername(...username: Array<(string | string[])>): RequestHandler {
   return (req, res, next) => {
     ensureAuthenticated(req, res, (err: any) => {
-      if (!hasUsername(req, username)) {
+      if (!hasUsername(req, ...username)) {
         sendForbidden(req, res);
         return;
       }
@@ -229,10 +231,10 @@ export function ensureHasUsername(username: string | string[]): RequestHandler {
   };
 };
 
-export function ensureHasRole(role: string | string[]): RequestHandler {
+export function ensureHasRole(...role: Array<(string | string[])>): RequestHandler {
   return (req, res, next) => {
     ensureAuthenticated(req, res, (err: any) => {
-      if (!hasRole(req, role)) {
+      if (!hasRole(req, ...role)) {
         sendForbidden(req, res);
         return;
       }
@@ -241,10 +243,10 @@ export function ensureHasRole(role: string | string[]): RequestHandler {
   };
 };
 
-export function ensureHasAnyRole(role: string | string[]): RequestHandler {
+export function ensureHasAnyRole(...role: Array<(string | string[])>): RequestHandler {
   return (req, res, next) => {
     ensureAuthenticated(req, res, (err: any) => {
-      if (!hasAnyRole(req, role)) {
+      if (!hasAnyRole(req, ...role)) {
         sendForbidden(req, res);
         return;
       }
