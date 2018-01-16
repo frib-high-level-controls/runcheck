@@ -366,7 +366,7 @@ router.get('/', catchAll(async (req, res) => {
 
       debug('Found Checklists: %s', checklists.size);
 
-      let apiChecklists: webapi.ChecklistTableRow[] = [];
+      let webChecklists: webapi.ChecklistTableRow[] = [];
       for (let target of targets) {
         if (!target.checklistId) {
           continue;
@@ -399,12 +399,11 @@ router.get('/', catchAll(async (req, res) => {
           varRoles = new Map<string, string>();
         }
 
-        let canUpdate = new Map<string, boolean>();
-        let webSubjects: webapi.ChecklistSubject[] = [];
+        let webSubjects: webapi.ChecklistSubjectTableRow[] = [];
         for (let subject of subjects) {
           if (!subject.checklistId || subject.checklistId.equals(checklist._id)) {
 
-            let webSubject: webapi.ChecklistSubject = {
+            let webSubject: webapi.ChecklistSubjectTableRow = {
               name: subject.name,
               desc: subject.desc,
               order: subject.order,
@@ -413,6 +412,7 @@ router.get('/', catchAll(async (req, res) => {
               primary: subject.primary,
               required: subject.required,
               mandatory: subject.mandatory,
+              canUpdate: false, // restricted by default
             };
 
             for (let config of configs) {
@@ -423,7 +423,7 @@ router.get('/', catchAll(async (req, res) => {
             }
 
             webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-            canUpdate.set(subject.name, auth.hasAnyRole(req, webSubject.assignees));
+            webSubject.canUpdate = auth.hasAnyRole(req, webSubject.assignees);
 
             webSubjects.push(webSubject);
           }
@@ -437,11 +437,10 @@ router.get('/', catchAll(async (req, res) => {
             comment: status.comment,
             inputBy: status.inputBy,
             inputAt: status.inputAt.toISOString(),
-            canUpdate: Boolean(canUpdate.get(status.subjectName)),
           });
         }
 
-        apiChecklists.push({
+        webChecklists.push({
           id: checklist.id,
           targetId: checklist.targetId.toHexString(),
           targetType: checklist.targetType,
@@ -453,8 +452,8 @@ router.get('/', catchAll(async (req, res) => {
         });
       }
 
-      res.json(<webapi.Pkg<webapi.Checklist[]>> {
-        data: apiChecklists,
+      res.json(<webapi.Pkg<webapi.ChecklistTableRow[]>> {
+        data: webChecklists,
       });
     },
   });
@@ -488,6 +487,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
   let device: Device | null = null;
   let group: Group | null = null;
 
+  let varRoles: Map<string, string> | undefined;
   let ownerRole: string | undefined;
   let checklistId: ObjectId | undefined;
   let checklistType: ChecklistType | undefined;
@@ -516,6 +516,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     }
     checklistType = 'slot-default';
     checklistId = slot.checklistId;
+    varRoles = getVarRoles(slot);
     ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
     break;
   }
@@ -527,8 +528,9 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     }
     targetId = device.id;
     targetType = Device.modelName;
-    checklistType = 'device-default';    
+    checklistType = 'device-default';
     checklistId = device.checklistId;
+    varRoles = getVarRoles(device);
     ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
     break;
   }
@@ -551,6 +553,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     default:
       throw new RequestError(`Group member type '${group.memberType}' not supported`, INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(group);
     ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
     break;
   }
@@ -558,7 +561,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     throw new RequestError('Checklist target type is invalid', BAD_REQUEST);
   }
 
-  debug('Assert user has any role: [%s]', ownerRole);
+  debug('Assert user has any role: %s', ownerRole);
   if (!auth.hasAnyRole(req, ownerRole)) {
     throw new RequestError('Not permitted to assign checklist', FORBIDDEN);
   }
@@ -605,7 +608,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
 
   let webSubjects: webapi.ChecklistSubjectDetails[] = [];
   for (let subject of subjects) {
-    webSubjects.push({
+    let webSubject: webapi.ChecklistSubjectDetails = {
       name: subject.name,
       desc: subject.desc,
       order: subject.order,
@@ -614,7 +617,13 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
       required: subject.required,
       mandatory: subject.mandatory,
       assignees: subject.assignees,
-    });
+      canUpdate: false, // restricted by default
+    };
+
+    webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+    webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
+
+    webSubjects.push(webSubject);
   }
 
   let webChecklist: webapi.ChecklistDetails = {
@@ -688,8 +697,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   let [subjects, configs, statuses ] = await pending;
   debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
 
-  let canUpdate = new Map<string, boolean>();
-  let webSubjects: webapi.ChecklistSubject[] = [];
+  let webSubjects: webapi.ChecklistSubjectDetails[] = [];
   for (let subject of subjects) {
 
     let webSubject = {
@@ -701,6 +709,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
       primary: subject.primary,
       required: subject.required,
       mandatory: subject.mandatory,
+      canUpdate: false, // restricted by default
     };
 
     for (let config of configs) {
@@ -710,9 +719,8 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
       }
     }
 
-    subject.assignees = subVarRoles(subject.assignees, varRoles);
-
-    canUpdate.set(subject.name, auth.hasAnyRole(req, subject.assignees));
+    webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+    webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
 
     webSubjects.push(webSubject);
   }
@@ -741,7 +749,6 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
       comment: status.comment,
       inputBy: status.inputBy,
       inputAt: status.inputAt.toISOString(),
-      canUpdate: Boolean(canUpdate.get(status.subjectName)),
       history: webHistory,
     };
 
@@ -783,6 +790,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     throw new RequestError('Checklist not found', NOT_FOUND);
   }
 
+  let varRoles: Map<string, string>;
   let ownerRole: string;
 
   switch (checklist.targetType) {
@@ -791,6 +799,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(device);
     ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
     break;
   }
@@ -799,6 +808,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(slot);
     ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
     break;
   }
@@ -807,6 +817,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(group);
     ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
     break;
   }
@@ -864,7 +875,11 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     required: subject.required,
     mandatory: subject.mandatory,
     assignees: subject.assignees,
+    canUpdate: false, // restricted by default
   };
+
+  webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+  webSubject.canUpdate =  auth.hasAnyRole(req, webSubject.assignees);
 
   res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -900,6 +915,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     }).exec(),
   ]);
 
+  let varRoles: Map<string, string>;
   let ownerRole: string;
 
   switch (checklist.targetType) {
@@ -908,6 +924,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(device);
     ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
     break;
   }
@@ -916,6 +933,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(slot);
     ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
     break;
   }
@@ -924,6 +942,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
+    varRoles = getVarRoles(group);
     ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
     break;
   }
@@ -1025,12 +1044,16 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     required: subject.required,
     mandatory: subject.mandatory,
     assignees: subject.assignees,
+    canUpdate: false, // restricted by default
   };
 
   if (config) {
     debug('Apply config to subject: %s', subject.name);
     applyCfg(webSubject, config);
   }
+
+  webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+  webSubject.canUpdate = auth.hasAnyRole(req, webSubject.assignees);
 
   res.json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -1330,7 +1353,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
       primary.push(s.name);
     }
   }
-  debug('Primary: [%s]', primary);
+
   if (!subject) {
     throw new RequestError(`Checklist subject not found`, NOT_FOUND);
   }
@@ -1450,7 +1473,6 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     comment: status.comment,
     inputBy: status.inputBy,
     inputAt: status.inputAt.toISOString(),
-    canUpdate: true,
     history: webHistory,
   };
 

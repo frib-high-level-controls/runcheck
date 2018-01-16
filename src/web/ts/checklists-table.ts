@@ -8,6 +8,10 @@ $(WebUtil.wrapCatchAll0(async () => {
 
   type ChecklistSubjectOption = { name: string, desc: string, count: number };
 
+  type ChecklistSubjectTableRow = webapi.ChecklistSubjectTableRow;
+
+  type ChecklistStatusTableRow = webapi.ChecklistStatusTableRow;
+
   // Define the view model
 
   /**
@@ -27,8 +31,14 @@ $(WebUtil.wrapCatchAll0(async () => {
           let data = <ChecklistTableRow> r.data();
 
           for (let subject of data.subjects) {
-            // TODO: Check if can Update
-            // canUpdate = true;
+            // Ignore subjects that can not be updated
+            if (!subject.canUpdate) {
+              continue;
+            }
+            // Ignore subjects that are not required
+            if (!subject.mandatory && !subject.required) {
+              continue;
+            }
             let found = false;
             for (let opt of subjectOptions) {
               if (subject.name === opt.name) {
@@ -37,7 +47,6 @@ $(WebUtil.wrapCatchAll0(async () => {
                 break;
               }
             }
-
             if (!found) {
               subjectOptions.push({
                 name: subject.name,
@@ -283,6 +292,25 @@ $(WebUtil.wrapCatchAll0(async () => {
     return Boolean(subject.name.match(/C\w{8}/));
   }
 
+  function formatStatus(subject: ChecklistSubjectTableRow, status?: ChecklistStatusTableRow, label?: boolean): string {
+    let desc = subject.desc || subject.name;
+    if (!subject.mandatory && !subject.required) {
+      return `<div>${label ? desc + ': ' : ''}N/A</div>`;
+    }
+
+    let canUpdate = subject.canUpdate;
+    let value = status ? status.value : 'N';
+    // Sanitize the comment to be safely used in tooltip
+    let comment = (status && status.comment) ? status.comment.replace('"', '&quot;') : '';
+    return  `<div>${label ? desc + ':' : ''}
+              <span class="${value === 'N' ? 'bg-danger' : 'bg-success'}">
+                <strong title="${value === 'YC' ? comment : ''}">${value}</strong>
+              </span>
+              ${canUpdate ? '&nbsp;<span class="fa fa-pencil"/>' : ''}
+            </div>`;
+  }
+
+
   const vm = new ChecklistsTableViewModel();
   ko.applyBindings(vm);
 
@@ -372,29 +400,17 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: subjectName,
       data: <any> null,
       render: (row: ChecklistTableRow) => {
-        let found = false;
         for (let subject of row.subjects) {
           if (subject.name === subjectName) {
-            if (!subject.mandatory && !subject.required) {
-              return 'N/A';
+            for (let status of row.statuses) {
+              if (status.subjectName === subjectName) {
+                return formatStatus(subject, status);
+              }
             }
-            found = true;
-            break;
+            return formatStatus(subject);
           }
         }
-        if (!found) {
-          return '-';
-        }
-        let statusValue = 'N';
-        for (let status of row.statuses) {
-          if (status.subjectName === subjectName) {
-            statusValue = status.value;
-            break;
-          }
-        }
-        return `<span class="${statusValue === 'N' ? 'bg-danger' : 'bg-success'}">
-                  <strong>${statusValue}</strong>
-                </span>`;
+        return '-';
       },
       orderable: false,
       searchable: false,
@@ -409,14 +425,16 @@ $(WebUtil.wrapCatchAll0(async () => {
         let html = '';
         for (let subject of row.subjects) {
           if (isCustomSubject(subject)) {
+            let found = false;
             for (let status of row.statuses) {
               if (status.subjectName === subject.name) {
-                html += `<div>${subject.name}:
-                  <span class="${status.value === 'N' ? 'bg-danger' : 'bg-success'}">
-                    <strong>${status.value}</strong>
-                  </span></div>`;
+                html += formatStatus(subject, status, true);
+                found = true;
                 break;
               }
+            }
+            if (!found) {
+              html += formatStatus(subject, undefined, true);
             }
           }
         }

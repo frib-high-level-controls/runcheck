@@ -144,7 +144,7 @@ declare namespace webapi {
   interface ChecklistTableRow extends Checklist {
     targetName: string;
     targetDesc: string;
-    subjects: ChecklistSubject[];
+    subjects: ChecklistSubjectTableRow[];
     statuses: ChecklistStatusTableRow[];
   }
 
@@ -164,7 +164,12 @@ declare namespace webapi {
     mandatory: boolean;
   }
 
+  interface ChecklistSubjectTableRow extends ChecklistSubject {
+    canUpdate: boolean;
+  }
+
   interface ChecklistSubjectDetails extends ChecklistSubject {
+    canUpdate: boolean;
     // history? //
   }
 
@@ -177,11 +182,10 @@ declare namespace webapi {
   }
 
   interface ChecklistStatusTableRow extends ChecklistStatus {
-    canUpdate: boolean;
+    // no additional properties needed //
   }
 
   interface ChecklistStatusDetails extends ChecklistStatus {
-    canUpdate: boolean;
     history: History;
   }
 }
