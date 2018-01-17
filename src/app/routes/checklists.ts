@@ -52,6 +52,10 @@ type ObjectId = mongoose.Types.ObjectId;
 interface Target {
   name: string;
   desc: string;
+  dept?: string;
+  area?: string;
+  owner?: string;
+  memberType?: string;
   checklistId?: ObjectId;
 };
 
@@ -252,54 +256,46 @@ function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
 //   return subject;
 // }
 
+
 /**
- * Get the variable roles based on object type
+ * Get the variable roles based on target type
  */
-export function getVarRoles(obj: { dept?: string, area?: string, owner?: string, memberType?: string }): Map<string, string> {
-  let varRoles = new Map<string, string>();
-  if (obj.dept) {
-    varRoles.set(auth.formatRole('VAR', 'DEPT_LEADER'), auth.formatRole('GRP', obj.dept, 'LEADER'));
+function getVarRoles(target: Target): [string, string] {
+  if (target.dept) {
+    return ['DEPT_LEADER', auth.formatRole('GRP', target.dept, 'LEADER')];
   }
-  if (obj.area) {
-    varRoles.set(auth.formatRole('VAR', 'AREA_LEADER'), auth.formatRole('GRP', obj.area, 'LEADER'));
+  if (target.area) {
+    return ['AREA_LEADER', auth.formatRole('GRP', target.area, 'LEADER')];
   }
-  if (obj.owner) {
-    if (obj.memberType === Slot.modelName) {
-      varRoles.set(auth.formatRole('VAR', 'AREA_LEADER'), auth.formatRole('GRP', obj.owner, 'LEADER'));
+  if (target.owner) {
+    if (target.memberType === Slot.modelName) {
+      return ['AREA_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
     }
-    if (obj.memberType === Device.modelName) {
-      varRoles.set(auth.formatRole('VAR', 'DEPT_LEADER'), auth.formatRole('GRP', obj.owner, 'LEADER'));
+    if (target.memberType === Device.modelName) {
+      return ['DEPT_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
     }
   }
-  return varRoles;
+  return ['', ''];
 }
 
-function subVarRoles(roles: string[], varRoles: Map<string, string>): string[] {
-  let newRoles: string[] = [];
+/**
+ * Substitute any 'VAR' roles in the list of roles with those in the array.
+ */
+function subVarRoles(roles: string[], varRoles: Array<[string, string]>): string[] {
+  let varRolesMap = new Map<string, string>(varRoles);
+  let subRoles = new Array<string>();
   for (let role of roles) {
-
-    // let r = auth.parseRole(role);
-    
-    // if (r && r.scheme === 'VAR') {
-    //   let varRole = varRoles.get(r.identifier)
-    //   if (varRole) {
-    //     newRoles.push(varRole);
-    //   } else {
-    //     newRoles.push(role);
-    //   }
-    // } else {
-
-    // }
-
-
-    let varRole = varRoles.get(role);
-    if (varRole) {
-      newRoles.push(varRole);
+    let r = auth.parseRole(role);
+    if (r && r.scheme === 'VAR') {
+      let varRole = varRolesMap.get(r.identifier);
+      if (varRole) {
+        subRoles.push(varRole);
+      }
     } else {
-      newRoles.push(role);
+      subRoles.push(role);
     }
   }
-  return newRoles;
+  return subRoles;
 };
 
 
@@ -318,7 +314,7 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       let targets: Target[];
-      let checklistVarRoles = new Map<string, Map<string, string>>();
+      let checklistVarRoles = new Map<string, Array<[string, string]>>();
 
       switch (targetType ? targetType.toUpperCase() : undefined) {
       case 'SLOT': {
@@ -326,7 +322,7 @@ router.get('/', catchAll(async (req, res) => {
         let slots = await Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
         for (let slot of slots) {
           if (slot.checklistId) {
-            checklistVarRoles.set(slot.checklistId.toHexString(), getVarRoles(slot));
+            checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
           }
         }
         targets = slots;
@@ -337,7 +333,7 @@ router.get('/', catchAll(async (req, res) => {
         let devices = await Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
         for (let device of devices) {
           if (device.checklistId) {
-            checklistVarRoles.set(device.checklistId.toHexString(), getVarRoles(device));
+            checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
           }
         }
         targets = devices;
@@ -348,7 +344,7 @@ router.get('/', catchAll(async (req, res) => {
         let groups = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
         for (let group of groups) {
           if (group.checklistId) {
-            checklistVarRoles.set(group.checklistId.toHexString(), getVarRoles(group));
+            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
           }
         }
         targets = groups;
@@ -365,19 +361,19 @@ router.get('/', catchAll(async (req, res) => {
         for (let slot of slots) {
           if (slot.checklistId) {
             targets.push(slot);
-            checklistVarRoles.set(slot.checklistId.toHexString(), getVarRoles(slot));
+            checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
           }
         }
         for (let device of devices) {
           if (device.checklistId) {
             targets.push(device);
-            checklistVarRoles.set(device.checklistId.toHexString(), getVarRoles(device));
+            checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
           }
         }
         for (let group of groups) {
           if (group.checklistId) {
             targets.push(group);
-            checklistVarRoles.set(group.checklistId.toHexString(), getVarRoles(group));
+            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
           }
         }
         break;
@@ -431,7 +427,7 @@ router.get('/', catchAll(async (req, res) => {
 
         let varRoles = checklistVarRoles.get(checklistId);
         if (!varRoles) {
-          varRoles = new Map<string, string>();
+          varRoles = [];
         }
 
         let webSubjects: webapi.ChecklistSubjectTableRow[] = [];
@@ -522,7 +518,7 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
   let device: Device | null = null;
   let group: Group | null = null;
 
-  let varRoles: Map<string, string> | undefined;
+  let varRoles: Array<[string, string]>;
   let ownerRole: string | undefined;
   let checklistId: ObjectId | undefined;
   let checklistType: ChecklistType | undefined;
@@ -538,8 +534,8 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     targetType = Slot.modelName;
     checklistType = getSlotChecklistType(slot.safetyLevel);
     checklistId = slot.checklistId;
-    varRoles = getVarRoles(slot);
-    ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Device.modelName.toUpperCase(): {
@@ -552,8 +548,8 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     targetType = Device.modelName;
     checklistType = getDeviceChecklistType();
     checklistId = device.checklistId;
-    varRoles = getVarRoles(device);
-    ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Group.modelName.toUpperCase(): {
@@ -577,8 +573,8 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     default:
       throw new RequestError(`Group member type '${group.memberType}' not supported`, INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(group);
-    ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   default:
@@ -687,7 +683,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     ChecklistStatus.findWithHistory({ checklistId : checklist._id }),
   ]);
 
-  let varRoles: Map<string, string>;
+  let varRoles: Array<[string, string]>;
 
   switch (checklist.targetType) {
   case Device.modelName: {
@@ -695,7 +691,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(device);
+    varRoles = [ getVarRoles(device) ];
     break;
   }
   case Slot.modelName: {
@@ -703,7 +699,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(slot);
+    varRoles = [ getVarRoles(slot) ];
     break;
   }
   case Group.modelName: {
@@ -711,7 +707,7 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(group);
+    varRoles = [ getVarRoles(group) ];
     break;
   }
   default:
@@ -814,7 +810,7 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     throw new RequestError('Checklist not found', NOT_FOUND);
   }
 
-  let varRoles: Map<string, string>;
+  let varRoles: Array<[string, string]>;
   let ownerRole: string;
 
   switch (checklist.targetType) {
@@ -823,8 +819,8 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(device);
-    ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Slot.modelName: {
@@ -832,8 +828,8 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(slot);
-    ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Group.modelName: {
@@ -841,8 +837,8 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(group);
-    ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   default:
@@ -939,7 +935,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     }).exec(),
   ]);
 
-  let varRoles: Map<string, string>;
+  let varRoles: Array<[string, string]>;
   let ownerRole: string;
 
   switch (checklist.targetType) {
@@ -948,8 +944,8 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(device);
-    ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Slot.modelName: {
@@ -957,8 +953,8 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(slot);
-    ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Group.modelName: {
@@ -966,8 +962,8 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(group);
-    ownerRole = auth.formatRole('GRP', group.owner, 'LEADER');
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   default:
@@ -1318,7 +1314,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     }),
   ]);
 
-  let varRoles: Map<string, string>;
+  let varRoles: Array<[string, string]>;
 
   switch (checklist.targetType) {
   case Device.modelName: {
@@ -1326,7 +1322,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!device || !device.id) {
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(device);
+    varRoles = [ getVarRoles(device) ];
     break;
   }
   case Slot.modelName: {
@@ -1334,16 +1330,13 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(slot);
+    varRoles = [ getVarRoles(slot) ];
     if (slot.installDeviceId) {
       let device = await Device.findById(slot.installDeviceId).exec();
       if (!device) {
         throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
       }
-      let varRoles2 = getVarRoles(device);
-      for (let entry of varRoles2.entries()) {
-        varRoles.set(entry[0], entry[1]);
-      }
+      varRoles.push(getVarRoles(device));
     }
     break;
   }
@@ -1352,7 +1345,7 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
     if (!group || !group.id) {
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
-    varRoles = getVarRoles(group);
+    varRoles = [ getVarRoles(group) ];
     break;
   }
   default:
