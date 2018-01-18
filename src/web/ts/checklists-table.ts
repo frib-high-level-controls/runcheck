@@ -74,24 +74,22 @@ $(WebUtil.wrapCatchAll0(async () => {
       // Cast required here because 'object' type is used.
       let data = <ChecklistTableRow> row.data();
       data.selected = true;
-      let found = false;
+      let added = false;
       let rows: DataTables.RowMethods[] = [];
       for (let r of this.selectedRows()) {
         if (r.index() === row.index()) {
-          found = true;
-          break;
+          return;
         }
-        if (r.index() > row.index()) {
+        if (!added && (r.index() > row.index())) {
           rows.push(row);
+          added = true;
         }
         rows.push(r);
       }
-      if (!found) {
-        if (rows.length === this.selectedRows().length) {
-          this.selectedRows.push(row);
-        } else {
-          this.selectedRows(rows);
-        }
+      if (added) {
+        this.selectedRows(rows);
+      } else {
+        this.selectedRows.push(row);
       }
       // console.log("SELECTED ROWS: %s", this.selectedRows().length);
     }
@@ -103,16 +101,16 @@ $(WebUtil.wrapCatchAll0(async () => {
       // Cast required here because 'object' type is used.
       let data = <ChecklistTableRow> row.data();
       data.selected = false;
-      let found = false;
+      let removed = false;
       let rows: DataTables.RowMethods[] = [];
       for (let r of this.selectedRows()) {
         if (r.index() === row.index()) {
-          found = true;
+          removed = true;
           continue;
         }
         rows.push(r);
       }
-      if (found) {
+      if (removed) {
         this.selectedRows(rows);
       }
       // console.log("SELECTED ROWS: %s", this.selectedRows().length);
