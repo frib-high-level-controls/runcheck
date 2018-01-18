@@ -1028,7 +1028,7 @@ async function main() {
         let doc: IChecklistConfig = {
           checklistId: cl._id,
           subjectName: subjectName,
-          assignees: [ assignedUserId.toUpperCase() ],
+          assignees: [ `USR:${assignedUserId.toUpperCase()}` ],
         };
         config = new ChecklistConfig(doc);
         configs.push(config);
