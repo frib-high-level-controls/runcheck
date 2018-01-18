@@ -7,7 +7,7 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
-export type ChecklistType =  'device-default' | 'slot-default' | 'slot-credited' | 'slot-eshimpact';
+export type ChecklistType =  'DEVICE-DEFAULT' | 'SLOT-DEFAULT' | 'SLOT-CREDITED' | 'SLOT-ESHIMPACT';
 
 export interface IChecklistSubject {
   checklistId?: ObjectId;
@@ -55,6 +55,9 @@ export interface IChecklist {
   checklistType: ChecklistType;
   targetType: string;
   targetId: ObjectId;
+  approved: boolean;
+  checked: number;
+  total: number;
 };
 
 export interface Checklist extends IChecklist, mongoose.Document {
@@ -68,7 +71,7 @@ const ObjectId = Schema.Types.ObjectId;
 
 export const CHECKLIST_VALUES = ['N', 'Y', 'YC'];
 
-export const CHECKLIST_TYPES = ['device-default', 'slot-default', 'slot-credited', 'slot-eshimpact'];
+export const CHECKLIST_TYPES = ['DEVICE-DEFAULT', 'SLOT-DEFAULT', 'SLOT-CREDITED', 'SLOT-ESHIMPACT'];
 
 export function isChecklistValueValid(value?: string): boolean {
   return value ? CHECKLIST_VALUES.includes(value) : false;
@@ -78,10 +81,70 @@ export function isChecklistValueApproved(value?: string, withComment?: boolean):
   return (value === 'YC') || (!withComment && (value === 'Y'));
 };
 
+/**
+ * Summarize the status of the checklist, including final approval.
+ */
+// tslint:disable:max-line-length
+export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSubject[], configs: ChecklistConfig[], statuses: ChecklistStatus[], apply?: boolean): boolean {
+  let total = 0;
+  let checked = 0;
+  let finalsTotal = 0;
+  let finalsChecked = 0;
+
+  for (let subject of subjects) {
+    if (checklist.checklistType === subject.checklistType) {
+
+      let config: ChecklistConfig | undefined;
+      for (let c of configs) {
+        if (checklist._id.equals(c.checklistId) && (subject.name === c.subjectName)) {
+          config = c;
+          break;
+        }
+      }
+
+      let status: ChecklistStatus | undefined;
+      for (let s of statuses) {
+        if (checklist._id.equals(s.checklistId) && (subject.name === s.subjectName)) {
+          status = s;
+          break;
+        }
+      }
+
+      // Careful to check the the config 'required' property is actually defined!
+      if (subject.mandatory ||
+          ((!config || config.required === undefined) && subject.required) ||
+            ((config && config.required !== undefined) && config.required)) {
+        total += 1;
+        if (subject.final) {
+          finalsTotal += 1;
+        }
+        if (status && isChecklistValueApproved(status.value)) {
+          checked += 1;
+          if (subject.final) {
+            finalsChecked += 1;
+          }
+        }
+      }
+    }
+  }
+  let approved = (finalsChecked === finalsTotal);
+
+  if (apply) {
+    checklist.approved = approved;
+    checklist.checked = checked;
+    checklist.total = total;
+  }
+
+  return approved;
+};
+
 // A checklist is a list of responses for various subjects:
 //  targetType: the type of the object to which this checklist belongs
 //  targetId: the object to which this checklist belongs
 //  type: the type of this checklist
+//  checked: the number of subjects that are approved
+//  total:  the total number of subjects for this checklist
+//  approved: the approval status of the checklist
 const checklistSchema = new Schema({
   checklistType: {
     type: String,
@@ -97,17 +160,20 @@ const checklistSchema = new Schema({
     refPath: 'targetType',
     required: true,
   },
-  // Consider adding checklist completion information from device
-  // , checkedValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0
-  // },
-  // totalValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0
-  // }
+  approved: {
+    type: Boolean,
+    default: false,
+  },
+  checked: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  total: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
 });
 
 

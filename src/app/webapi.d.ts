@@ -54,24 +54,20 @@ declare namespace webapi {
     dept: string;
     deviceType: string;
     installSlotName?: string;
-  }
-
-  export interface SlotTableRow {
-    id: string;
-    name: string;
-    desc: string;
-    area: string;
-    deviceType: string;
-    careLevel: string; 
-    drr: string;
-    arr: string;
-    installDeviceName?: string;
+    checklistId?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
   }
 
   export interface GroupTableRow {
     id: string;
     name: string;
     desc: string;
+    checklistId?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
   }
 
   export interface DevicePerms {
@@ -108,6 +104,23 @@ declare namespace webapi {
     canInstall?: boolean;
   }
 
+  export interface SlotBase { // TODO: rename to 'Slot'
+    id: string,
+    name: string;
+    desc: string;
+    area: string;
+    deviceType: string;
+    checklistId?: string;
+    careLevel: string;
+    safetyLevel: string;
+    arr: string;
+    drr: string;
+    groupId?: string;
+    installDeviceId?: string;
+    installDeviceOn?: string;
+    installDeviceBy?: string;
+  }
+
   export interface Slot extends SlotPerms, SlotInstall {
     id: string,
     name: string;
@@ -120,6 +133,13 @@ declare namespace webapi {
     arr: string;
     drr: string;
     groupId?: string;
+  }
+
+  export interface SlotTableRow extends SlotBase {
+    installDeviceName?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
   }
 
   export interface Group {
@@ -135,6 +155,9 @@ declare namespace webapi {
     targetId: string;
     targetType: string;
     checklistType: string;
+    approved: boolean;
+    checked: number;
+    total: number;
   }
 
   interface ChecklistPerms {

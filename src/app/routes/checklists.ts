@@ -43,6 +43,7 @@ import {
   IChecklistConfig,
   IChecklistStatus,
   IChecklistSubject,
+  isChecklistApproved,
   isChecklistValueApproved,
 } from '../models/checklist';
 
@@ -128,11 +129,11 @@ function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
   case 'NORMAL':
   case 'CONTROL':
   default:
-    return 'slot-default';
+    return 'SLOT-DEFAULT';
   case 'CREDITED':
-    return 'slot-credited';
+    return 'SLOT-CREDITED';
   case 'ESHIMPACT':
-    return 'slot-eshimpact';
+    return 'SLOT-ESHIMPACT';
   }
 }
 
@@ -140,7 +141,7 @@ function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
  * Get the checklist type for a device
  */
 function getDeviceChecklistType(): ChecklistType {
-  return 'device-default';
+  return 'DEVICE-DEFAULT';
 }
 
 function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
@@ -382,6 +383,9 @@ router.get('/', catchAll(async (req, res) => {
           checklistType: checklist.checklistType,
           subjects: webSubjects,
           statuses: webStatuses,
+          approved: checklist.approved,
+          checked: checklist.checked,
+          total: checklist.total,
         });
       }
 
@@ -496,19 +500,26 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     throw new RequestError('Target already assigned checklist', CONFLICT);
   }
 
+  let subjects = await ChecklistSubject.find({
+    checklistType: checklistType,
+    checklistId: {$exists: false},
+  }).exec();
+
   const doc: IChecklist = {
     checklistType: checklistType,
     targetType: targetType,
     targetId: models.ObjectId(targetId),
+    approved: false,
+    checked: 0,
+    total: 0,
   };
 
   debug('Create new Checklist with type: %s', doc.checklistType);
-  const checklist = await Checklist.create(doc);
+  const checklist = new Checklist(doc);
 
-  let pending = ChecklistSubject.find({
-    checklistType: checklistType,
-    checklistId: {$exists: false},
-  }).exec();
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, [], [], true);
+  await checklist.save();
 
   if (slot) {
     debug('Update target (slot) with new checklist id: %s', checklist._id);
@@ -525,8 +536,6 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     group.checklistId = models.ObjectId(checklist._id);
     await group.saveWithHistory(auth.formatRole('USR', username));
   }
-
-  let subjects = await pending;
 
   let webSubjects: webapi.ChecklistSubjectDetails[] = [];
   for (let subject of subjects) {
@@ -556,6 +565,9 @@ router.post('/', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'
     canEdit: false,
     subjects: webSubjects,
     statuses: [],
+    approved: checklist.approved,
+    checked: checklist.checked,
+    total: checklist.total,
   };
 
   res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistDetails>> {
@@ -686,6 +698,9 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
     canEdit: false,
     subjects: webSubjects,
     statuses: webStatuses,
+    approved: checklist.approved,
+    checked: checklist.checked,
+    total: checklist.total,
   };
 
   res.json(<webapi.Pkg<webapi.Checklist>> {
@@ -711,6 +726,19 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
   if (!checklist) {
     throw new RequestError('Checklist not found', NOT_FOUND);
   }
+
+  let pending = Promise.all([
+    ChecklistSubject.find({
+      checklistType: checklist.checklistType,
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).exec(),
+    ChecklistStatus.find({
+      checklistId: checklist._id,
+    }).exec(),
+  ]);
 
   let varRoles: Array<[string, string]>;
   let ownerRole: string;
@@ -773,6 +801,9 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     assignees.push(auth.formatRole(role));
   }
 
+  let [ subjects, configs, statuses] = await pending;
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
+
   let doc: IChecklistSubject = {
     name: `C${Math.random().toString(16).substring(2, 10).toUpperCase()}`,
     desc: desc,
@@ -782,11 +813,18 @@ router.post('/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAc
     required: true,
     mandatory: true,
     assignees: assignees,
+    checklistId: models.ObjectId(checklist._id),
     checklistType: checklist.checklistType,
   };
   let subject = new ChecklistSubject(doc);
 
   await subject.saveWithHistory(auth.formatRole('USR', username));
+
+  subjects.push(subject);
+
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, configs, statuses, true);
+  await checklist.save();
 
   let webSubject: webapi.ChecklistSubjectDetails = {
     name: subject.name,
@@ -835,6 +873,9 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     ChecklistConfig.find({
       checklistId: checklist._id,
     }).exec(),
+    ChecklistStatus.find({
+      checklistId: checklist._id,
+    }).exec(),
   ]);
 
   let varRoles: Array<[string, string]>;
@@ -872,7 +913,8 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
     throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
   }
 
-  let [subjects, configs ] = await pending;
+  let [subjects, configs, statuses ] = await pending;
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
 
   let subject: IChecklistSubject | undefined;
   for (let s of subjects) {
@@ -917,6 +959,7 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
         subjectName: subject.name,
         checklistId: checklist._id,
       });
+      configs.push(config);
     }
   }
 
@@ -949,13 +992,18 @@ router.put('/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ens
         subjectName: subject.name,
         checklistId: checklist._id,
       });
+      configs.push(config);
     }
   }
 
-  if (config && config.isModified()) {
+  if (config) {
     debug('Save subject configuration: %s', config.subjectName);
     await config.saveWithHistory(auth.formatRole('USR', username));
   }
+
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, configs, statuses, true);
+  await checklist.save();
 
   let webSubject: webapi.ChecklistSubjectDetails = {
     name: subject.name,
@@ -1161,12 +1209,30 @@ router.put('/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ens
       subjectName: name,
       checklistId: checklist._id,
     });
+    statuses.push(status);
   }
 
   if (status.isModified()) {
+    // A checklist can only become approved or unapproved
+    // through a change in status. To ensure failsafe
+    // operation the checklist approval is revoked before
+    // a change in status and then (possibly) re-approved
+    // after the change in status is completed successful.
+    // If a failure occurs during this process the
+    // checklist will be the more safe unapproved state.
+    if (checklist.approved) {
+      debug('Save checklist with approval revoked (failsafe)');
+      checklist.approved = false;
+      await checklist.save();
+    }
+    debug('Save checklist status with history');
     status.inputBy = username;
     status.inputAt = new Date();
     await status.saveWithHistory(auth.formatRole('USR', username));
+
+    debug('Save checklist with updated summary');
+    isChecklistApproved(checklist, subjects, configs, statuses, true);
+    await checklist.save();
   }
 
   const h = status.history;

@@ -278,10 +278,40 @@ $(WebUtil.wrapCatchAll0(async () => {
       for (let idx = 0; idx < this.data.statuses.length; idx += 1) {
         if (this.data.statuses[idx].subjectName === pkg.data.subjectName) {
           this.data.statuses[idx] = pkg.data;
-          this.row.invalidate();
           break;
         }
       }
+
+      // Update the local checklist summary data
+      // Modified version of the algorithm found in /sr/app/models/checklist.ts
+      // If changes are made to that algorithm they may also apply here.
+      let total = 0;
+      let checked = 0;
+      let finalTotal = 0;
+      let finalChecked = 0;
+      for (let subject of this.data.subjects) {
+        if (subject.mandatory || subject.required) {
+          total += 1;
+          if (subject.final) {
+            finalTotal += 1;
+          }
+          for (let status of this.data.statuses) {
+            if (subject.name === status.subjectName) {
+              if (status.value === 'Y' || status.value === 'YC') {
+                checked += 1;
+                if (subject.final) {
+                  finalChecked += 1;
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+      this.data.approved = (finalChecked === finalTotal);
+      this.data.checked = checked;
+      this.data.total = total;
+      this.row.invalidate();
 
       this.message('Success');
       this.status('DONE');
@@ -452,7 +482,10 @@ $(WebUtil.wrapCatchAll0(async () => {
     title: 'Approved',
     data: <any> null,
     render: (row: webapi.Checklist) => {
-       return 'No';
+      if (row.approved) {
+        return '<div><span class="fa fa-check text-success"/></div>';
+      }
+      return `<div><strong>${row.checked} / ${row.total - 1}</strong></div>`;
     },
   });
 

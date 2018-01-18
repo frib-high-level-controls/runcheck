@@ -7,8 +7,9 @@ import * as express from 'express';
 //import * as auth from '../shared/auth';
 
 import {
-  ObjectId,
   isValidId,
+  mapById,  
+  ObjectId,
 } from '../shared/models';
 
 import {
@@ -26,7 +27,11 @@ import {
   Group,
 } from '../models/group';
 
-const debug = dbg('runcheck:groups')
+import {
+  Checklist,
+} from '../models/checklist';
+
+const debug = dbg('runcheck:groups');
 
 export const router = express.Router();
 
@@ -37,14 +42,28 @@ router.get('/slot', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.GroupTableRow[] = [];
-      const groups = await Group.find({ memberType: Slot.modelName }).exec();
+      const [ groups, checklists ] = await Promise.all([
+        Group.find({ memberType: Slot.modelName }).exec(),
+        mapById(Checklist.find({ targetType: Group.modelName }).exec()),
+      ]);
       for (let group of groups) {
-        rows.push({
+        let row: webapi.GroupTableRow = {
           id: group._id,
           name: group.name,
           desc: group.desc,
-        });
+          checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
+        };
+        if (group.checklistId) {
+          let checklist = checklists.get(group.checklistId.toHexString());
+          if (checklist) {
+            row.checklistApproved = checklist.approved;
+            row.checklistChecked = checklist.checked;
+            row.checklistTotal = checklist.total;
+          }
+        }
+        rows.push(row);
       }
+
       res.json(<webapi.Pkg<webapi.GroupTableRow[]>> {
         data: rows,
       });

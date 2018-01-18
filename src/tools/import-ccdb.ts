@@ -33,6 +33,7 @@ import {
   IChecklist,
   IChecklistConfig,
   IChecklistStatus,
+  isChecklistApproved,
 } from '../app/models/checklist';
 
 
@@ -810,12 +811,17 @@ async function main() {
       return;
     }
 
-    info('Import Checklist for Device: %s', device.name);
-    let cl = new Checklist(<IChecklist> {
+    let doc: IChecklist = {
       targetId: device._id,
       targetType: Device.modelName,
-      checklistType: 'device-default',
-    });
+      checklistType: 'DEVICE-DEFAULT',
+      approved: false,
+      checked: 0,
+      total: 0,
+    };
+
+    info('Import Checklist for Device: %s', device.name);
+    let cl = new Checklist(doc);
 
     device.checklistId = cl._id;
 
@@ -855,12 +861,17 @@ async function main() {
       return;
     }
 
-    info('Import Checklist for Slot: %s', slot.name);
-    let cl = new Checklist(<IChecklist> {
+    let doc: IChecklist = {
       targetId: slot._id,
       targetType: Slot.modelName,
-      checklistType: 'slot-default',
-    });
+      checklistType: 'SLOT-DEFAULT',
+      approved: false,
+      checked: 0,
+      total: 0,
+    };
+
+    info('Import Checklist for Slot: %s', slot.name);
+    let cl = new Checklist(doc);
 
     slot.checklistId = cl._id;
 
@@ -900,12 +911,17 @@ async function main() {
       return;
     }
 
-    info('Import Checklist for Group: %s', group.name);
-    let cl = new Checklist(<IChecklist> {
+    let doc: IChecklist = {
       targetId: group._id,
       targetType: Group.modelName,
-      checklistType: 'slot-default',
-    });
+      checklistType: 'SLOT-DEFAULT',
+      approved: false,
+      checked: 0,
+      total: 0,
+    };
+
+    info('Import Checklist for Group: %s', group.name);
+    let cl = new Checklist(doc);
 
     group.checklistId = cl._id;
 
@@ -1009,11 +1025,12 @@ async function main() {
       debug('CL Assigned SME: %s, for process: %s', assignedUserId || null, row.process);
       if (assignedUserId) {
         // Process has Assigned SME
-        config = new ChecklistConfig(<IChecklistConfig> {
+        let doc: IChecklistConfig = {
           checklistId: cl._id,
           subjectName: subjectName,
           assignees: [ assignedUserId.toUpperCase() ],
-        });
+        };
+        config = new ChecklistConfig(doc);
         configs.push(config);
       }
 
@@ -1022,24 +1039,26 @@ async function main() {
       if (!statusValue) {
         // Process is Disabled (N/A)
         if (!config) {
-          config = new ChecklistConfig(<IChecklistConfig> {
+          let doc: IChecklistConfig = {
             checklistId: cl._id,
             subjectName: subjectName,
             required: false,
-          });
+          };
+          config = new ChecklistConfig(doc);
           configs.push(config);
         } else {
           config.required = false;
         }
       } else {
-        status = new ChecklistStatus(<IChecklistStatus> {
+        let doc: IChecklistStatus = {
           checklistId: cl._id,
           subjectName: subjectName,
           value: statusValue,
           comment: row.comment,
           inputAt: row.modified_at,
-          inputBy: row.modified_by ? row.modified_by.toUpperCase() : 'IMPORTCCDB',
-        });
+          inputBy: row.modified_by ? row.modified_by.toUpperCase() : 'SYS:IMPORTCCDB',
+        };
+        status = new ChecklistStatus(doc);
         statuses.push(status);
       }
 
@@ -1076,6 +1095,15 @@ async function main() {
     }
   } else {
     console.warn('No default checklist subjects specified!');
+  }
+
+  // Compute checklist summary
+  for (let id in checklists) {
+    if (checklists.hasOwnProperty(id)) {
+      isChecklistApproved(checklists[id], subjects, configs, statuses, true);
+      info('Checklist summary: %s, Approved: %s, Checked: %s, Total: %s',
+        id, checklists[id].approved, checklists[id].checked, checklists[id].total);
+    }
   }
 
   // Import Installation Data

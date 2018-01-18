@@ -72,8 +72,14 @@ $(() => {
       // autoWidth: false,
       width: '105px',
       data: (row: webapi.SlotTableRow): string => {
-        // return Table.progressBar(source.checkedValue, source.totalValue);
-        return 'N/A';
+        if (row.checklistApproved) {
+          return '<div><span class="fa fa-check text-success"/></div>';
+        }
+        if (row.checklistChecked !== undefined && row.checklistTotal !== undefined) {
+          // Subtract one from the total because the primary subject is not included
+          return `<div><strong>${row.checklistChecked} / ${row.checklistTotal - 1}</strong></div>`;
+        }
+        return  '<div>N/A</div>';
       },
     },
     // {

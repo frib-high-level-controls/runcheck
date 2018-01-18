@@ -112,32 +112,32 @@ export const GROUPS: IGroup[] = [
 
 const CL_SUBJECTS: IChecklistSubject[] = [
   {
-    name: 'EE', desc: 'EE', checklistType: 'device-default', order: 0,
+    name: 'EE', desc: 'EE', checklistType: 'DEVICE-DEFAULT', order: 0,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:EESME' ],
   }, {
-    name: 'ME', desc: 'ME', checklistType: 'device-default', order: 1,
+    name: 'ME', desc: 'ME', checklistType: 'DEVICE-DEFAULT', order: 1,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:MESME' ],
   }, {
-    name: 'DO', desc: 'DO', checklistType: 'device-default', order: 2,
+    name: 'DO', desc: 'DO', checklistType: 'DEVICE-DEFAULT', order: 2,
     primary: true, final: true, mandatory: true, required: true,
     assignees: [ 'VAR:DEPT_LEADER' ],
   }, {
-    name: 'DO', desc: 'DO', checklistType: 'slot-default', order: 0,
+    name: 'DO', desc: 'DO', checklistType: 'SLOT-DEFAULT', order: 0,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'VAR:DEPT_LEADER' ],
   }, {
-    name: 'EE', desc: 'EE', checklistType: 'slot-default', order: 1,
+    name: 'EE', desc: 'EE', checklistType: 'SLOT-DEFAULT', order: 1,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:EESME' ],
   }, {
-    name: 'ME', desc: 'ME', checklistType: 'slot-default', order: 2,
+    name: 'ME', desc: 'ME', checklistType: 'SLOT-DEFAULT', order: 2,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:MESME' ],
   }, {
-    name: 'AM', desc: 'AM', checklistType: 'slot-default', order: 3,
-    primary: true, final: false, mandatory: true, required: true,
+    name: 'AM', desc: 'AM', checklistType: 'SLOT-DEFAULT', order: 3,
+    primary: true, final: true, mandatory: true, required: true,
     assignees: [ 'VAR:AREA_LEADER' ],
   },
 ];
