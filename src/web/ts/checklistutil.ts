@@ -4,11 +4,19 @@
 
 abstract class ChecklistUtil {
 
-  public static render(selector: string, checklistId: string, config?: boolean) {
+  public static render(selector: string, checklist: webapi.ChecklistDetails | string, config?: boolean) {
     //$(function() {
     let elem = $(selector).first();
     // TODO: Catch ERROR!
-    ChecklistUtil.renderTo(elem, checklistId, config);
+    if (typeof checklist === 'string') {
+      ChecklistUtil.renderTo(elem, checklist, config);
+    } else {
+      if (config) {
+        ChecklistUtil.renderEditTemplate(elem, checklist);
+      } else {
+        ChecklistUtil.renderUpdateTemplate(elem, checklist);
+      }
+    }
     //});
   }
 

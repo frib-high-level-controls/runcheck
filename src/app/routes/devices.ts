@@ -185,50 +185,6 @@ router.get('/devices/:id/checklistId', ensureAccepts('json'), catchAll(async (re
   });
 }));
 
-
-// router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
-//   const nameOrId = String(req.params.name_or_id);
-//   debug('Find Device with name or id: %s', nameOrId);
-
-//   let device: Device | null;
-//   if (models.isValidId(nameOrId)) {
-//     device = await Device.findById(nameOrId).exec();
-//   } else {
-//     device = await Device.findOne({ name: nameOrId.toUpperCase() });
-//   }
-
-//   if (!device || !device.id) {
-//     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
-//   }
-
-//   const username = auth.getUsername(req);
-//   const permissions = getPermissions(req, device);
-//   if (!username || !permissions.assign) {
-//     throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
-//   }
-
-//   if (device.checklistId) {
-//     throw new RequestError('Device already assigned checklist', HttpStatus.BAD_REQUEST);
-//   }
-
-//   const doc: IChecklist = {
-//     checklistType: 'device-default',
-//     targetType: models.getModelName(device),
-//     targetId: device._id,
-//   };
-
-//   debug('Create new Checklist with type: %s', doc.checklistType);
-//   const checklist = await Checklist.create(doc);
-
-//   debug('Update Device with new checklist id: %s', checklist._id);
-//   device.checklistId = models.ObjectId(checklist._id);
-//   await device.saveWithHistory(auth.formatRole('USR', username));
-
-//   res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
-//     data: device.checklistId.toHexString(),
-//   });
-// }));
-
 /*
 devices.put('/:id/install-to-device', auth.ensureAuthenticated, reqUtils.exist('id', Device), reqUtils.hasAll('body', ['targetId']), reqUtils.exist('targetId', Device, '_id', 'body'), function (req, res) {
   var device = req[req.params['id']];

@@ -114,31 +114,6 @@ describe('Test slot routes', () => {
     }
   });
 
-  describe('Assign checklist before device installation', () => {
-    let table = [
-      // User unauthenticated
-      { name: 'FE_TEST:DEVA_D0001', user: '', status: 302, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: '', status: 302, by: 'ID' },
-      // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
-      // Device not installed
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
-    ];
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getSlotNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        return agent
-          .put(`/slots/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-      });
-    }
-  });
-
   describe('Install device', () => {
     let table = [
       // User unauthenticated
@@ -179,35 +154,6 @@ describe('Test slot routes', () => {
           })
           .expect(row.status)
           .expect(expectPackage({ installDeviceOn: row.date }));
-      });
-    }
-  });
-
-  describe('Assign checklist after device installation', () => {
-    let table = [
-      // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: '',     status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: '',     status: 403, by: 'ID' },
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
-      // Assign OK
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 201, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 201, by: 'ID' },
-      // Already assigned
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
-    ];
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getSlotNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        await agent
-          .put(`/slots/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-
-        // TODO: Confirm the checklist TYPE!!
       });
     }
   });

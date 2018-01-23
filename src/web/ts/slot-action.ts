@@ -63,11 +63,18 @@ $(() => {
     $('#checklist-assign').addClass('hidden');
     $('#checklist-spin').removeClass('hidden');
 
-    let pkg: webapi.Pkg<string>;
+    let pkg: webapi.Pkg<webapi.ChecklistDetails>;
     try {
       pkg = await $.ajax({
-        url: `${basePath}/slots/${slot.id}/checklistId`,
-        method: 'PUT',
+        url: `${basePath}/checklists`,
+        contentType: 'application/json',
+        data: JSON.stringify({
+          data: {
+            targetId: slot.id,
+            targetType: 'SLOT',
+          },
+        }),
+        method: 'POST',
         dataType: 'json',
       });
     } catch (xhr) {
@@ -87,10 +94,9 @@ $(() => {
       return;
     }
 
-    slot.checklistId = pkg.data;
     $('#checklist-spin').addClass('hidden');
     $('#checklist-panel').removeClass('hidden');
-    ChecklistUtil.render('#checklist-panel', slot.checklistId);
+    ChecklistUtil.render('#checklist-panel', pkg.data);
   }));
 
 

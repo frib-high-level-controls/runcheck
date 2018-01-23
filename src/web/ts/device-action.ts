@@ -51,11 +51,18 @@ $(() => {
       $('#checklist-assign').addClass('hidden');
       $('#checklist-spin').removeClass('hidden');
 
-      let pkg: webapi.Pkg<string>;
+      let pkg: webapi.Pkg<webapi.ChecklistDetails>;
       try {
         pkg = await $.get({
-          url: `${basePath}/devices/${device.id}/checklistId`,
-          method: 'PUT',
+          url: `${basePath}/checklists`,
+          contentType: 'application/json',
+          data: JSON.stringify({
+            data: {
+              targetId: device.id,
+              targetType: 'DEVICE',
+            },
+          }),
+          method: 'POST',
           dataType: 'json',
         });
       } catch (xhr) {
@@ -66,18 +73,18 @@ $(() => {
         }
         $('#checklist-spin').addClass('hidden');
         $('#checklist-assign').removeClass('hidden');
-        $('#checklist-panel').html(`
-          <div>
-            <span class='text-danger'>${message}</span>
+        $('#checklist-panel').prepend(`
+          <div class="alert alert-danger">
+            <button class="close" data-dismiss="alert">x</button>
+            <span>${message}</span>
           </div>
         `).removeClass('hidden');
         return;
       }
 
-      device.checklistId = pkg.data;
       $('#checklist-spin').addClass('hidden');
       $('#checklist-panel').removeClass('hidden');
-      ChecklistUtil.render('#checklist-panel', device.checklistId);
+      ChecklistUtil.render('#checklist-panel', pkg.data);
   }));
 
   if (device.installSlotId) {

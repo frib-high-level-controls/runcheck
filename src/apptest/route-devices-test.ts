@@ -106,33 +106,4 @@ describe('Test device routes', () => {
     }
   });
 
-  describe('Assign checklist', () => {
-    let table = [
-      // User unauthenticated
-      { name: 'T99999-DEVA-0009-0099-S00001', user: '',     status: 302, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: '',     status: 302, by: 'ID' },
-      // User unauthorized
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 403, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 403, by: 'ID' },
-      // Assign OK
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 201, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 201, by: 'ID' },
-      // Already assigned
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 400, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 400, by: 'ID' },
-    ];
-
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getDeviceNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        await agent
-          .put(`/devices/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-          // TODO: Confirm the checklist TYPE!!
-      });
-    }
-  });
 });
