@@ -4,7 +4,7 @@ table.table
       th Name
       if embedded
         th
-          a(href='/slots/'+slot.name, target='_blank')= slot.name
+          a(href=basePath + '/slots/'+slot.name, target='_blank')= slot.name
       else  
         th= slot.name
   tbody
@@ -37,4 +37,4 @@ table.table
       td #{d.getUTCMonth()+1}/#{d.getUTCDate()}/#{d.getUTCFullYear()}
 if slot.groupId
   h4.pull-right
-    a(href='/groups/slot/'+slot.groupId) Go to Group
+    a(href=basePath + '/groups/slot/'+slot.groupId) Go to Group

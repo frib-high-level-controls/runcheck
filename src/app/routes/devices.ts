@@ -52,15 +52,17 @@ function getPermissions(req: express.Request, device: Device) {
 
 
 
-export const router = express.Router();
+export const router = express.Router({strict: true});
 
 /**
  * Get the list view of devices (HTML) or list of devices (JSON).
  */
-router.get('/', catchAll(async (req, res) => {
+router.get('/devices', catchAll(async (req, res) => {
   return format(res, {
     'text/html': () => {
-      res.render('devices');
+      res.render('devices', {
+        basePath: '..',
+      });
     },
     'application/json': async () => {
       let conds: { deviceType?: string } = {};
@@ -122,7 +124,7 @@ router.get('/', catchAll(async (req, res) => {
  * Get the device specified by name or ID
  * and then respond with either HTML or JSON.
  */
-router.get('/:name_or_id', catchAll(async (req, res) => {
+router.get('/devices/:name_or_id', catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Device (and history) with name or id: %s', nameOrId);
 
@@ -157,6 +159,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
       res.render('device', {
         device: apiDevice,
         moment: moment,
+        basePath: '..',
       });
     },
     'application/json': () => {
@@ -168,7 +171,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
 }));
 
 
-router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
+router.get('/devices/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);
 
   debug('Find Device with id: %s', id);

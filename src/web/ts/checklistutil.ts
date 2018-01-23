@@ -39,8 +39,10 @@ abstract class ChecklistUtil {
     //   return;
     // }
     //$.get(document.location + '/checklist/json')
-    $.get('/checklists/' + checklistId)
-      .done(function(data: webapi.Pkg<webapi.ChecklistDetails>) {
+    $.get({
+      url: `${basePath}/checklists/${checklistId}`,
+    })
+    .done(function(data: webapi.Pkg<webapi.ChecklistDetails>) {
         if (config) {
           ChecklistUtil.renderEditTemplate(element, data.data);
         } else {
@@ -111,7 +113,7 @@ abstract class ChecklistUtil {
       });
       console.log(items);
       $.ajax({
-        url: '/checklists/' + checklist.id + '/subjects',
+        url: `${basePath}/checklists/${checklist.id}/subjects`,
         // url: 'checklist/json',
         method: 'PUT',
         data: JSON.stringify({
@@ -223,7 +225,7 @@ abstract class ChecklistUtil {
         let data: webapi.Pkg<webapi.ChecklistStatusDetails[]>;
         try {
           data = await $.ajax({
-            url: `/checklists/${checklist.id}/statuses`,
+            url: `${basePath}/checklists/${checklist.id}/statuses`,
             method: 'PUT',
             dataType: 'json',
             data: JSON.stringify({

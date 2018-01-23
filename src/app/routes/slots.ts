@@ -64,12 +64,14 @@ function getPermissions(req: express.Request, slot: Slot) {
 };
 
 
-export const router = express.Router();
+export const router = express.Router({strict: true});
 
-router.get('/', catchAll(async (req, res) => {
+router.get('/slots', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slots');
+      res.render('slots', {
+        basePath: '..',
+      });
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
@@ -171,7 +173,7 @@ router.get('/', catchAll(async (req, res) => {
  * Get the slot specified by name or ID
  * and then respond with either HTML or JSON.
  */
-router.get('/:name_or_id', catchAll( async (req, res) => {
+router.get('/slots/:name_or_id', catchAll( async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot (and history) with name or id: %s', nameOrId);
 
@@ -212,6 +214,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
       res.render('slot', {
         slot: apiSlot,
         moment: moment,
+        basePath: '..',
       });
     },
     'application/json': () => {
@@ -292,7 +295,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
 /**
  * Install Device in Slot
  */
-router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async (req, res) => {
+router.put('/slots/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot with name or id: %s', nameOrId);
 

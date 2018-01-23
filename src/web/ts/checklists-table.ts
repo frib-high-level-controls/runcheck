@@ -250,7 +250,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       try {
         this.status('WAIT');
         pkg = await $.ajax({
-          url: `/checklists/${this.data.id}/statuses/${this.parent.subject().name}`,
+          url: `${basePath}/checklists/${this.data.id}/statuses/${this.parent.subject().name}`,
           method: 'PUT',
           dataType: 'json',
           contentType: 'application/json',
@@ -353,6 +353,7 @@ $(WebUtil.wrapCatchAll0(async () => {
 
   try {
     pkg = await $.ajax({
+      url: `${basePath}/checklists`,
       dataType: 'json',
     });
   } catch (xhr) {
@@ -403,11 +404,11 @@ $(WebUtil.wrapCatchAll0(async () => {
       render: (row: ChecklistTableRow): string => {
         switch (row.targetType.toUpperCase()) {
         case 'SLOT':
-          return `<a href="/slots/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a href="${basePath}/slots/${row.targetId}" target="_blank">${row.targetName}</a>`;
         case 'DEVICE':
-          return `<a href="/devices/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a href="${basePath}/devices/${row.targetId}" target="_blank">${row.targetName}</a>`;
         case 'GROUP':
-          return `<a href="/groups/slot/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a href="${basePath}/groups/slot/${row.targetId}" target="_blank">${row.targetName}</a>`;
         default:
           return String(row.targetName || row.targetId);
         }

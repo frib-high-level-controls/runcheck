@@ -14,7 +14,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.DeviceTableRow): string => {
-        return `<a href="/devices/${row.name}">${row.name}</a>`;
+        return `<a href="${basePath}/devices/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -45,7 +45,7 @@ $(() => {
         if (!row.installSlotName) {
           return '-';
         }
-        return `<a href="/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
+        return `<a href="${basePath}/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
       },
       searching: true,
     }, {
@@ -69,7 +69,7 @@ $(() => {
 
   $('#devices-table').DataTable({
     ajax: {
-      url: '/devices',
+      url: `${basePath}/devices`,
       dataType: 'json',
       dataSrc: 'data',
     },

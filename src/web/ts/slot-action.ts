@@ -32,7 +32,7 @@ $(() => {
       let pkg: webapi.Pkg<webapi.Device>;
       try {
         pkg = await $.get({
-          url: `/devices/${deviceId}`,
+          url: `${basePath}/devices/${deviceId}`,
           dataType: 'json',
         });
       } catch (xhr) {
@@ -66,7 +66,7 @@ $(() => {
     let pkg: webapi.Pkg<string>;
     try {
       pkg = await $.ajax({
-        url: `/slots/${slot.id}/checklistId`,
+        url: `${basePath}/slots/${slot.id}/checklistId`,
         method: 'PUT',
         dataType: 'json',
       });
@@ -103,7 +103,7 @@ $(() => {
       let pkg: webapi.Pkg<webapi.DeviceTableRow[]>;
       try {
         pkg = await $.get({
-          url: '/devices',
+          url: `${basePath}/devices`,
           data: { deviceType: slot.deviceType },
           dataType: 'json',
         });
@@ -160,7 +160,7 @@ $(() => {
     let pkg: webapi.Pkg<webapi.SlotInstall>;
     try {
       pkg = await $.ajax({
-        url: `/slots/${slot.id}/installation`,
+        url: `${basePath}/slots/${slot.id}/installation`,
         method: 'PUT',
         dataType: 'json',
         contentType: 'application/json; charset=utf-8',
@@ -224,7 +224,7 @@ $(() => {
       <div>
         <h4>
           See the associated
-          <a href="/groups/slot/${slot.groupId}" target="_blank">Group</a>
+          <a href="${basePath}/groups/slot/${slot.groupId}" target="_blank">Group</a>
         </h4>
       </div>
     `);

@@ -48,7 +48,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.Slot): string => {
-        return `<a href="/slots/${row.name}">${row.name}</a>`;
+        return `<a href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -95,7 +95,7 @@ $(() => {
 
   $('#slot-table').DataTable({
     ajax: {
-      url: `/groups/slot/${group ? group.id : ''}/members`,
+      url: `${basePath}/groups/slot/${group ? group.id : ''}/members`,
       dataType: 'json',
       dataSrc: 'data',
     },

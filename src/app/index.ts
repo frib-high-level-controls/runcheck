@@ -11,6 +11,7 @@ import favicon = require('serve-favicon');
 import mongoose = require('mongoose');
 import morgan = require('morgan');
 import session = require('express-session');
+import slash = require('express-slash');
 
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
@@ -20,10 +21,10 @@ import auth = require('./shared/auth');
 import forgapi = require('./shared/forgapi');
 import forgauth = require('./shared/forg-auth');
 
-import devices_routes = require('./routes/devices');
-import slots_routes = require('./routes/slots');
+import devices = require('./routes/devices');
+import slots = require('./routes/slots');
 import groups = require('./routes/groups');
-import checklists_routes = require('./routes/checklists');
+import checklists = require('./routes/checklists');
 
 
 // package metadata
@@ -157,6 +158,7 @@ async function doStart(): Promise<express.Application> {
   let [name, version] = await readNameVersion();
   app.set('name', name);
   app.set('version', version);
+  app.set('strict routing', true);
 
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (task.getState() !== 'STARTED') {
@@ -353,14 +355,19 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.get('/', (req, res) => {
-    res.render('index');
+    res.render('index', {
+      basePath: '.',
+    });
   });
 
   app.use('/status', status.router);
-  app.use('/devices', devices_routes.router);
-  app.use('/slots', slots_routes.router);
-  app.use('/groups', groups.router);
-  app.use('/checklists', checklists_routes.router);
+  app.use(devices.router);
+  app.use(slots.router);
+  app.use(groups.router);
+  app.use(checklists.router);
+
+  // redirect unmatched paths with or without trailing slash
+  app.use(slash());
 
   // no handler found for request (404)
   app.use(handlers.notFoundHandler());

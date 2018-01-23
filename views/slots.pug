@@ -1,7 +1,7 @@
 extends layout.pug
 
 block head
-  link(rel='stylesheet', href='/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
   title Slots :: RunCheck
 
 
@@ -30,10 +30,10 @@ block content
 
 
 block js
-  script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
-  script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
-  script(type='text/javascript', src='/js/datatablesutil.js')
-  script(type='text/javascript', src='/js/slots-table.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
+  script(type='text/javascript', src=basePath + '/js/slots-table.js')
   if forgurl
     script(type='text/javascript') var forgurl = '#{forgurl}'
   //-script(type='text/javascript', src='/javascripts/slots-action.js')

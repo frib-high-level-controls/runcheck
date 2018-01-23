@@ -8,7 +8,7 @@ import * as express from 'express';
 
 import {
   isValidId,
-  mapById,  
+  mapById,
   ObjectId,
 } from '../shared/models';
 
@@ -33,12 +33,14 @@ import {
 
 const debug = dbg('runcheck:groups');
 
-export const router = express.Router();
+export const router = express.Router({strict: true});
 
-router.get('/slot', catchAll(async (req, res) => {
+router.get('/groups/slot', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slot-groups');
+      res.render('slot-groups', {
+        basePath: '../..',
+      });
     },
     'application/json': async () => {
       const rows: webapi.GroupTableRow[] = [];
@@ -72,7 +74,7 @@ router.get('/slot', catchAll(async (req, res) => {
 }));
 
 
-router.get('/slot/:name_or_id', catchAll(async (req, res) => {
+router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Group with name or id: %s', nameOrId);
 
@@ -99,6 +101,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     'text/html': () => {
       res.render('slot-group', {
         group: apiGroup,
+        basePath: '../..',
       });
     },
     'application/json': () => {
@@ -110,7 +113,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
 }));
 
 
-router.get('/slot/:id/members', catchAll(async (req, res) => {
+router.get('/groups/slot/:id/members', catchAll(async (req, res) => {
   const id = String(req.params.id);
   // if (!group) {
   //   throw new RequestError('Group not found', HttpStatus.NOT_FOUND);

@@ -3,7 +3,6 @@ doctype html
 html
   head
     include ./head.pug
-    link(rel='stylesheet', href='/datatables/media/css/dataTables.bootstrap.min.css')
     block head
   body
     include ./header.pug
@@ -16,8 +15,9 @@ html
           div(id='history')
             block history
     include ./footer.pug
-    script(type='text/javascript', src='/javascripts/active-nav.js')
-    script(type='text/javascript', src='/moment/min/moment.min.js')
-    script(type='text/javascript', src='/js/templates/change.js')
-    script(type='text/javascript', src='/javascripts/history.js')
+    script(type='text/javascript', src=basePath + '/node_modules/moment/min/moment.min.js')
+    script(type='text/javascript') var basePath = '#{basePath}';
+    script(type='text/javascript', src=basePath + '/js/active-nav.js')
+    //- script(type='text/javascript', src='/js/templates/change.js')
+    //- script(type='text/javascript', src='/javascripts/history.js')
     block js

@@ -17,7 +17,7 @@ $(() => {
       let pkg: webapi.Pkg<webapi.Slot>;
       try {
         pkg = await $.get({
-          url: `/slots/${slotId}`,
+          url: `${basePath}/slots/${slotId}`,
           dataType: 'json',
         });
       } catch (xhr) {
@@ -54,7 +54,7 @@ $(() => {
       let pkg: webapi.Pkg<string>;
       try {
         pkg = await $.get({
-          url: `/devices/${device.id}/checklistId`,
+          url: `${basePath}/devices/${device.id}/checklistId`,
           method: 'PUT',
           dataType: 'json',
         });

@@ -18,7 +18,7 @@ $(() => {
       //defaultContent: 'unknown',
       data: <any> null, // 'name',
       render: (row: webapi.GroupTableRow): string => {
-        return `<a href="/groups/slot/${row.id}" target="_blank">${row.name || 'Unknown'}</a>`;
+        return `<a href="${basePath}/groups/slot/${row.id}" target="_blank">${row.name || 'Unknown'}</a>`;
       },
       searching: true,
     },
@@ -60,7 +60,7 @@ $(() => {
 
   $('#slot-groups-table').DataTable({
     ajax: {
-      url: '/groups/slot',
+      url: `${basePath}/groups/slot`,
       dataType: 'json',
       dataSrc: 'data',
     },
