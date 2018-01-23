@@ -48,7 +48,4 @@ header
             li
               i.fa.fa-user.fa-3x
             li
-              if !originalUrl
-                a(href=basePath + '/login') Log in
-              else
-                a(href=basePath + '/login?bounce=' + encodeURIComponent(originalUrl)) Log in
+              a(href=basePath + '/login' onclick='try { window.location.href = this.href + "?bounce=" + encodeURIComponent(window.location); return false; } catch (err) { return true; }') Log in
