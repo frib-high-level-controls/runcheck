@@ -62,7 +62,8 @@ declare namespace webapi {
     desc: string;
     area: string;
     deviceType: string;
-    careLevel: string; 
+    careLevel: string;
+    safetyLevel: string;
     drr: string;
     arr: string;
     installDeviceName?: string;

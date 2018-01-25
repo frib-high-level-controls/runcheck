@@ -8,7 +8,7 @@ block head
 block content
   .container
     br
-    #message
+    // #message
       #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
         .modal-dialog
           .modal-content
@@ -33,7 +33,7 @@ block content
                     button#c-confirm.btn.btn-space.btn-primary(type='submit') Confirm
                     button#c-cancel.btn(type='submit') Cancel
               #message2
-    form.form-inline.clearfix
+    //form.form-inline.clearfix
       button.btn.btn-primary.pull-right#new
         | New Group
     .tab-pane.active#slot-groups

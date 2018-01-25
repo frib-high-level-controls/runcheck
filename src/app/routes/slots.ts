@@ -16,7 +16,7 @@ import {
   format,
   HttpStatus,
   RequestError,
-  findQueryParam,
+  //findQueryParam,
 } from '../shared/handlers';
 
 import {
@@ -27,9 +27,9 @@ import {
   Device,
 } from '../models/device';
 
-import {
-  Group,
-} from '../models/group';
+// import {
+//   Group,
+// } from '../models/group';
 
 import {
   IInstall,
@@ -76,12 +76,13 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
-      let conds: { area?: string } = {};
-      let groupId = findQueryParam(req, 'GROUPID', false, false);
-      if (groupId) {
-        let group = await Group.find({_id: groupId}).exec();
-        conds.area = group[0].owner;
-      }
+      let conds: { groupId: string | undefined } = { groupId: undefined };
+      // let conds: { area?: string } = {};
+      // let groupId = findQueryParam(req, 'GROUPID', false, false);
+      // if (groupId) {
+      //   let group = await Group.find({_id: groupId}).exec();
+      //   conds.area = group[0].owner;
+      // }
       const [ slots, devices ] = await Promise.all([
         Slot.find(conds).exec(),
         models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
@@ -94,6 +95,7 @@ router.get('/', catchAll(async (req, res) => {
           area: slot.area,
           deviceType: slot.deviceType,
           careLevel: slot.careLevel,
+          safetyLevel: slot.safetyLevel,
           drr: slot.drr,
           arr: slot.arr,
           groupId: slot.groupId ? slot.groupId.toHexString() : undefined,

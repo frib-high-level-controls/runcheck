@@ -8,22 +8,34 @@ block head
 block content
   .container
     br
-    //-#message
-      #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+    #message
+      #newGroupModal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: newGroupModal')
         .modal-dialog
           .modal-content
             .modal-header
-              h3#modalLabel
+              h3 Create new slot group
             .modal-body
-              .panel
-              form.form-inline
-                label Please select one slot group:
-                select.form-control
-            .modal-footer
-    //-form.form-inline
-      button.btn.btn-primary#addGroup
-        | Add to group
-    //-br
+              form.form-horizontal
+                .form-group
+                  label.col-sm-2.control-label Name
+                  .col-sm-10
+                    input.form-control(type='text', data-bind='value: name')
+                .form-group
+                  label.col-sm-2.control-label Owner
+                  .col-sm-10
+                    strong(data-bind='text: groupOwner')
+                .form-group
+                  label.col-sm-2.control-label Description
+                  .col-sm-10
+                    input.form-control(type='text', data-bind='value: description')
+                .form-group
+                  .col-sm-offset-2.col-sm-10
+                    button#c-confirm.btn.btn-space.btn-primary(type='submit', data-bind='click: createNewGroupandAddSlot, enable: canSubmit') Confirm
+                    button#c-cancel.btn(type='submit', data-bind='click: close, enable: canClose') Cancel
+              #message2
+    form.form-inline.clearfix(data-bind='with: newGroupButton')
+      button.btn.btn-primary.pull-right(type='button', data-bind='click: createNewGroup, enable: canCreate')
+        | Add to New Group
     .tab-pane.active#slots
       .table-responsive
         table.table.table-condensed.table-bordered.table-hover#slots-table
@@ -32,8 +44,11 @@ block content
 block js
   script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/node_modules/knockout/build/output/knockout-latest.js')
+  script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/js/datatablesutil.js')
   script(type='text/javascript', src='/js/slots-table.js')
+  script(type='text/javascript', src='/js/slot-action.js')
   if forgurl
     script(type='text/javascript') var forgurl = '#{forgurl}'
   //-script(type='text/javascript', src='/javascripts/slots-action.js')

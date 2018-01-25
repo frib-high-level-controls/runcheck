@@ -193,7 +193,7 @@ $(() => {
 // }
 
   //add slots to group functions start
-  let selectedSlot: { id: string | undefined } = { id: undefined };
+  let selectedSlot: { id: string | undefined,name: string | undefined } = { id: undefined, name: undefined };
   let d: webapi.SlotTableRow;
   $('#addGroup').click(WebUtil.wrapCatchAll1(async (evt) => {
     evt.preventDefault();

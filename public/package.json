@@ -8,6 +8,8 @@
     "datatables-bootstrap": "0.0.1",
     "es6-promise": "^4.1.1",
     "font-awesome": "^4.7.0",
+    "knockout": "^3.4.2",
+    "moment": "^2.20.1",
     "select2": "^4.0.6-rc.0",
     "select2-bootstrap-theme": "0.1.0-beta.10"
   },

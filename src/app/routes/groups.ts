@@ -227,22 +227,23 @@ function getPermissionsToModifySlot(req: express.Request, slot: Slot) {
   };
 };
 
-router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let passData: {id: string | undefined} = req.body.passData;
+router.post('/:gname/addSlots', auth.ensureAuthenticated, catchAll(async (req, res) => {
+  let passData: {id: string | undefined, name: string | undefined} = req.body.passData;
   let errMsg: string = '';
   if (!passData.id) {
     throw new RequestError('Slot to Add is not found', HttpStatus.NOT_FOUND);
   }
-  const username = auth.getUsername(req);
-  const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
-  if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
-  }
-  Slot.update({_id: passData.id, groupId: null}, {groupId: req.params.gid}, function(err,raw) {
+  // const username = auth.getUsername(req);
+  // const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
+  // if (!username || !permissions.assign) {
+  //   throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
+  // }
+  let group = await Group.find({name: req.params.gname}).exec();
+  Slot.update({_id: passData.id, groupId: null}, {groupId: group[0]._id}, function(err,raw) {
     if(err || raw.nModified == 0) {
-      let msg = err ? err.message : passData.id + ' not matched';
+      let msg = err ? err.message : passData.name + ' not matched';
       console.error(msg);
-      errMsg = 'Failed to add ' + passData.id + msg;
+      errMsg = 'Failed to add ' + passData.name + msg;
       return res.status(201).json({
           errMsg: errMsg,
           doneMsg: ''
@@ -250,7 +251,7 @@ router.post('/:gid/addSlots', auth.ensureAuthenticated, catchAll(async (req, res
     }
     return res.status(200).json({
       errMsg: '',
-      doneMsg: 'Added successfully'
+      doneMsg: 'Slot ' + passData.name + 'added successfully. '
     });
   });
 }));
@@ -292,7 +293,7 @@ router.post('/slotGroups/new', catchAll(async (req, res) => {
     throw new RequestError('This group name already exists', HttpStatus.FORBIDDEN);
   }
 
-  Group.create({name: passData.name, owner: passData.owner, desc: passData.description, memberType: passData.memberType}, function (err: any, raw: any) {
+  await Group.create({name: passData.name, owner: passData.owner, desc: passData.description, memberType: passData.memberType}, function (err: any, raw: any) {
     if (err || raw.nModified == 0) {
       let msg = err ? err.message : passData.name + ' not matched';
       console.error(msg);
