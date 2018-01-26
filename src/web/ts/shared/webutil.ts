@@ -76,4 +76,16 @@ abstract class WebUtil {
       });
     };
   }
+
+  // Extract the main error message from a JQuery XHR request
+  public static unwrapPkgErrMsg(xhr: JQuery.jqXHR, msg?: string): string {
+    let pkg = xhr.responseJSON;
+    if (pkg && pkg.error && pkg.error.message) {
+      return pkg.error.message;
+    }
+    if (msg) {
+      return msg;
+    }
+    return xhr.statusText;
+  }
 }

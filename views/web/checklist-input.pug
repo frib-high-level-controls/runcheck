@@ -9,10 +9,11 @@ form
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
         th.text-left.col-md-3 Assignees
+        th.text-left.col-md-3 &nbsp;
     tbody
       for subject in subjects
         - var status = statuses[subject.name]
-        tr.form-group.cl-subject(id=subject.id)
+        tr.form-group.cl-subject(id=subject.name)
           td.text-left.form-control-static
             if status && (status.history.updates.length > 0)
               span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history
@@ -52,14 +53,26 @@ form
               .form-control-static.cl-subject-assignee= subject.assignees
             else
               .form-control-static.cl-subject-assignee UNASSIGNED
+          td.text-left
+            .form-control-static
+              if status && status.updateStatus === 'DONE'
+                //- span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL"
+                span.like-btn.text-success.fa.fa-check-circle.cl-subject-update-status
+              else if status && status.updateStatus === 'FAIL'
+                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.updateMessage)
+              else
+                span.like-btn.cl-subject-update-status
           if status && (status.history.updates.length > 0)
+            - var value = status.value || 'N';
+            - var comment = status.comment || '';
+            - var inputBy = status.inputBy || 'UNKNOWN';
+            - var inputAt = status.inputAt || 'UNKNOWN';
             for update in status.history.updates.reverse()
               tr.cl-subject-history.hidden
                 td.text-center.text-primary
                   span.glyphicon.glyphicon-time
                 //-td.text-left.text-primary
                   span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
-                - var value = 'NONE', comment = 'NONE', inputBy = 'UNKNOWN', inputAt = 'UNKNOWN';
                 for path in update.paths
                   if path.name === 'value' && path.value
                     - value = path.value
@@ -74,9 +87,11 @@ form
                 td.text-center.text-primary
                   span= value
                 td.text-left.text-primary
-                  span= comment
+                  span= comment || 'NONE'
                 td.text-left.text-primary
                   span= inputBy
+                td.text-left.text-primary
+                  span &nbsp;
   .row
     .col-xs-6.text-left
       button.btn.btn-default.cl-update-edit(type='button', disabled='disabled') Edit

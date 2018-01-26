@@ -1,23 +1,35 @@
-tr.cl-subject.form-group
+tr.form-group.cl-subject(id=subject.name)
   td.text-left
-    if !subject.checklistId
+    //- if !subject.checklistId
+    if subject.name.match(/[CT]\w{8}/)
       button.btn.btn-danger.cl-subject-remove(type='button')
         span.glyphicon.glyphicon-minus
     else
       .form-control-static
         span.like-btn.glyphicon.glyphicon-lock.cl-subject-lock
   td.text-left
-    input.form-control.cl-subject-id(type='hidden', value=subject.id)
-    if !subject.checklistId
-      input.form-control.cl-subject-name(type='text', value=subject.subject)
+    //- input.form-control.cl-subject-id(type='hidden', value=subject.id)
+    //- if !subject.checklistId
+    if subject.name.match(/[CT]\w{8}/)
+      input.form-control.cl-subject-desc(type='text' value=subject.desc)
     else
-      span.form-control-static.cl-subject-name= subject.subject
+      input.form-control.cl-subject-desc(type='text' value=subject.desc, disabled)
   td.text-center
     if subject.mandatory
-      input.form-control.cl-subject-required(type='checkbox', value='true', checked='checked', disabled='disabled')
+      input.form-control.cl-subject-required(type='checkbox', value='true', checked, disabled)
     else if subject.required
-      input.form-control.cl-subject-required(type='checkbox', value='true', checked='checked')
+      input.form-control.cl-subject-required(type='checkbox', value='true', checked)
     else
       input.form-control.cl-subject-required(type='checkbox', value='true')
   td.text-left
-    input.form-control.cl-subject-assignee(type='text', value=subject.assignee[0])
+    input.form-control.cl-subject-assignee(type='text', value=subject.assignees.join(','))
+  td.text-left
+    .form-control-static
+      if subject.updateStatus === 'DONE'
+        //- span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL"
+        span.like-btn.text-success.fa.fa-check-circle.cl-subject-update-status
+      else if subject.updateStatus === 'FAIL'
+        span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=subject.updateMessage)
+      else
+        span.like-btn.cl-subject-update-status
+    
