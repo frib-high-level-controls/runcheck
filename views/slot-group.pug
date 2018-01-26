@@ -40,6 +40,9 @@ block content
       .col-md-12
         .panel.panel-default
           .panel-heading.clearfix
+            form.form-inline.clearfix(data-bind='with: deleteSlotButton')
+              button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canDelete')
+                | Delete from group
             .panel-title.pull-left Slots
             //.btn.btn-primary.pull-right#addGroup +Add
           .panel-body
@@ -92,6 +95,7 @@ block js
   script(type='text/javascript', src='/js/shared/webutil.js')
   script(type='text/javascript', src='/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src='/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src='/node_modules/knockout/build/output/knockout-latest.js')
   script(type='text/javascript', src='/js/datatablesutil.js')
   script(type='text/javascript', src='/js/checklistutil.js')
   script(type='text/javascript', src='/js/templates/checklist-input.js')

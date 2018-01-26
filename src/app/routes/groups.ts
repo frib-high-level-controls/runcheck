@@ -213,25 +213,25 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
 //   });
 // });
 
-/**
- * Compute the permissions of the current user for the specified slot.
- *
- * @param req HTTP Request
- * @param slot Model
- */
-function getPermissionsToModifySlot(req: express.Request, slot: Slot) {
-  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
-  const assign = auth.hasAnyRole(req, roles);
-  const install = assign;
-  if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
-    debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
-  }
-  return {
-    assign: assign,
-    install: install,
-  };
-};
+// /**
+//  * Compute the permissions of the current user for the specified slot.
+//  *
+//  * @param req HTTP Request
+//  * @param slot Model
+//  */
+// function getPermissionsToModifySlot(req: express.Request, slot: Slot) {
+//   const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
+//   const assign = auth.hasAnyRole(req, roles);
+//   const install = assign;
+//   if (debug.enabled) {
+//     debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
+//     debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
+//   }
+//   return {
+//     assign: assign,
+//     install: install,
+//   };
+// };
 
 router.post('/:gname/addSlots', auth.ensureAuthenticated, catchAll(async (req, res) => {
   let passData: {id: string | undefined, name: string | undefined} = req.body.passData;
@@ -268,11 +268,11 @@ router.post('/:gid/removeSlots', auth.ensureAuthenticated, catchAll(async (req, 
   if (!passData.id) {
     throw new RequestError('Slot to Add is not found', HttpStatus.NOT_FOUND);
   }
-  const username = auth.getUsername(req);
-  const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
-  if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to remove this slot', HttpStatus.FORBIDDEN);
-  }
+  // const username = auth.getUsername(req);
+  // const permissions = getPermissionsToModifySlot(req, (await Slot.find({_id: passData.id}).exec())[0]);
+  // if (!username || !permissions.assign) {
+  //   throw new RequestError('Not permitted to remove this slot', HttpStatus.FORBIDDEN);
+  // }
   Slot.update({ _id: passData.id, groupId: { $ne: null } }, { groupId: null }, function (err, raw) {
     if (err || raw.nModified == 0) {
       let msg = err ? err.message : passData.id + ' not matched';

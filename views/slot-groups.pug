@@ -8,34 +8,6 @@ block head
 block content
   .container
     br
-    // #message
-      #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
-        .modal-dialog
-          .modal-content
-            .modal-header
-              h3 Create new slot group
-            .modal-body
-              form.form-horizontal
-                .form-group
-                  label.col-sm-2.control-label Name
-                  .col-sm-10
-                    input#c-name.form-control(type='text', placeholder='Slot Group Name')
-                .form-group
-                  label.col-sm-2.control-label Owner
-                  .col-sm-10
-                    input#c-owner.form-control(type='text', placeholder='Group Owner')
-                .form-group
-                  label.col-sm-2.control-label Description
-                  .col-sm-10
-                    input#c-description.form-control(type='text', placeholder='A brief description')
-                .form-group
-                  .col-sm-offset-2.col-sm-10
-                    button#c-confirm.btn.btn-space.btn-primary(type='submit') Confirm
-                    button#c-cancel.btn(type='submit') Cancel
-              #message2
-    //form.form-inline.clearfix
-      button.btn.btn-primary.pull-right#new
-        | New Group
     .tab-pane.active#slot-groups
       .table-responsive
         table.table.table-condensed.table-bordered.table-hover#slot-groups-table
