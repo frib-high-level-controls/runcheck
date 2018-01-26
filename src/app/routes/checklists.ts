@@ -436,16 +436,26 @@ router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAcce
   switch (targetType) {
   case Slot.modelName.toUpperCase(): {
     debug('Find slot with id: %s', targetId);
-    slot = await Slot.findById(targetId).exec();
+    [ slot, device ] = await Promise.all([
+      Slot.findById(targetId).exec(),
+      Device.findOne({ installSlotId: targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
       throw new RequestError('Checklist target (slot) not found', BAD_REQUEST);
     }
-    targetId = slot.id;
-    targetType = Slot.modelName;
-    checklistType = getSlotChecklistType(slot.safetyLevel);
-    checklistId = slot.checklistId;
     varRoles = [ getVarRoles(slot) ];
     ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
+    targetId = slot.id;
+    targetType = Slot.modelName;
+    checklistId = slot.checklistId;
+    checklistType = getSlotChecklistType(slot.safetyLevel);
+    device = null; // Clear the device since target type is Slot
     break;
   }
   case Device.modelName.toUpperCase(): {
@@ -613,14 +623,25 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Slot.modelName: {
-    let slot = await Slot.findById(checklist.targetId).exec();
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
     break;
   }
   case Group.modelName: {
@@ -761,12 +782,21 @@ router.post('/checklists/:id/subjects', auth.ensureAuthenticated, ensurePackage(
     break;
   }
   case Slot.modelName: {
-    let slot = await Slot.findById(checklist.targetId).exec();
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(slot) ];
     ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
     break;
   }
   case Group.modelName: {
@@ -899,12 +929,21 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
     break;
   }
   case Slot.modelName: {
-    let slot = await Slot.findById(checklist.targetId).exec();
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(slot) ];
     ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
     break;
   }
   case Group.modelName: {
@@ -1082,13 +1121,15 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePac
     break;
   }
   case Slot.modelName: {
-    let slot = await Slot.findById(checklist.targetId).exec();
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(slot) ];
     if (slot.installDeviceId) {
-      let device = await Device.findById(slot.installDeviceId).exec();
       if (!device) {
         throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
       }
