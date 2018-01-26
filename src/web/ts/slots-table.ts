@@ -6,22 +6,23 @@
 let forgurl: string | undefined;
 
 $(WebUtil.wrapCatchAll0(async () => {
-  console.log('slots-table.ts 1');
   type SlotTableRow = webapi.SlotTableRow & { selected?: boolean };
+
    /**
    * Defines the full view model for this page.
    */
   class SlotsTableViewModel {
     public newGroupButton = new NewGroupButtonViewModel(this);
     public newGroupModal = new NewGroupModalViewModel(this);
+    public existingGroupButton = new ExistingGroupButtonViewModel(this);
+    public existingGroupModal = new ExistingGroupModalViewModel(this);
     public selectedRows = ko.observableArray<DataTables.RowMethods>();
 
     constructor() {
-      console.log('slots-table.ts 2');
       this.selectedRows.subscribe((rows) => {
         if (rows.length > 0) {
-          console.log('slots-table.ts 3');
           this.newGroupButton.checkToShowButton(rows);
+          this.existingGroupButton.checkToShowButton(rows);
         }
       })
     }
@@ -29,7 +30,6 @@ $(WebUtil.wrapCatchAll0(async () => {
      * Add a row (in order by index) to the array of selected rows.
      */
     public selectRow(row: DataTables.RowMethods) {
-      console.log('slots-table.ts 4');
       // Cast required here because 'object' type is used.
       let data = <SlotTableRow> row.data();
       data.selected = true;
@@ -57,7 +57,6 @@ $(WebUtil.wrapCatchAll0(async () => {
      * Remove a row (by index) from the array of selected rows.
      */
     public deselectRow(row: DataTables.RowMethods) {
-      console.log('slots-table.ts 5');
       // Cast required here because 'object' type is used.
       let data = <SlotTableRow> row.data();
       data.selected = false;
@@ -83,53 +82,42 @@ $(WebUtil.wrapCatchAll0(async () => {
     public canCreate = ko.observable(false);
 
     constructor(parent: SlotsTableViewModel) {
-      //console.log('slots-table.ts 6 parent %s', this.parent ? 'Parent is defined':'Parent undefined');
       this.parent = parent;
       this.canCreate = ko.observable(false);
-      console.log('slots-table.ts 6 parent %s', this.parent ? 'Parent is defined':'Parent undefined');
     }
 
     public checkToShowButton(rows: DataTables.RowMethods[]) {
-      console.log('slots-table.ts 7');
       let cancreate: boolean = false;
       if (rows.length > 0) {
         let dataFirstRow = <SlotTableRow>rows[0].data();
         if (rows.length === 1) {
-          console.log('slots-table.ts 8');
           if (!dataFirstRow.groupId) {
-            console.log('slots-table.ts 9');
             cancreate = true;
           }
         } else {
-          console.log('slots-table.ts 10');
           // Check to see if groupid is null, area & safety level is same for each row
           for (let r of rows) {
             let data = <SlotTableRow>r.data();
             if (data.groupId || (data.area !== dataFirstRow.area) || (data.safetyLevel !== dataFirstRow.safetyLevel)) {
-              console.log('slots-table.ts 11');
               cancreate = false;
               break;
             } else {
-              console.log('slots-table.ts 12');
               cancreate = true;
               continue;
             }
           }
         }
         if (cancreate === false) {
-          console.log('slots-table.ts 13');
           this.canCreate(false);
         } else {
           this.canCreate(true);
           this.groupOwner = dataFirstRow.area;
-          console.log('slots-table.ts 14 groupowner %s', this.groupOwner);
         }
       }
     }
       
     public createNewGroup() {
       // Open the modal
-      console.log('slots-table.ts 15');
       this.parent.newGroupModal.show(this.groupOwner);
     }
   }
@@ -148,20 +136,16 @@ $(WebUtil.wrapCatchAll0(async () => {
     private parent: SlotsTableViewModel;
 
     constructor(parent: SlotsTableViewModel) {
-      console.log('slots-table.ts 16');
       this.parent = parent;
       this.canSubmit = ko.observable(false);
       this.canClose = ko.observable(true);
       
       let refreshCanSubmit = () => {
         if (!this.name()) {
-          console.log('No name');
           this.canSubmit(false);
         } else if (!this.groupOwner()) {
-          console.log('No GO');
           this.canSubmit(false);
         } else {
-          console.log('submit enable');
           this.canSubmit(true);
         }
       };
@@ -176,10 +160,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public show(groupOwner: string) {
-      console.log('slots-table.ts 17');
       this.groupOwner(groupOwner);
-      console.log('name %s desc %s', this.name(), this.description());
-      
       $('#newGroupModal').modal('show');
     }
 
@@ -188,8 +169,6 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public async createNewGroupandAddSlot() {
-      console.log('slots-table.ts 19');
-      console.log('slots-table.ts 20');
       $.ajax({
         url: '/groups/slotGroups/new',
         type: 'POST',
@@ -207,7 +186,6 @@ $(WebUtil.wrapCatchAll0(async () => {
       // Add the slots to created group
   
       for (let row of this.parent.selectedRows()) {
-        console.log('slots-table.ts 22');
         let data = <SlotTableRow>row.data();
         $.ajax({
           url: `/groups/${this.name()}/addSlots`,
@@ -233,10 +211,142 @@ $(WebUtil.wrapCatchAll0(async () => {
       }
     }
   }
-  console.log('slots-table.ts 24');
+
+  class ExistingGroupButtonViewModel {
+    private parent: SlotsTableViewModel;
+    public canAdd = ko.observable(false);
+    public pkg: webapi.Pkg<webapi.GroupTableRow[]>;
+
+    constructor(parent: SlotsTableViewModel) {
+      this.parent = parent;
+      this.canAdd = ko.observable(false);
+    }
+
+    public async checkToShowButton(rows: DataTables.RowMethods[]) {
+      let canadd: boolean = false;
+
+      if (rows.length > 0) {
+        let dataFirstRow = <SlotTableRow>rows[0].data();
+        if (rows.length === 1) {
+          if (!dataFirstRow.groupId) {
+            canadd = true;
+          }
+        } else {
+          // Check to see if groupid is null, area & safety level is same for each row
+          for (let r of rows) {
+            let data = <SlotTableRow>r.data();
+            if (data.groupId || (data.area !== dataFirstRow.area) || (data.safetyLevel !== dataFirstRow.safetyLevel)) {
+              canadd = false;
+              break;
+            } else {
+              canadd = true;
+              continue;
+            }
+          }
+        }
+
+        if (canadd === true) {
+          try {
+            this.pkg = await $.ajax({
+              url: '/groups/slot',
+              type: 'GET',
+              dataType: 'json',
+              data: { 'SLOTAREA': dataFirstRow.area },
+            });
+          } catch (err) {
+            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + 'Failed to get Groups' + err.responseText + '</div>');
+          }
+        }
+        if ((canadd === false) || (this.pkg.data.length === 0)) {
+          this.canAdd(false);
+        } else {
+          this.canAdd(true);
+        }
+      }
+    }
+      
+    public addToExistingGroup() {
+      // Open the modal
+      this.parent.existingGroupModal.show(this.pkg.data);
+    }
+  }
+
+  /**
+   * Defines the view model for the new group modal dialog.
+   */
+  class ExistingGroupModalViewModel {
+    public canSubmit = ko.observable(false);
+    public canClose = ko.observable(true);
+    public groupOptions = ko.observableArray<string>();
+    public selectedGroup = ko.observable<string>();
+
+    private parent: SlotsTableViewModel;
+
+    constructor(parent: SlotsTableViewModel) {
+      this.parent = parent;
+      this.canSubmit = ko.observable(false);
+      this.canClose = ko.observable(true);
+      
+      let refreshCanSubmit = () => {
+        if (!this.selectedGroup()) {
+          this.canSubmit(false);
+        } else {
+          this.canSubmit(true);
+        }
+      };
+
+      this.selectedGroup.subscribe((v) => {
+        refreshCanSubmit();
+      });
+    }
+
+    public close() {
+      this.hide();
+    }
+
+    public show(groups: webapi.GroupTableRow[]) {
+      for (let group of groups) {
+        let option = group.name;
+        this.groupOptions.push(option);
+      }
+      $('#existingGroupModal').modal('show');
+    }
+
+    public hide() {
+      $('#existingGroupModal').modal('hide');
+    }
+
+    public async addToExistingGroup() {
+      // Add the slots to group
+      for (let row of this.parent.selectedRows()) {
+        let data = <SlotTableRow>row.data();
+        $.ajax({
+          url: `/groups/${this.selectedGroup()}/addSlots`,
+          type: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            passData: { id: data.id, name: data.name }
+          })
+        }).done(function (data) {
+          if (data.doneMsg.length) {
+            $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + data.doneMsg + '</div>');
+            location.reload();
+          }
+          if (data.errMsg.length) {
+            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + data.errorMsg + '</div>');
+          }
+        }).fail(function (jqXHR) {
+          $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
+          $('#existingGroupModal').modal('hide');
+        }).always(function () {
+          $('#existingGroupModal').modal('hide');
+        });
+      }
+    }
+  }
+
   const vm = new SlotsTableViewModel();
   ko.applyBindings(vm);
-  console.log('slots-table.ts 25');
   const slotColumns: datatablesutil.ColumnSettings[] = [
     {
       title: '',

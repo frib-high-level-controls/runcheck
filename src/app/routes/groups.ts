@@ -16,6 +16,7 @@ import {
   format,
   HttpStatus,
   RequestError,
+  findQueryParam,
 } from '../shared/handlers';
 
 import {
@@ -37,8 +38,13 @@ router.get('/slot', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.GroupTableRow[] = [];
-      const groups = await Group.find({ memberType: Slot.modelName }).exec();
+      let groupOwner = findQueryParam(req, 'SLOTAREA', false, false);
+
+      let groups = await Group.find({ memberType: Slot.modelName }).exec();
       for (let group of groups) {
+        if (groupOwner && group.owner !== groupOwner) {
+          continue;
+        }
         rows.push({
           id: group._id,
           name: group.name,
