@@ -155,7 +155,7 @@ function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
     if (typeof cfg.required === 'boolean') {
       subject.required = cfg.required;
     }
-    // HISTORY!!!
+    // TODO: HISTORY!!!
   }
 }
 
@@ -566,7 +566,9 @@ router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAcce
     targetId: targetId,
     targetType: targetType,
     checklistType: checklist.checklistType,
-    canEdit: false,
+    // If user can assign checklist,
+    // then they can edit checklist.
+    canEdit: true,
     subjects: webSubjects,
     statuses: [],
     approved: checklist.approved,
@@ -602,6 +604,7 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
   ]);
 
   let varRoles: Array<[string, string]>;
+  let ownerRole: string | undefined;
 
   switch (checklist.targetType) {
   case Device.modelName: {
@@ -626,6 +629,7 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   default:
@@ -698,8 +702,7 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
     targetId: checklist.targetId.toHexString(),
     targetType: checklist.targetType,
     checklistType: checklist.checklistType,
-    // editable: auth.hasAnyRole(req, [ 'SYS:RUNCHECK', ownerRole ]),
-    canEdit: false,
+    canEdit: auth.hasAnyRole(req, adminRoles, ownerRole),
     subjects: webSubjects,
     statuses: webStatuses,
     approved: checklist.approved,
