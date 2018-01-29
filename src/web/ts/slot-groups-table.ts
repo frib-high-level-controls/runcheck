@@ -60,7 +60,6 @@ $(() => {
 
   $('#slot-groups-table').DataTable({
     ajax: {
-      url: `${basePath}/groups/slot`,
       dataType: 'json',
       dataSrc: 'data',
     },

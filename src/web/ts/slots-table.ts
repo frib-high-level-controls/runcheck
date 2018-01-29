@@ -161,7 +161,6 @@ $(() => {
 
   $('#slots-table').DataTable({
     ajax: {
-      url: `${basePath}/slots`,
       dataType: 'json',
       dataSrc: 'data',
     },

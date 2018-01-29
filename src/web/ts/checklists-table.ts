@@ -353,7 +353,6 @@ $(WebUtil.wrapCatchAll0(async () => {
 
   try {
     pkg = await $.ajax({
-      url: `${basePath}/checklists`,
       dataType: 'json',
     });
   } catch (xhr) {

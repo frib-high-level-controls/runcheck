@@ -69,7 +69,6 @@ $(() => {
 
   $('#devices-table').DataTable({
     ajax: {
-      url: `${basePath}/devices`,
       dataType: 'json',
       dataSrc: 'data',
     },
