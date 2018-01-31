@@ -15,7 +15,7 @@ form
         - var status = statuses[subject.name]
         tr.form-group.cl-subject(id=subject.name)
           td.text-left.form-control-static
-            if status && (status.history.updates.length > 0)
+            if status && (status.history.length > 0)
               span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history
             else
               span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history.hidden
@@ -55,14 +55,32 @@ form
               .form-control-static.cl-subject-assignee UNASSIGNED
           td.text-left
             .form-control-static
-              if status && status.updateStatus === 'DONE'
+              if status && status.requestStatus === 'DONE'
                 //- span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL"
                 span.like-btn.text-success.fa.fa-check-circle.cl-subject-update-status
-              else if status && status.updateStatus === 'FAIL'
-                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.updateMessage)
+              else if status && status.requestStatus === 'FAIL'
+                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.requestMessage)
               else
                 span.like-btn.cl-subject-update-status
-          if status && (status.history.updates.length > 0)
+
+          for update in status.history
+            tr.cl-subject-history.hidden
+              td.text-center.text-primary
+                span.glyphicon.glyphicon-time
+                //-td.text-left.text-primary
+                  span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
+              td.text-left.text-primary
+                span(data-toggle='tooltip', title=moment(update.inputAt).format('MMM D YYYY, h:mm:ss A'))= moment(update.inputAt).fromNow()
+              td.text-center.text-primary
+                span= update.value
+              td.text-left.text-primary
+                span= update.comment || 'NONE'
+              td.text-left.text-primary
+                span= update.inputBy
+              td.text-left.text-primary
+                span &nbsp;
+
+          //- if status && (status.history.updates.length > 0)
             - var value = status.value || 'N';
             - var comment = status.comment || '';
             - var inputBy = status.inputBy || 'UNKNOWN';
