@@ -2,36 +2,233 @@
  * Utilities for loading, updating and displaying checklists.
  */
 
-/**
- * Type aliases can not be defined within a class definition,
- * these aliasses will instead be defined within a new namespace.
- */
-// tslint:disable:no-namespace
-namespace ChecklistUtil {
-  type ChecklistUpdateStatus = { updateStatus?: 'NONE' | 'DONE' | 'FAIL', updateMessage?: string };
-  export type ChecklistSubjectDetails = webapi.ChecklistSubjectDetails & ChecklistUpdateStatus;
+abstract class ChecklistRequestStatus {
+  public requestStatus?: 'NONE' | 'DONE' | 'FAIL';
+  public requestStatusMsg?: string;
+};
 
-  interface RequestStatus {
-    requestStatus?: 'NONE' | 'DONE' | 'FAIL';
-    requestMessage?: string;
+class ChecklistEditFormTableRow extends ChecklistRequestStatus {
+
+  public name: string;
+  public desc: string; // KnockoutObservable<string>;
+  public primary: boolean;
+  public required: boolean; // KnockoutObservable<boolean>;
+  public mandatory: boolean;
+  public assignees: string[]; // KnockoutObservableArray<string>;
+  public subject?: webapi.ChecklistSubjectDetails;
+
+  constructor(subject?: webapi.ChecklistSubjectDetails) {
+    super();
+    this.name = `C${Math.random().toString(16).substring(2, 10).toUpperCase()}`;
+    this.desc = ''; // ko.observable('');
+    this.primary = false;
+    this.required = false; // ko.observable(false);
+    this.mandatory = true;
+    this.assignees = []; // ko.observableArray<string>();
+    if (subject) {
+      this.updateFrom(subject);
+    }
+  };
+
+  public updateFrom(subject: webapi.ChecklistSubjectDetails) {
+    this.name = subject.name;
+    this.desc = subject.desc;
+    this.primary = subject.primary;
+    this.required = subject.required;
+    this.mandatory = subject.mandatory;
+    this.assignees = subject.assignees.slice();
+    this.subject = subject;
+  };
+
+  public isCustom(): boolean {
+    return Boolean(this.name.match(/C\w{8}/));
+  };
+
+  public isAddition(): boolean {
+    return Boolean(!this.subject);
+  }
+};
+
+
+class ChecklistEditFormViewModel {
+
+  private parent: ChecklistUtil;
+  private rows: ChecklistEditFormTableRow[];
+
+  constructor(parent: ChecklistUtil) {
+    this.parent = parent;
   }
 
-  export interface UpdateFormHistory {
-    value: string;
-    comment: string;
-    inputAt: Date;
-    inputBy: string;
-  }
+  public render(noUpdate?: boolean) {
+    // copy subjects for use in edit view model
+    if (!noUpdate) {
+      this.rows = [];
+      for (let subject of this.parent.checklist.subjects) {
+        this.rows.push(new ChecklistEditFormTableRow(subject));
+      }
+    }
+    this.parent.element.off().html(checklistConfigTemplate({
+      rows: this.rows,
+    }));
 
-  export interface UpdateFormTableRow extends RequestStatus {
-    // name: string;
-    // desc: string;
-    value: string;  // KnockoutObservable<string>;
-    comment: string; // KnockoutObservable<string>;
-    status?: webapi.ChecklistStatusDetails;
-    history: UpdateFormHistory[];
+    this.parent.element.find('.cl-subject-add').click(WebUtil.wrapCatchAll1((event) => {
+      let row = new ChecklistEditFormTableRow();
+      this.rows.push(row);
+
+      $(event.target).parents('tr').before(checklistConfigItemTemplate({
+        row: row,
+      }));
+    }));
+
+    this.parent.element.on('click', '.cl-subject-remove', WebUtil.wrapCatchAll1((event) => {
+      $(event.target).parents('tr:first').addClass('hidden');
+    }));
+
+    this.parent.element.on('click', '.cl-edit-cancel', WebUtil.wrapCatchAll1((event) => {
+      event.preventDefault();
+      this.parent.updateForm.render();
+    }));
+
+    this.parent.element.find('.cl-edit-save').click(WebUtil.wrapCatchAll1(async (event) => {
+      event.preventDefault();
+
+      for (let ridx = 0; ridx < this.rows.length; ridx += 1) {
+        let row = this.rows[ridx];
+        let e = $(`#${row.name}`);
+
+        let add = row.isAddition();
+        let remove = e.hasClass('hidden');
+        // ignore subjects added then removed before saving
+        if (remove && add) {
+          this.rows.splice(ridx, 1);
+          continue;
+        }
+
+        row.desc = String($(e).find('input.cl-subject-desc').val()
+                            || $(e).find('.cl-subject-desc').text()).trim();
+
+        row.assignees = String($(e).find('input.cl-subject-assignee').val()
+                                || $(e).find('.cl-subject-assignee').text()).split(',');
+        row.assignees = row.assignees.map((a) => a.trim()); // trim whitespace from each item
+
+        row.required = ($(e).find('.cl-subject-required:checked').length > 0);
+
+        // if (row.subject) {
+        //   console.log("%s ?== %s", row.desc, row.subject.desc);
+        //   console.log("%s ?== %s", row.required, row.subject.required);
+        //   console.log("%s ?== %s", row.assignees.join(','), row.subject.assignees.join(','));
+        // }
+
+        if (!add && !remove && row.subject
+            && (row.desc === row.subject.desc)
+            && (row.required === row.subject.required)
+            && (row.assignees.join(',') === row.subject.assignees.join(','))) {
+          row.requestStatus = 'NONE'; // clear the previous status
+          row.requestStatusMsg = '';
+          continue;
+        }
+
+        e.find('.cl.subject-update-status').addClass('fa fa-spinner fa-spin');
+
+        let pkg: webapi.Pkg<webapi.ChecklistSubjectDetails>;
+        if (add) {
+          // Create a new subject for the checklist
+          try {
+            pkg = await $.ajax({
+              url: `${basePath}/checklists/${this.parent.checklist.id}/subjects`,
+              contentType: 'application/json;charset=UTF-8',
+              data: JSON.stringify({
+                data: {
+                  desc: row.desc,
+                  required: row.required,
+                  assignees: row.assignees,
+                },
+              }),
+              method: 'POST',
+              dataType: 'json',
+            });
+          } catch (xhr) {
+            let message = 'Unknown error updating subject';
+            row.requestStatus = 'FAIL';
+            row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
+            continue;
+          }
+
+          // upate the parent view model
+          this.parent.checklist.subjects.push(pkg.data);
+          // re-sort the the subject list (in-place)
+          this.parent.checklist.subjects.sort((a, b) => {
+            return (a.order === b.order) ? 0 : (a.order < b.order) ? -1 : 1;
+          });
+          // update the local view model
+          row.updateFrom(pkg.data);
+          row.requestStatus = 'DONE';
+          row.requestStatusMsg = 'Success';
+
+        } else if (remove) {
+          // Remove an existing subject
+          row.requestStatus = 'FAIL';
+          row.requestStatusMsg = 'Subject remove not yet supported';
+
+        } else {
+          // Update and existing subject
+          try {
+            pkg = await $.ajax({
+              url: `${basePath}/checklists/${this.parent.checklist.id}/subjects/${row.name}`,
+              contentType: 'application/json;charset=UTF-8',
+              data: JSON.stringify({
+                data: {
+                  desc: row.desc,
+                  required: row.required,
+                  assignees: row.assignees,
+                },
+              }),
+              method: 'PUT',
+              dataType: 'json',
+            });
+          } catch (xhr) {
+            let message = 'Unknown error updating subject';
+            row.requestStatus = 'FAIL';
+            row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
+            continue;
+          }
+
+          for (let idx = 0; idx < this.parent.checklist.subjects.length; idx += 1) {
+            if (this.parent.checklist.subjects[idx].name === pkg.data.name) {
+              // update the parent view model
+              this.parent.checklist.subjects[idx] = pkg.data;
+              // update the local view model
+              row.updateFrom(pkg.data);
+              row.requestStatus = 'DONE';
+              row.requestStatusMsg = 'Success';
+            }
+          }
+        }
+      }
+
+      this.render(true);
+    }));
   }
+};
+
+
+class ChecklistUpdateFormHistory {
+  public value: string;
+  public comment: string;
+  public inputAt: moment.Moment;
+  public inputBy: string;
 }
+
+class ChecklistUpdateFormTableRow extends ChecklistRequestStatus {
+  // name: string;
+  // desc: string;
+  public value: string;  // KnockoutObservable<string>;
+  public comment: string; // KnockoutObservable<string>;
+  public status?: webapi.ChecklistStatusDetails;
+  public history: ChecklistUpdateFormHistory[];
+}
+
+
 
 // This class has been partially refactored to support future use of KnockoutJS.
 // At that time consider renaming to ChecklistViewModel.
@@ -90,184 +287,13 @@ class ChecklistUtil {
     return pkg.data;
   }
 
-
-  private static EditFormViewModel = class {
-
-    private parent: ChecklistUtil;
-    private subjects: ChecklistUtil.ChecklistSubjectDetails[] = [];
-
-    constructor(parent: ChecklistUtil) {
-      this.parent = parent;
-    }
-
-    public render(noUpdate?: boolean) {
-      // copy subjects for use in edit view model
-      if (!noUpdate) {
-        this.subjects = this.parent.checklist.subjects.slice();
-      }
-      this.parent.element.off().html(checklistConfigTemplate({
-        subjects: this.subjects,
-      }));
-
-      this.parent.element.find('.cl-subject-add').click(WebUtil.wrapCatchAll1((event) => {
-        // Create a placeholder subject
-        let subject: ChecklistUtil.ChecklistSubjectDetails = {
-          name: `T${Math.random().toString(16).substring(2, 10).toUpperCase()}`,
-          desc: '',
-          order: 0,
-          final: false,
-          primary: false,
-          required: true,
-          mandatory: true,
-          assignees: [],
-          canUpdate: true,
-        };
-        this.subjects.push(subject);
-
-        $(event.target).parents('tr').before(checklistConfigItemTemplate({
-          subject: subject,
-        }));
-      }));
-
-      this.parent.element.on('click', '.cl-subject-remove', WebUtil.wrapCatchAll1((event) => {
-        $(event.target).parents('tr:first').addClass('hidden');
-      }));
-
-      this.parent.element.on('click', '.cl-edit-cancel', WebUtil.wrapCatchAll1((event) => {
-        console.log("CANCEL!!");
-        this.parent.updateForm.render();
-      }));
-
-      this.parent.element.find('.cl-edit-save').click(WebUtil.wrapCatchAll1(async (event) => {
-        console.log("SAVE!!");
-        event.preventDefault();
-
-        for (let subject of this.subjects) {
-          let e = $(`#${subject.name}`);
-          let remove = e.hasClass('hidden');
-          let add = subject.name.match(/T\w{8}/);
-          console.log("%s, %s, %s", subject.name, add, remove);
-          // ignore subjected added then immediately removed
-          if (remove && add) {
-            // TODO: REMOVE from array!
-            console.log('IGNORE: %s', subject.name);
-            continue;
-          }
-
-          let desc = String($(e).find('input.cl-subject-desc').val()
-                              || $(e).find('.cl-subject-desc').text()).trim();
-
-          let assignees = String($(e).find('input.cl-subject-assignee').val()
-                                  || $(e).find('.cl-subject-assignee').text()).split(',');
-          assignees = assignees.map((a) => a.trim()); // trim whitespace from each item
-
-          let required = ($(e).find('.cl-subject-required:checked').length > 0);
-
-          if (!add && !remove && (subject.desc === desc) && (subject.required === required)
-                                   && (subject.assignees.join(',') === assignees.join(','))) {
-            console.log("SKIP IT!!");
-            subject.updateStatus = 'NONE';
-            continue;
-          }
-
-          subject.desc = desc;
-          subject.required = required;
-          subject.assignees = assignees;
-
-          e.find('.cl.subject-update-status').addClass('fa fa-spinner fa-spin');
-
-          let pkg: webapi.Pkg<webapi.ChecklistSubjectDetails>;
-          if (add) {
-            // Create a new subject for the checklist
-            try {
-              pkg = await $.ajax({
-                url: `${basePath}/checklists/${this.parent.checklist.id}/subjects`,
-                contentType: 'application/json;charset=UTF-8',
-                data: JSON.stringify({
-                  data: {
-                    desc: desc,
-                    required: required,
-                    assignees: assignees,
-                  },
-                }),
-                method: 'POST',
-                dataType: 'json',
-              });
-            } catch (xhr) {
-              let message = 'Unknown error updating subject';
-              subject.updateStatus = 'FAIL';
-              subject.updateMessage = WebUtil.unwrapPkgErrMsg(xhr, message);
-              continue;
-            }
-            // Update the local view model
-            for (let idx = 0; idx < this.subjects.length; idx += 1) {
-              if (this.subjects[idx].name === subject.name) {
-                subject = pkg.data;
-                subject.updateStatus = 'DONE';
-                subject.updateMessage = 'Success';
-                this.subjects[idx] = subject;
-              }
-            }
-            // Upate the parent view model
-            this.parent.checklist.subjects.push(subject);
-
-          } else if (remove) {
-            // Remove an existing subject
-            subject.updateStatus = 'FAIL';
-            subject.updateMessage = 'Subject remove not yet supported';
-
-          } else {
-            // Update and existing subject
-            try {
-              pkg = await $.ajax({
-                url: `${basePath}/checklists/${this.parent.checklist.id}/subjects/${subject.name}`,
-                contentType: 'application/json;charset=UTF-8',
-                data: JSON.stringify({
-                  data: {
-                    desc: desc,
-                    required: required,
-                    assignees: assignees,
-                  },
-                }),
-                method: 'PUT',
-                dataType: 'json',
-              });
-            } catch (xhr) {
-              let message = 'Unknown error updating subject';
-              subject.updateStatus = 'FAIL';
-              subject.updateMessage = WebUtil.unwrapPkgErrMsg(xhr, message);
-              continue;
-            }
-            // Update the local view model
-            for (let idx = 0; idx < this.subjects.length; idx += 1) {
-              if (this.subjects[idx].name === subject.name) {
-                subject = pkg.data;
-                subject.updateStatus = 'DONE';
-                subject.updateMessage = 'Success';
-                this.subjects[idx] = subject;
-              }
-            }
-            // update the parent view model
-            for (let idx = 0; idx < this.parent.checklist.subjects.length; idx += 1) {
-              if (this.parent.checklist.subjects[idx].name === subject.name) {
-                this.parent.checklist.subjects[idx] = subject;
-              }
-            }
-          }
-        }
-
-        this.render(true);
-      }));
-    }
-  };
-
   private static UpdateFormViewModel = class {
     //private static DEFAULT_STATUS_VALUE = 'N';
     //private static DEFAULT_STATUS_COMMENT = '';
 
     private parent: ChecklistUtil;
 
-    private rows: { [key: string]: ChecklistUtil.UpdateFormTableRow | undefined } = {};
+    private rows: { [key: string]: ChecklistUpdateFormTableRow | undefined } = {};
 
     constructor(parent: ChecklistUtil) {
       this.parent = parent;
@@ -278,7 +304,7 @@ class ChecklistUtil {
       if (!noUpdate) {
         this.rows = {};
         for (let subject of this.parent.checklist.subjects) {
-          let row: ChecklistUtil.UpdateFormTableRow | undefined;
+          let row: ChecklistUpdateFormTableRow | undefined;
           for (let status of this.parent.checklist.statuses) {
             if (subject.name === status.subjectName) {
               row = this.statusToRow(status);
@@ -358,7 +384,7 @@ class ChecklistUtil {
         event.preventDefault();
 
         for (let subject of this.parent.checklist.subjects) {
-          if (subject.canUpdate) {
+          if (subject.canUpdate && subject.mandatory && subject.required) {
             let e = $(`#${subject.name}`);
 
             let row = this.rows[subject.name];
@@ -373,12 +399,12 @@ class ChecklistUtil {
             if (row.status) {
               if ((row.status.value === row.value) && (row.status.comment === row.comment)) {
                 row.requestStatus = 'NONE';
-                row.requestMessage = '';
+                row.requestStatusMsg = '';
                 continue;
               }
             } else if ((row.value === 'N') && (row.comment === '')) {
               row.requestStatus = 'NONE';
-              row.requestMessage = '';
+              row.requestStatusMsg = '';
               continue;
             }
 
@@ -401,7 +427,7 @@ class ChecklistUtil {
             } catch (xhr) {
               pkg = xhr.responseJSON;
               let message = 'Unknown error updating checklist status';
-              row.requestMessage = WebUtil.unwrapPkgErrMsg(xhr, message);
+              row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
               row.requestStatus = 'FAIL';
               continue;
             }
@@ -410,7 +436,7 @@ class ChecklistUtil {
               if (this.parent.checklist.statuses[idx].subjectName === subject.name) {
                 this.parent.checklist.statuses[idx] = pkg.data;
                 this.statusToRow(pkg.data, row);
-                row.requestMessage = 'Success';
+                row.requestStatusMsg = 'Success';
                 row.requestStatus = 'DONE';
                 break;
               }
@@ -426,7 +452,7 @@ class ChecklistUtil {
       this.parent.element.removeClass('hidden');
     }
 
-    private statusToRow(status?: webapi.ChecklistStatusDetails, row?: ChecklistUtil.UpdateFormTableRow): ChecklistUtil.UpdateFormTableRow {
+    private statusToRow(status?: webapi.ChecklistStatusDetails, row?: ChecklistUpdateFormTableRow): ChecklistUpdateFormTableRow {
       // default status values (assume 'N' if no status is defined)
       let value = 'N';
       let comment = '';
@@ -444,7 +470,7 @@ class ChecklistUtil {
         return row;
       }
 
-      let history: ChecklistUtil.UpdateFormHistory[] = [];
+      let history: ChecklistUpdateFormHistory[] = [];
       for (let update of status.history.updates) {
         for (let path of update.paths) {
           if (path.name === 'value') {
@@ -462,7 +488,7 @@ class ChecklistUtil {
             value: value,
             comment: comment,
             inputBy: inputBy,
-            inputAt: moment(inputAt).toDate(),
+            inputAt: moment(inputAt),
           });
         } else {
           console.error('Checklist status history missing inputAt and/or inputBy paths');
@@ -477,11 +503,11 @@ class ChecklistUtil {
     }
   };
 
-  private element: JQuery<HTMLElement>;
-  private checklist: webapi.ChecklistDetails;
+  public element: JQuery<HTMLElement>;
+  public checklist: webapi.ChecklistDetails;
 
-  private editForm = new ChecklistUtil.EditFormViewModel(this);
-  private updateForm = new ChecklistUtil.UpdateFormViewModel(this);
+  public editForm = new ChecklistEditFormViewModel(this);
+  public updateForm = new ChecklistUtil.UpdateFormViewModel(this);
 
   constructor(element: JQuery<HTMLElement>, checklist: webapi.ChecklistDetails) {
     this.element = element;

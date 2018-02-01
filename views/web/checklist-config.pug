@@ -13,7 +13,7 @@ form
         th.text-left.col-md-4
           | &nbsp;
     tbody
-      for subject in subjects
+      for row in rows
         include checklist-config-item.pug
       tr
         td(colspan='5')
