@@ -1250,13 +1250,19 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePac
     if (status.comment !== comment) {
       status.comment = comment;
     }
+    status.inputBy = username;
+    status.inputAt = new Date();
+
   } else {
-    status = new ChecklistStatus(<IChecklistStatus> {
+    let doc: IChecklistStatus = {
       value: value,
       comment: comment,
       subjectName: name,
       checklistId: checklist._id,
-    });
+      inputBy: username,
+      inputAt: new Date(),
+    };
+    status = new ChecklistStatus(doc);
     statuses.push(status);
   }
 
@@ -1267,15 +1273,13 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePac
     // a change in status and then (possibly) re-approved
     // after the change in status is completed successful.
     // If a failure occurs during this process the
-    // checklist will be the more safe unapproved state.
+    // checklist will fail in the more safe unapproved state.
     if (checklist.approved) {
       debug('Save checklist with approval revoked (failsafe)');
       checklist.approved = false;
       await checklist.save();
     }
     debug('Save checklist status with history');
-    status.inputBy = username;
-    status.inputAt = new Date();
     await status.saveWithHistory(auth.formatRole('USR', username));
 
     debug('Save checklist with updated summary');
@@ -1292,7 +1296,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePac
   if (h.updates) {
     for (let update of h.updates) {
       webHistory.updates.push({
-        at: String(update.at),
+        at: update.at.toISOString(),
         by: update.by,
         paths: update.paths,
       });
