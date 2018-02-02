@@ -67,7 +67,7 @@ class ChecklistEditFormViewModel {
         this.rows.push(new ChecklistEditFormTableRow(subject));
       }
     }
-    this.parent.element.off().html(checklistConfigTemplate({
+    this.parent.element.off().html(checklistEditTemplate({
       rows: this.rows,
     }));
 
@@ -75,7 +75,7 @@ class ChecklistEditFormViewModel {
       let row = new ChecklistEditFormTableRow();
       this.rows.push(row);
 
-      $(event.target).parents('tr').before(checklistConfigItemTemplate({
+      $(event.target).parents('tr').before(checklistEditRowTemplate({
         row: row,
       }));
     }));
@@ -307,7 +307,7 @@ class ChecklistUpdateFormViewModel {
     }
 
     // render the pre-compiled template
-    this.parent.element.off().html(checklistInputTemplate({
+    this.parent.element.off().html(checklistUpdateTemplate({
       subjects: this.parent.checklist.subjects,
       statuses: this.rows,
     }));
