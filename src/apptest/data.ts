@@ -15,6 +15,11 @@ import {
 } from '../app/models/slot';
 
 import {
+  IGroup,
+  Group,
+} from '../app/models/group';
+
+import {
   ChecklistSubject,
   IChecklistSubject,
 } from '../app/models/checklist';
@@ -70,6 +75,50 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: 'MEDIUM',
     safetyLevel: 'CONTROL',
+  }, {
+    name: 'FE_TEST:DEVA_D0003',
+    desc: 'Test Slot #3',
+    area: 'ISF:LAB.DIV.FE',
+    deviceType: 'DEVA',
+    arr: 'ARR0X',
+    drr: 'DRR0X-0Y',
+    careLevel: 'MEDIUM',
+    safetyLevel: 'NORMAL',
+  }, {
+    name: 'FE_TEST:DEVA_D0004',
+    desc: 'Test Slot #4',
+    area: 'ADB:FRONT_END',
+    deviceType: 'DEVA',
+    arr: 'ARR0X',
+    drr: 'DRR0X-0Y',
+    careLevel: 'MEDIUM',
+    safetyLevel: 'NORMAL',
+    groupId: new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'),
+  }, {
+    name: 'FE_TEST:DEVA_D0002',
+    desc: 'Test Slot #2',
+    area: 'ADB:FRONT_END',
+    deviceType: 'DEVA',
+    arr: 'ARR0X',
+    drr: 'DRR0X-0Y',
+    careLevel: 'MEDIUM',
+    safetyLevel: 'CONTROL',
+  },
+];
+
+export const GROUPS: IGroup[] = [
+  {
+    name: 'FE_TEST:GROUP_1',
+    desc: 'Test Group #1',
+    owner: 'ADB:FRONT_END',
+    memberType: 'Slot',
+    safetyLevel: 'NORMAL',
+  }, {
+    name: 'FE_TEST:GROUP_2',
+    desc: 'Test Group #2',
+    owner: 'ADB:FRONT_END',
+    memberType: 'Slot',
+    safetyLevel: 'NORMAL',
   },
 ];
 
@@ -130,6 +179,10 @@ async function doInititialize(): Promise<void> {
 
   for (let slot of SLOTS) {
     await new Slot(slot).saveWithHistory('SYS:TEST');
+  }
+
+  for (let group of GROUPS) {
+    await new Group(group).saveWithHistory('SYS:TEST');
   }
 
   for (let subject of CL_SUBJECTS) {

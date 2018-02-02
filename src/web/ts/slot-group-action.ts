@@ -12,16 +12,13 @@ $(() => {
   */
   class GroupMemberTableViewModel {
     public deleteSlotButton = new DeleteSlotButtonViewModel(this);
-    // public newGroupModal = new NewGroupModalViewModel(this);
-    // public existingGroupButton = new ExistingGroupButtonViewModel(this);
-    // public existingGroupModal = new ExistingGroupModalViewModel(this);
+    public deleteSlotModal = new DeleteSlotModalViewModel(this);
     public selectedRows = ko.observableArray<DataTables.RowMethods>();
 
     constructor() {
       this.selectedRows.subscribe((rows) => {
         if (rows.length > 0) {
           this.deleteSlotButton.checkToShowButton(rows);
-          //this.existingGroupButton.checkToShowButton(rows);
         }
       })
     }
@@ -30,7 +27,7 @@ $(() => {
      */
     public selectRow(row: DataTables.RowMethods) {
       // Cast required here because 'object' type is used.
-      let data = <GroupMemberTableRow>row.data();
+      let data = <GroupMemberTableRow> row.data();
       data.selected = true;
       let added = false;
       let rows: DataTables.RowMethods[] = [];
@@ -57,7 +54,7 @@ $(() => {
      */
     public deselectRow(row: DataTables.RowMethods) {
       // Cast required here because 'object' type is used.
-      let data = <GroupMemberTableRow>row.data();
+      let data = <GroupMemberTableRow> row.data();
       data.selected = false;
       let removed = false;
       let rows: DataTables.RowMethods[] = [];
@@ -88,28 +85,64 @@ $(() => {
       // Check here for delete authorization
       this.canDelete(true);
     }
-      
+
     public deleteSlot() {
+      this.parent.deleteSlotModal.show();
+    }
+  }
+
+  class DeleteSlotModalViewModel {
+    public canSubmit = ko.observable(false);
+    public canClose = ko.observable(true);
+    private parent: GroupMemberTableViewModel;
+
+    constructor(parent: GroupMemberTableViewModel) {
+      this.parent = parent;
+      this.canSubmit = ko.observable(false);
+      this.canClose = ko.observable(true);
+    }
+
+    public show() {
+      this.canSubmit(true);
+      this.canClose(true);
+      $('#removeSlotModal').modal('show');
+    }
+
+    public close() {
+      $('#removeSlotModal').modal('hide');
+      location.reload();
+    }
+
+    public async deleteSlot() {
       for (let row of this.parent.selectedRows()) {
         let data = <GroupMemberTableRow> row.data();
-        $.ajax({
-          url: `/groups/${ group? group.id : '' }/removeSlots`,
-          type: 'POST',
-          contentType: 'application/json',
-          data: JSON.stringify({
-            passData: { id: data.id }
+        let pkg: webapi.Pkg<webapi.Slot>;
+        try {
+          pkg = await $.ajax({
+            url: `/groups/slot/${ group? group.id : '' }/members`,
+            type: 'DELETE',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              data: { id: data.id }
+            })
           })
-        }).done(function (data) {
-          if (data.doneMsg.length) {
-            $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + data.doneMsg + '</div>');
-            location.reload();
+        } catch (xhr) {
+          pkg = xhr.responseJSON;
+          let message = 'Unknown error adding slot';
+          if (pkg && pkg.error && pkg.error.message) {
+            message = pkg.error.message;
           }
-          if (data.errMsg.length) {
-            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + data.errorMsg + '</div>');
-          }
-        }).fail(function (jqXHR) {
-          $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
-        });
+          $('#message2').prepend(`
+            <div class="alert alert-danger">
+              <button class="close" data-dismiss="alert">x</button>
+              <span>${message}</span>
+            </div>
+          `).removeAttr('disabled');
+          return;
+        }
+        $('#message2').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + 'Slot ' + data.name + ' was deleted successfully. </div>');
+        //$('#slot-table').DataTable().ajax.reload();
       }
     }
   }
@@ -250,77 +283,4 @@ $(() => {
       vm.deselectRow(row);
     }
   }));
-// var passData;
-// $('#remove').click(function (e) {
-//   e.preventDefault();
-//   if ($('.row-selected').length == 0) {
-//     $('#message').append('<div class="alert alert-info"><button class="close" data-dismiss="alert">x</button>Please select at least one slot.</div>');
-//     return;
-//   }
-//   var selectedData = []; // no validation for removing, passData equals selectedData
-//   $('.row-selected').each(function() {
-//     var href = $(this).closest('tr').children().eq(1).children().attr('href');
-//     var name = $(this).closest('tr').children().eq(2).text();
-//     selectedData.push({
-//       id: href.split('/')[2],
-//       name: name
-//     });
-//   });
-//   passData = selectedData;
-
-//   $('#modalLabel').html('Remove Slots form current group?');
-//   var footer = '<button id="modal-submit" class="btn btn-primary" data-dismiss="modal">Confirm</button>' +
-//     '<button data-dismiss="modal" aria-hidden="true" class="btn" id="modal-cancel">Cancel</button>';
-//   $('#modal .modal-footer').html(footer);
-//   $('#modal').modal('show');
-// });
-
-// $('#modal').on('click','#modal-cancel',function (e) {
-//   e.preventDefault();
-//   reset();
-// });
-
-// $('#modal').on('click','#modal-submit',function (e) {
-//   e.preventDefault();
-//   var url = window.location.pathname + '/removeSlots';
-//   $.ajax({
-//     url: url,
-//     type: 'Post',
-//     contentType: 'application/json',
-//     data: JSON.stringify({
-//       passData: passData,
-//     })
-//   }).done(function (data) {
-//     if(data.doneMsg.length) {
-//       var s = '';
-//       for(var i = 0; i < data.doneMsg.length; i++){
-//         s =  s + data.doneMsg[i]+ '<br>';
-//       }
-//       $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' +  s +'</div>');
-//     }
-//     if(data.errMsg.length) {
-//       var es = '';
-//       for(i = 0; i < data.errMsg.length; i++){
-//         es =  es + data.errMsg[i]+ '<br>';
-//       }
-//       $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' +  es +'</div>');
-//     }
-//   }).fail(function (jqXHR) {
-//     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' +  jqXHR.responseText + '</div>');
-//   }).always(function() {
-//     $('#spec-slots-table').DataTable().ajax.reload();// reload table
-//     reset();
-//   });
-// });
-
-// function reset() {
-//   $('.modal-body').html( '<div class="panel"> ' +
-//     '<div class="panel-heading"></div> ' +
-//     '</div>' +
-//     '<form class="form-inline"> ' +
-//     '<label>Please select one slot group:</label> ' +
-//     '<select class="form-control"></select> ' +
-//     '</form>');
-//   passData = null;
-// }
 });

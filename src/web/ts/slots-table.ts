@@ -79,6 +79,7 @@ $(WebUtil.wrapCatchAll0(async () => {
   class NewGroupButtonViewModel {
     private parent: SlotsTableViewModel;
     public groupOwner: string;
+    public safetyLevel: string;
     public canCreate = ko.observable(false);
 
     constructor(parent: SlotsTableViewModel) {
@@ -112,13 +113,18 @@ $(WebUtil.wrapCatchAll0(async () => {
         } else {
           this.canCreate(true);
           this.groupOwner = dataFirstRow.area;
+          this.safetyLevel = dataFirstRow.safetyLevel;
         }
       }
     }
       
     public createNewGroup() {
       // Open the modal
-      this.parent.newGroupModal.show(this.groupOwner);
+      this.parent.newGroupModal.show(this.groupOwner, this.safetyLevel);
+    }
+
+    public disable() {
+      this.canCreate = ko.observable(false);
     }
   }
 
@@ -132,6 +138,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     public name = ko.observable<string>();
     public description = ko.observable<string>();
     public groupOwner = ko.observable<string>();
+    public safetyLevel = ko.observable<string>();
 
     private parent: SlotsTableViewModel;
 
@@ -157,10 +164,23 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public close() {
       this.hide();
+      //$('#slots-table').DataTable().ajax.reload();
+      location.reload();
     }
 
-    public show(groupOwner: string) {
+    public reset() {
+      this.groupOwner('');
+      this.safetyLevel('');
+      this.name('');
+      this.description('');
+      this.canSubmit(false);
+      this.canClose(true);
+    }
+
+    public show(groupOwner: string, safetyLevel: string) {
+      this.reset();
       this.groupOwner(groupOwner);
+      this.safetyLevel(safetyLevel);
       $('#newGroupModal').modal('show');
     }
 
@@ -169,45 +189,70 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public async createNewGroupandAddSlot() {
-      $.ajax({
-        url: '/groups/slotGroups/new',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-          passData: { name: this.name(), owner: this.groupOwner(), description: this.description(), memberType: 'Slot' }
+      let pkg: webapi.Pkg<webapi.Group>;
+      try {
+        pkg = await $.ajax({
+          url: '/groups/slot',
+          type: 'POST',
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            data: { name: this.name(), owner: this.groupOwner(), description: this.description(), safetyLevel: this.safetyLevel() }
+          })
         })
-      }).done(function (data, status, jqXHR) {
-        $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>Success: ' + jqXHR.responseText + '</div>');
-      }).fail(function (jqXHR) {
-        $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>Failed: ' + jqXHR.responseText + '</div>');
-        $('#newGroupModal').modal('hide');
-      });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = 'Unknown error creating new group';
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        $('#message').prepend(`
+          <div class="alert alert-danger">
+            <button class="close" data-dismiss="alert">x</button>
+            <span>${message}</span>
+          </div>
+        `).removeAttr('disabled');
+        return;
+      }
+      if (!pkg.data || !pkg.data.id) {
+        $('#message').prepend('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>Group creation failed. Missing ID. </div>');
+        return;
+      } 
+      $('#message').prepend('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>Group ' + pkg.data.name + 
+      ' created successfully. </div>');
      
       // Add the slots to created group
   
       for (let row of this.parent.selectedRows()) {
         let data = <SlotTableRow>row.data();
-        $.ajax({
-          url: `/groups/${this.name()}/addSlots`,
-          type: 'POST',
-          contentType: 'application/json',
-          data: JSON.stringify({
-            passData: { id: data.id, name: data.name }
-          })
-        }).done(function (data) {
-          if (data.doneMsg.length) {
-            $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + data.doneMsg + '</div>');
-            location.reload();
+        let slotpkg: webapi.Pkg<webapi.Slot>;
+        try {
+          slotpkg = await $.ajax({
+            url: `/groups/slot/${pkg.data.id}/members`,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              data: { id: data.id }
+            })
+          });
+        } catch (xhr) {
+          slotpkg = xhr.responseJSON;
+          let message = 'Unknown error creating new group';
+          if (slotpkg && slotpkg.error && slotpkg.error.message) {
+            message = slotpkg.error.message;
           }
-          if (data.errMsg.length) {
-            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + data.errorMsg + '</div>');
-          }
-        }).fail(function (jqXHR) {
-          $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
+          $('#message').prepend(`
+            <div class="alert alert-danger">
+              <button class="close" data-dismiss="alert">x</button>
+              <span>${message}</span>
+            </div>
+          `).removeAttr('disabled');
           $('#newGroupModal').modal('hide');
-        }).always(function () {
-          $('#newGroupModal').modal('hide');
-        });
+          return;
+        }
+        $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button> Slot ' + data.name + 
+        ' added to group ' + pkg.data.name + ' succesfully. </div>');
       }
     }
   }
@@ -251,10 +296,10 @@ $(WebUtil.wrapCatchAll0(async () => {
               url: '/groups/slot',
               type: 'GET',
               dataType: 'json',
-              data: { 'SLOTAREA': dataFirstRow.area },
+              data: { 'SLOTAREA': dataFirstRow.area, 'SAFETYLEVEL': dataFirstRow.safetyLevel },
             });
           } catch (err) {
-            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + 'Failed to get Groups' + err.responseText + '</div>');
+            $('#message').prepend('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + 'Failed to get Groups' + err.responseText + '</div>');
           }
         }
         if ((canadd === false) || (this.pkg.data.length === 0)) {
@@ -269,6 +314,10 @@ $(WebUtil.wrapCatchAll0(async () => {
       // Open the modal
       this.parent.existingGroupModal.show(this.pkg.data);
     }
+
+    public disable() {
+      this.canAdd =  ko.observable(false);
+    }
   }
 
   /**
@@ -279,11 +328,13 @@ $(WebUtil.wrapCatchAll0(async () => {
     public canClose = ko.observable(true);
     public groupOptions = ko.observableArray<string>();
     public selectedGroup = ko.observable<string>();
+    public groupOptionsObject: {name: string, id: string}[] = [];
 
     private parent: SlotsTableViewModel;
 
     constructor(parent: SlotsTableViewModel) {
       this.parent = parent;
+      this.groupOptionsObject = [];
       this.canSubmit = ko.observable(false);
       this.canClose = ko.observable(true);
       
@@ -302,12 +353,24 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public close() {
       this.hide();
+      //$('#slots-table').DataTable().ajax.reload();
+      location.reload();
+    }
+
+    public reset() {
+      this.selectedGroup('');
+      this.groupOptions([]);
+      this.groupOptionsObject = [];
+      this.canSubmit(false);
+      this.canClose(true);
     }
 
     public show(groups: webapi.GroupTableRow[]) {
+      this.reset();
       for (let group of groups) {
         let option = group.name;
         this.groupOptions.push(option);
+        this.groupOptionsObject.push({name: option, id: group.id});
       }
       $('#existingGroupModal').modal('show');
     }
@@ -320,27 +383,41 @@ $(WebUtil.wrapCatchAll0(async () => {
       // Add the slots to group
       for (let row of this.parent.selectedRows()) {
         let data = <SlotTableRow>row.data();
-        $.ajax({
-          url: `/groups/${this.selectedGroup()}/addSlots`,
-          type: 'POST',
-          contentType: 'application/json',
-          data: JSON.stringify({
-            passData: { id: data.id, name: data.name }
+        let selectedGroupId: string = '';
+        for (let g of this.groupOptionsObject) {
+          if (g.name === this.selectedGroup()) {
+            selectedGroupId = g.id;
+            break;
+          }
+        }
+
+        let pkg: webapi.Pkg<webapi.Slot>;
+        try {
+          pkg = await $.ajax({
+            url: `/groups/slot/${selectedGroupId}/members`,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              data: { id: data.id }
+            })
           })
-        }).done(function (data) {
-          if (data.doneMsg.length) {
-            $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + data.doneMsg + '</div>');
-            location.reload();
+        } catch (xhr) {
+          pkg = xhr.responseJSON;
+          let message = 'Unknown error adding slot';
+          if (pkg && pkg.error && pkg.error.message) {
+            message = pkg.error.message;
           }
-          if (data.errMsg.length) {
-            $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + data.errorMsg + '</div>');
-          }
-        }).fail(function (jqXHR) {
-          $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + jqXHR.responseText + '</div>');
-          $('#existingGroupModal').modal('hide');
-        }).always(function () {
-          $('#existingGroupModal').modal('hide');
-        });
+          $('#message2').prepend(`
+            <div class="alert alert-danger">
+              <button class="close" data-dismiss="alert">x</button>
+              <span>${message}</span>
+            </div>
+          `).removeAttr('disabled');
+          return;
+        }
+        $('#message2').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + 'Slot ' + data.name + 
+        ' added successfully to group ' + this.selectedGroup() + '</div>');
       }
     }
   }

@@ -44,7 +44,6 @@ block content
               button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canDelete')
                 | Delete from group
             .panel-title.pull-left Slots
-            //.btn.btn-primary.pull-right#addGroup +Add
           .panel-body
             .table-responsive
               table.table.table-condensed.table-bordered.table-hover#slot-table
@@ -58,6 +57,19 @@ block content
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled='disabled') Assign
           .panel-body.hidden#checklist-panel
+  .container
+    #removeSlotModal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: deleteSlotModal')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h4 Are you sure you want to delete this slot?
+          .modal-body
+            #message2
+            form.form-horizontal.clearfix
+              form-group
+                .col-sm-offset-2.col-sm-10.pull-right
+                  button.btn.btn-space.btn-primary(type='submit', data-bind='click: deleteSlot, enable: canSubmit') Confirm
+                  button.btn(type='submit', data-bind='click: close, enable: canClose') Close
 
   //-.panel.panel-default(style="margin-top: 10px")
     .panel-heading

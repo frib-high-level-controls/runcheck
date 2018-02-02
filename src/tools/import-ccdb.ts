@@ -602,6 +602,7 @@ async function main() {
       // Temporary value to pass validation
       owner: 'UNKNOWN',
       memberType: Slot.modelName,
+      safetyLevel: 'NORMAL',
     });
 
     try {

@@ -74,6 +74,7 @@ declare namespace webapi {
     id: string;
     name: string;
     desc: string;
+    safetyLevel?: string;
   }
 
   export interface GroupMemberTableRow {
@@ -138,6 +139,7 @@ declare namespace webapi {
     name: string;
     desc: string;
     owner: string;
+    safetyLevel?: string;
     checklistId: string | null;
   }
 

@@ -27,9 +27,9 @@ import {
   Device,
 } from '../models/device';
 
-// import {
-//   Group,
-// } from '../models/group';
+import {
+  Group,
+} from '../models/group';
 
 import {
   IInstall,
@@ -87,7 +87,11 @@ router.get('/', catchAll(async (req, res) => {
         Slot.find(conds).exec(),
         models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
       ]);
+
       for (let slot of slots) {
+        //Hack to display slots with area matching some existing group
+        let group = await Group.findOne({owner: slot.area}).exec();
+        if(group) {
         const row: webapi.SlotTableRow = {
           id: models.ObjectId(slot._id).toHexString(),
           name: slot.name,
@@ -111,6 +115,7 @@ router.get('/', catchAll(async (req, res) => {
         }
         rows.push(row);
       }
+    }
       res.json(<webapi.Pkg<webapi.SlotTableRow[]>> {
         data: rows,
       });
@@ -204,7 +209,6 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     },
   });
 }));
-
 
 /**
  * Assign a Checklist to the specified slot.
