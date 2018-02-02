@@ -989,7 +989,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
 
   if (pkg.data.required !== undefined) {
     if (typeof pkg.data.required !== 'boolean') {
-      throw new RequestError('Subject required is invalid', BAD_REQUEST);
+      throw new RequestError('Checklist Subject required is invalid', BAD_REQUEST);
     }
     let required = pkg.data.required;
     if (config) {
@@ -998,7 +998,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
       }
     } else if (subject.required !== required) {
       if (subject.mandatory) {
-        throw new RequestError('Subject is not editable', BAD_REQUEST);
+        throw new RequestError('Checklist subject is mandatory', BAD_REQUEST);
       }
       config = new ChecklistConfig(<IChecklistConfig> {
         required: required,
@@ -1011,17 +1011,17 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
 
   if (pkg.data.assignees !== undefined) {
     if (!Array.isArray(pkg.data.assignees)) {
-      throw new RequestError('Subject assignees are invalid', BAD_REQUEST);
+      throw new RequestError('Checklist subject assignees are invalid', BAD_REQUEST);
     }
 
     let assignees: string[] = [];
     for (let assignee of pkg.data.assignees) {
       if (typeof assignee !== 'string' || assignee === '') {
-        throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+        throw new RequestError(`Checklist subject assignee is empty`, BAD_REQUEST);
       }
       let role = auth.parseRole(assignee);
       if (!role) {
-        throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+        throw new RequestError(`Checklist subject assignee is invalid: ${assignee}`, BAD_REQUEST);
       }
       assignees.push(auth.formatRole(role));
     }
@@ -1030,8 +1030,8 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
         config.assignees = assignees;
       }
     } else if (!lodash.isEqual(subject.assignees, assignees)) {
-      if (subject.mandatory) {
-        throw new RequestError('Subject is not editable', BAD_REQUEST);
+      if (subject.primary) {
+        throw new RequestError('Checklist subject assignees are not editable', BAD_REQUEST);
       }
       config = new ChecklistConfig(<IChecklistConfig> {
         assignees: assignees,
