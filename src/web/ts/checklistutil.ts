@@ -220,13 +220,240 @@ class ChecklistUpdateFormHistory {
 }
 
 class ChecklistUpdateFormTableRow extends ChecklistRequestStatus {
+  private static DEFAULT_STATUS_VALUE = 'N';
+  private static DEFAULT_STATUS_COMMENT = '';
+
   // name: string;
   // desc: string;
   public value: string;  // KnockoutObservable<string>;
   public comment: string; // KnockoutObservable<string>;
   public status?: webapi.ChecklistStatusDetails;
   public history: ChecklistUpdateFormHistory[];
-}
+
+  constructor(status?: webapi.ChecklistStatusDetails) {
+    super();
+    this.value = ChecklistUpdateFormTableRow.DEFAULT_STATUS_VALUE;
+    this.comment = ChecklistUpdateFormTableRow.DEFAULT_STATUS_COMMENT;
+    this.history = [];
+    if (status) {
+      this.updateFrom(status);
+    }
+  }
+
+  public updateFrom(status: webapi.ChecklistStatusDetails) {
+    let value = ChecklistUpdateFormTableRow.DEFAULT_STATUS_VALUE;
+    let comment = ChecklistUpdateFormTableRow.DEFAULT_STATUS_COMMENT;
+    let inputAt: string | undefined;
+    let inputBy: string | undefined;
+
+    let history: ChecklistUpdateFormHistory[] = [];
+    for (let update of status.history.updates) {
+      for (let path of update.paths) {
+        if (path.name === 'value') {
+          value = String(path.value);
+        } else if (path.name === 'comment') {
+          comment = String(path.value);
+        } else if (path.name === 'inputBy') {
+          inputBy = String(path.value);
+        } else if (path.name === 'inputAt') {
+          inputAt = String(path.value);
+        }
+      }
+      if (inputBy && inputAt) {
+        history.push({
+          value: value,
+          comment: comment,
+          inputBy: inputBy,
+          inputAt: moment(inputAt),
+        });
+      } else {
+        console.error('Checklist status history missing inputAt and/or inputBy paths');
+      }
+    }
+
+    this.status = status;
+    this.value = status.value;
+    this.comment = status.comment;
+    this.history = history.reverse();
+  }
+};
+
+class ChecklistUpdateFormViewModel {
+  private parent: ChecklistUtil;
+
+  private rows: { [key: string]: ChecklistUpdateFormTableRow | undefined } = {};
+
+  constructor(parent: ChecklistUtil) {
+    this.parent = parent;
+  }
+
+  public render(noUpdate?: boolean) {
+
+    if (!noUpdate) {
+      this.rows = {};
+      for (let subject of this.parent.checklist.subjects) {
+        let row: ChecklistUpdateFormTableRow | undefined;
+        for (let status of this.parent.checklist.statuses) {
+          if (subject.name === status.subjectName) {
+            row = new ChecklistUpdateFormTableRow(status);
+            break;
+          }
+        }
+        if (!row) {
+          row = new ChecklistUpdateFormTableRow();
+        }
+        this.rows[subject.name] = row;
+      }
+    }
+
+    // render the pre-compiled template
+    this.parent.element.off().html(checklistInputTemplate({
+      subjects: this.parent.checklist.subjects,
+      statuses: this.rows,
+    }));
+
+    // enable checklist controls as permitted
+    for (let subject of this.parent.checklist.subjects) {
+      if (subject.canUpdate) {
+        let sel = this.parent.element.find(`#${subject.name} select`).removeAttr('disabled');
+        if (sel.val() === 'YC') {
+          this.parent.element.find(`#${subject.name} input`).removeAttr('disabled');
+        }
+      }
+    }
+
+    if (this.parent.checklist.canEdit) {
+      this.parent.element.find('.cl-update-edit').removeAttr('disabled');
+    }
+
+    this.parent.element.find('.cl-subject-status-value').each((idx, elem) => {
+      $(elem).change((evt) => {
+        let value = $(evt.target);
+        if (value.val() === 'YC') {
+          value.parents('.cl-subject').find('.cl-subject-status-comment').removeAttr('disabled');
+        } else {
+          value.parents('.cl-subject').find('.cl-subject-status-comment').attr('disabled', 'disabled');
+          value.parents('.cl-subject').find('.cl-subject-status-comment').val(''); // clear the comment
+        }
+        this.parent.element.find('.cl-update-save').removeAttr('disabled');
+      });
+    });
+
+    this.parent.element.find('.cl-subject-status-comment').each((idx, elem) => {
+      $(elem).keypress(WebUtil.wrapCatchAll1((evt) => {
+        this.parent.element.find('.cl-update-save').removeAttr('disabled');
+      }));
+    });
+
+    this.parent.element.on('click', '.cl-subject-show-history', WebUtil.wrapCatchAll1((event) => {
+      let btn = $(event.target).toggleClass('hidden');
+      let history = btn.parents('tr:first').next('.cl-subject-history');
+      while (history.length) {
+        history = history.toggleClass('hidden').next('.cl-subject-history');
+      }
+      btn.siblings('.cl-subject-hide-history').toggleClass('hidden');
+    }));
+
+    this.parent.element.on('click', '.cl-subject-hide-history', WebUtil.wrapCatchAll1((event) => {
+      let btn = $(event.target).toggleClass('hidden');
+      let history = btn.parents('tr:first').next('.cl-subject-history');
+      while (history.length) {
+        history = history.toggleClass('hidden').next('.cl-subject-history');
+      }
+      btn.siblings('.cl-subject-show-history').toggleClass('hidden');
+    }));
+
+    this.parent.element.on('click', '.cl-update-edit', WebUtil.wrapCatchAll1((event) => {
+      this.parent.editForm.render();
+    }));
+
+    this.parent.element.find('.cl-update-save').click(WebUtil.wrapCatchAll1(async (event) => {
+      event.preventDefault();
+
+      for (let subject of this.parent.checklist.subjects) {
+        if (subject.canUpdate && (subject.mandatory || subject.required)) {
+          let e = $(`#${subject.name}`);
+
+          let row = this.rows[subject.name];
+          if (!row) {
+            console.error('Row for subject not found: %s', subject.name);
+            continue;
+          }
+
+          row.value = String(e.find('.cl-subject-status-value').val());
+          row.comment = String(e.find('.cl-subject-status-comment').val());
+
+          // if (row.status) {
+          //   console.log('%s ?== %s', row.status.value, row.value);
+          //   console.log('%s ?== %s', row.status.comment, row.comment);
+          // }
+
+          if (row.status) {
+            if ((row.status.value === row.value) && (row.status.comment === row.comment)) {
+              row.requestStatus = 'NONE';
+              row.requestStatusMsg = '';
+              continue;
+            }
+          } else if ((row.value === 'N') && (row.comment === '')) {
+            row.requestStatus = 'NONE';
+            row.requestStatusMsg = '';
+            continue;
+          }
+
+          e.find('.cl.subject-update-status').addClass('fa fa-spinner fa-spin');
+
+          let pkg: webapi.Pkg<webapi.ChecklistStatusDetails>;
+          try {
+            pkg = await $.ajax({
+              url: `${basePath}/checklists/${this.parent.checklist.id}/statuses/${subject.name}`,
+              contentType: 'application/json;charset=UTF-8',
+              data: JSON.stringify({
+                data: {
+                  value: row.value,
+                  comment: row.comment,
+                },
+              }),
+              method: 'PUT',
+              dataType: 'json',
+            });
+          } catch (xhr) {
+            pkg = xhr.responseJSON;
+            let message = 'Unknown error updating checklist status';
+            row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
+            row.requestStatus = 'FAIL';
+            continue;
+          }
+
+          let found = false;
+          for (let idx = 0; idx < this.parent.checklist.statuses.length; idx += 1) {
+            if (this.parent.checklist.statuses[idx].subjectName === pkg.data.subjectName) {
+              // replace existing status
+              this.parent.checklist.statuses[idx] = pkg.data;
+              row.updateFrom(pkg.data);
+              row.requestStatus = 'DONE';
+              row.requestStatusMsg = 'Success';
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // add new status
+            this.parent.checklist.statuses.push(pkg.data);
+            row.updateFrom(pkg.data);
+            row.requestStatus = 'DONE';
+            row.requestStatusMsg = 'Success';
+          }
+        }
+      }
+
+      // re-render the template
+      this.render(true);
+    }));
+
+    // ensure the checklist is visible
+    this.parent.element.removeClass('hidden');
+  }
+};
 
 
 
@@ -287,227 +514,12 @@ class ChecklistUtil {
     return pkg.data;
   }
 
-  private static UpdateFormViewModel = class {
-    //private static DEFAULT_STATUS_VALUE = 'N';
-    //private static DEFAULT_STATUS_COMMENT = '';
-
-    private parent: ChecklistUtil;
-
-    private rows: { [key: string]: ChecklistUpdateFormTableRow | undefined } = {};
-
-    constructor(parent: ChecklistUtil) {
-      this.parent = parent;
-    }
-
-    public render(noUpdate?: boolean) {
-
-      if (!noUpdate) {
-        this.rows = {};
-        for (let subject of this.parent.checklist.subjects) {
-          let row: ChecklistUpdateFormTableRow | undefined;
-          for (let status of this.parent.checklist.statuses) {
-            if (subject.name === status.subjectName) {
-              row = this.statusToRow(status);
-              break;
-            }
-          }
-          if (!row) {
-            row = this.statusToRow();
-          }
-          this.rows[subject.name] = row;
-        }
-      }
-
-      // render the pre-compiled template
-      this.parent.element.off().html(checklistInputTemplate({
-        subjects: this.parent.checklist.subjects,
-        statuses: this.rows,
-        moment: moment,
-      }));
-
-      // enable checklist controls as permitted
-      for (let subject of this.parent.checklist.subjects) {
-        if (subject.canUpdate) {
-          let sel = this.parent.element.find(`#${subject.name} select`).removeAttr('disabled');
-          if (sel.val() === 'YC') {
-            this.parent.element.find(`#${subject.name} input`).removeAttr('disabled');
-          }
-        }
-      }
-
-      if (this.parent.checklist.canEdit) {
-        this.parent.element.find('.cl-update-edit').removeAttr('disabled');
-      }
-
-      this.parent.element.find('.cl-subject-status-value').each((idx, elem) => {
-        $(elem).change((evt) => {
-          let value = $(evt.target);
-          if (value.val() === 'YC') {
-            value.parents('.cl-subject').find('.cl-subject-status-comment').removeAttr('disabled');
-          } else {
-            value.parents('.cl-subject').find('.cl-subject-status-comment').attr('disabled', 'disabled');
-            value.parents('.cl-subject').find('.cl-subject-status-comment').val(''); // clear the comment
-          }
-          this.parent.element.find('.cl-update-save').removeAttr('disabled');
-        });
-      });
-
-      this.parent.element.find('.cl-subject-status-comment').each((idx, elem) => {
-        $(elem).keypress(WebUtil.wrapCatchAll1((evt) => {
-          this.parent.element.find('.cl-update-save').removeAttr('disabled');
-        }));
-      });
-
-      this.parent.element.on('click', '.cl-subject-show-history', WebUtil.wrapCatchAll1((event) => {
-        let btn = $(event.target).toggleClass('hidden');
-        let history = btn.parents('tr:first').next('.cl-subject-history');
-        while (history.length) {
-          history = history.toggleClass('hidden').next('.cl-subject-history');
-        }
-        btn.siblings('.cl-subject-hide-history').toggleClass('hidden');
-      }));
-
-      this.parent.element.on('click', '.cl-subject-hide-history', WebUtil.wrapCatchAll1((event) => {
-        let btn = $(event.target).toggleClass('hidden');
-        let history = btn.parents('tr:first').next('.cl-subject-history');
-        while (history.length) {
-          history = history.toggleClass('hidden').next('.cl-subject-history');
-        }
-        btn.siblings('.cl-subject-show-history').toggleClass('hidden');
-      }));
-
-      this.parent.element.on('click', '.cl-update-edit', WebUtil.wrapCatchAll1((event) => {
-        this.parent.editForm.render();
-      }));
-
-      this.parent.element.find('.cl-update-save').click(WebUtil.wrapCatchAll1(async (event) => {
-        event.preventDefault();
-
-        for (let subject of this.parent.checklist.subjects) {
-          if (subject.canUpdate && subject.mandatory && subject.required) {
-            let e = $(`#${subject.name}`);
-
-            let row = this.rows[subject.name];
-            if (!row) {
-              console.error('Row for subject not found: %s', subject.name);
-              continue;
-            }
-
-            row.value = String(e.find('.cl-subject-status-value').val());
-            row.comment = String(e.find('.cl-subject-status-comment').val());
-
-            if (row.status) {
-              if ((row.status.value === row.value) && (row.status.comment === row.comment)) {
-                row.requestStatus = 'NONE';
-                row.requestStatusMsg = '';
-                continue;
-              }
-            } else if ((row.value === 'N') && (row.comment === '')) {
-              row.requestStatus = 'NONE';
-              row.requestStatusMsg = '';
-              continue;
-            }
-
-            e.find('.cl.subject-update-status').addClass('fa fa-spinner fa-spin');
-
-            let pkg: webapi.Pkg<webapi.ChecklistStatusDetails>;
-            try {
-              pkg = await $.ajax({
-                url: `${basePath}/checklists/${this.parent.checklist.id}/statuses/${subject.name}`,
-                contentType: 'application/json;charset=UTF-8',
-                data: JSON.stringify({
-                  data: {
-                    value: row.value,
-                    comment: row.comment,
-                  },
-                }),
-                method: 'PUT',
-                dataType: 'json',
-              });
-            } catch (xhr) {
-              pkg = xhr.responseJSON;
-              let message = 'Unknown error updating checklist status';
-              row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
-              row.requestStatus = 'FAIL';
-              continue;
-            }
-
-            for (let idx = 0; idx < this.parent.checklist.statuses.length; idx += 1) {
-              if (this.parent.checklist.statuses[idx].subjectName === subject.name) {
-                this.parent.checklist.statuses[idx] = pkg.data;
-                this.statusToRow(pkg.data, row);
-                row.requestStatusMsg = 'Success';
-                row.requestStatus = 'DONE';
-                break;
-              }
-            }
-          }
-        }
-
-        // re-render the template
-        this.render(true);
-      }));
-
-      // ensure the checklist is visible
-      this.parent.element.removeClass('hidden');
-    }
-
-    private statusToRow(status?: webapi.ChecklistStatusDetails, row?: ChecklistUpdateFormTableRow): ChecklistUpdateFormTableRow {
-      // default status values (assume 'N' if no status is defined)
-      let value = 'N';
-      let comment = '';
-      let inputAt: string | undefined;
-      let inputBy: string | undefined;
-
-      if (!row) {
-        row = {
-          value: value,
-          comment: comment,
-          history: [],
-        };
-      }
-      if (!status) {
-        return row;
-      }
-
-      let history: ChecklistUpdateFormHistory[] = [];
-      for (let update of status.history.updates) {
-        for (let path of update.paths) {
-          if (path.name === 'value') {
-            value = String(path.value);
-          } else if (path.name === 'comment') {
-            comment = String(path.value);
-          } else if (path.name === 'inputBy') {
-            inputBy = String(path.value);
-          } else if (path.name === 'inputAt') {
-            inputAt = String(path.value);
-          }
-        }
-        if (inputBy && inputAt) {
-          history.push({
-            value: value,
-            comment: comment,
-            inputBy: inputBy,
-            inputAt: moment(inputAt),
-          });
-        } else {
-          console.error('Checklist status history missing inputAt and/or inputBy paths');
-        }
-      }
-
-      row.status = status;
-      row.value = status.value;
-      row.comment = status.comment;
-      row.history = history.reverse();
-      return row;
-    }
-  };
 
   public element: JQuery<HTMLElement>;
   public checklist: webapi.ChecklistDetails;
 
   public editForm = new ChecklistEditFormViewModel(this);
-  public updateForm = new ChecklistUtil.UpdateFormViewModel(this);
+  public updateForm = new ChecklistUpdateFormViewModel(this);
 
   constructor(element: JQuery<HTMLElement>, checklist: webapi.ChecklistDetails) {
     this.element = element;

@@ -59,7 +59,7 @@ form
                 //- span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL"
                 span.like-btn.text-success.fa.fa-check-circle.cl-subject-update-status
               else if status && status.requestStatus === 'FAIL'
-                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.requestMessage)
+                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.requestStatusMsg)
               else
                 span.like-btn.cl-subject-update-status
 
@@ -70,7 +70,7 @@ form
                 //-td.text-left.text-primary
                   span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
               td.text-left.text-primary
-                span(data-toggle='tooltip', title=moment(update.inputAt).format('MMM D YYYY, h:mm:ss A'))= moment(update.inputAt).fromNow()
+                span(data-toggle='tooltip', title=update.inputAt.format('MMM D YYYY, h:mm:ss A'))= update.inputAt.fromNow()
               td.text-center.text-primary
                 span= update.value
               td.text-left.text-primary
