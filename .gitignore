@@ -76,3 +76,6 @@ npm-debug.log
 
 # Ignore configuration files
 /config/
+
+# Ignore test coverage results
+/.nyc_output

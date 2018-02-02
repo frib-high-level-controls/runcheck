@@ -7,6 +7,8 @@
     "grunt": "./node_modules/.bin/grunt",
     "bower": "./node_modules/.bin/bower",
     "mocha": "./node_modules/.bin/mocha",
+    "nyc": "./node_modules/.bin/nyc",
+    "nyc-mocha": "./node_modules/.bin/nyc ./node_modules/.bin/mocha",
     "pug": "./node_modules/.bin/pug",
     "pug-lint": "./node_modules/.bin/pug-lint",
     "postinstall": "cd ./public && npm install"
@@ -78,6 +80,7 @@
     "load-grunt-tasks": "3.5.2",
     "mocha": "^4.0.1",
     "mysql": "^2.14.1",
+    "nyc": "^11.4.1",
     "power-assert": "1.4.1",
     "pug-cli": "^1.0.0-alpha6",
     "pug-lint": "2.3.0",
