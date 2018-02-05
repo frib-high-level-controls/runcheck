@@ -23,6 +23,9 @@ $(WebUtil.wrapCatchAll0(async () => {
         if (rows.length > 0) {
           this.newGroupButton.checkToShowButton(rows);
           this.existingGroupButton.checkToShowButton(rows);
+        } else {
+          this.newGroupButton.disable();
+          this.existingGroupButton.disable();
         }
       })
     }
@@ -50,7 +53,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       } else {
         this.selectedRows.push(row);
       }
-      console.log("SELECTED ROWS: %s", this.selectedRows().length);
+      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
     }
 
     /**
@@ -72,7 +75,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       if (removed) {
         this.selectedRows(rows);
       }
-      console.log("SELECTED ROWS: %s", this.selectedRows().length);
+      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
     }
   }
 
@@ -124,7 +127,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public disable() {
-      this.canCreate = ko.observable(false);
+      this.canCreate(false);
     }
   }
 
@@ -316,7 +319,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public disable() {
-      this.canAdd =  ko.observable(false);
+      this.canAdd(false);
     }
   }
 

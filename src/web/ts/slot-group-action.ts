@@ -19,6 +19,8 @@ $(() => {
       this.selectedRows.subscribe((rows) => {
         if (rows.length > 0) {
           this.deleteSlotButton.checkToShowButton(rows);
+        } else {
+          this.deleteSlotButton.disable();
         }
       })
     }
@@ -88,6 +90,10 @@ $(() => {
 
     public deleteSlot() {
       this.parent.deleteSlotModal.show();
+    }
+
+    public disable() {
+      this.canDelete(false);
     }
   }
 
