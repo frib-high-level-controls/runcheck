@@ -11,44 +11,12 @@ import * as request from 'supertest';
 import * as app from './app';
 import * as data from './data';
 
-
-// Utility to get an authenticated agent for the specified user.
-async function requestFor(app: express.Application, username?: string, password?: string) {
-  const agent = request.agent(app);
-  if (username) {
-    await agent
-      .get('/login')
-      .auth(username, password || 'Pa5w0rd')
-      .expect(302);
-  }
-  return agent;
-};
+import {
+  expectPackage,
+  requestFor,
+} from './shared/testing';
 
 
-// TODO: Make this into a utility
-function expectPackage(data?: {}) {
-  return (res: request.Response) => {
-    if (res.status < 300 || res.status >= 400) {
-      let pkg = <webapi.Pkg<{}>> res.body;
-      assert.isObject(pkg);
-      if (res.status < 300) {
-        assert.isObject(pkg.data);
-        assert.isUndefined(pkg.error);
-        if (data) {
-          // For some reason this function, deepInclude(),
-          // is not in the type definitions (@types/chai@4.0.5)!
-          (<any> assert).deepInclude(pkg.data, data);
-        }
-      } else {
-        assert.isObject(pkg.error);
-        assert.isNumber((<any> pkg.error).code);
-        assert.isString((<any> pkg.error).message);
-        assert.isNotEmpty((<any> pkg.error).message);
-        console.error((<any> pkg.error).message);
-      }
-    }
-  };
-};
 
 describe('Test Checklist routes', () => {
 
