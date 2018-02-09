@@ -476,6 +476,7 @@ async function main() {
     info('Importing slot: %s', row.name);
     let slot = new Slot();
     slot.name = row.name;
+    slot.desc = row.description;
     slot.deviceType = row.type;
 
     let props = {};
