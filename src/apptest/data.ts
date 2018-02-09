@@ -143,17 +143,17 @@ const CL_SUBJECTS: IChecklistSubject[] = [
 ];
 
 
-let initialized: Promise<void> | undefined;
+// let initialized: Promise<void> | undefined;
 
-export function initialize(): Promise<void> {
-  if (initialized) {
-    return initialized;
-  }
-  initialized = doInititialize();
-  return initialized;
-};
+export async function initialize(): Promise<void> {
+//   if (initialized) {
+//     return initialized;
+//   }
+//   initialized = doInititialize();
+//   return initialized;
+// };
 
-async function doInititialize(): Promise<void> {
+// async function doInititialize(): Promise<void> {
   // clear the database
   await mongoose.connection.db.dropDatabase();
 
