@@ -202,7 +202,7 @@ function subVarRoles(roles: string[], varRoles: Array<[string, string]>): string
 };
 
 
-export const router = express.Router({strict: true});
+export const router = express.Router();
 
 /**
  * Get list of checklists for either SLOT, DEVICE, SLOTGROUP or everything.

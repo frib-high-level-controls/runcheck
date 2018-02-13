@@ -74,7 +74,7 @@ function getPermissions(req: express.Request, slot: Slot) {
 };
 
 
-export const router = express.Router({strict: true});
+export const router = express.Router();
 
 router.get('/slots', catchAll(async (req, res) => {
   format(res, {

@@ -62,7 +62,7 @@ function getPermissions(req: express.Request, device: Device) {
 
 
 
-export const router = express.Router({strict: true});
+export const router = express.Router();
 
 /**
  * Get the list view of devices (HTML) or list of devices (JSON).

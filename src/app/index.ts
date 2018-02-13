@@ -11,7 +11,6 @@ import favicon = require('serve-favicon');
 import mongoose = require('mongoose');
 import morgan = require('morgan');
 import session = require('express-session');
-import slash = require('express-slash');
 
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
@@ -158,7 +157,6 @@ async function doStart(): Promise<express.Application> {
   let [name, version] = await readNameVersion();
   app.set('name', name);
   app.set('version', version);
-  app.set('strict routing', true);
 
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (task.getState() !== 'STARTED') {
@@ -365,9 +363,6 @@ async function doStart(): Promise<express.Application> {
   app.use(slots.router);
   app.use(groups.router);
   app.use(checklists.router);
-
-  // redirect unmatched paths with or without trailing slash
-  app.use(slash());
 
   // no handler found for request (404)
   app.use(handlers.notFoundHandler());

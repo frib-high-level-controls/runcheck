@@ -43,7 +43,7 @@ export function setAdminRoles(roles: string[]) {
   adminRoles = Array.from(roles);
 }
 
-export const router = express.Router({strict: true});
+export const router = express.Router();
 
 router.get('/groups/slot', catchAll(async (req, res) => {
   format(res, {
