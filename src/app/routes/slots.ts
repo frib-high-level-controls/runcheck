@@ -43,6 +43,16 @@ const debug = dbg('runcheck:slots');
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
+let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
+
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
+
 /**
  * Compute the permissions of the current user for the specified slot.
  *
@@ -50,16 +60,16 @@ const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
  * @param slot Model
  */
 function getPermissions(req: express.Request, slot: Slot) {
-  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
-  const assign = auth.hasAnyRole(req, roles);
-  const install = assign;
+  const ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+  const assignRoles = [ ownerRole ].concat(adminRoles);
+  const assign = auth.hasAnyRole(req, assignRoles);
   if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
-    debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
+    debug('PERM: ASSIGN: %s (%s)', assign, assignRoles.join(' | '));
+    debug('PERM: INSTALL: %s (%s)', assign, assignRoles.join(' | '));
   }
   return {
     assign: assign,
-    install: install,
+    install: assign, // currently permission 'install' same as 'assign'
   };
 };
 

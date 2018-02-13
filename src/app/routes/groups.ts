@@ -33,6 +33,16 @@ import {
 
 const debug = dbg('runcheck:groups');
 
+let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
+
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
+
 export const router = express.Router({strict: true});
 
 router.get('/groups/slot', catchAll(async (req, res) => {

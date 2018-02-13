@@ -32,6 +32,16 @@ import {
 
 const debug = dbg('runcheck:devices');
 
+let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
+
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
+
 /**
  * Compute the permissions of the current user for the specified device.
  *
@@ -39,14 +49,14 @@ const debug = dbg('runcheck:devices');
  * @param slot Model
  */
 function getPermissions(req: express.Request, device: Device) {
-  const ADMIN_ROLE = 'ADM:RUNCHECK';
-  const DEPT_LEADER_ROLE = auth.formatRole('GRP', device.dept, 'LEADER');
-  const PERM_ASSIGN_ROLES = [ ADMIN_ROLE, DEPT_LEADER_ROLE ];
+  const ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+  const assignRoles = [ ownerRole ].concat(adminRoles);
+  const assign = auth.hasAnyRole(req, assignRoles);
   if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', auth.hasAnyRole(req, PERM_ASSIGN_ROLES), PERM_ASSIGN_ROLES.join(' | '));
+    debug('PERM: ASSIGN: %s (%s)', assign, assignRoles.join(' | '));
   }
   return {
-    assign: auth.hasAnyRole(req, PERM_ASSIGN_ROLES),
+    assign: assign,
   };
 };
 

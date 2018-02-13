@@ -70,7 +70,7 @@ const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-let adminRoles: string[] = [ 'ADM:RUNCHECK' ];
+let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
 
 export function getAdminRoles(): string[] {
   return Array.from(adminRoles);
