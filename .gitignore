@@ -68,7 +68,7 @@ npm-debug.log
 # Ignore grunt-ts crumb
 .baseDir.ts
 
-# Ignore build directories
+# Ignore build directory
 /app/
 /public/js
 /tools/
