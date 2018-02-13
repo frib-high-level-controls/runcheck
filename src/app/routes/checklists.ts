@@ -451,7 +451,7 @@ router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAcce
       }
       varRoles.push(getVarRoles(device));
     }
-    targetId = slot.id;
+    targetId = String(slot.id);
     targetType = Slot.modelName;
     checklistId = slot.checklistId;
     checklistType = getSlotChecklistType(slot.safetyLevel);
@@ -464,7 +464,7 @@ router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAcce
     if (!device || !device.id) {
       throw new RequestError('Checklist target (device) not found', BAD_REQUEST);
     }
-    targetId = device.id;
+    targetId = String(device.id);
     targetType = Device.modelName;
     checklistType = getDeviceChecklistType();
     checklistId = device.checklistId;
@@ -478,7 +478,7 @@ router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAcce
     if (!group || !group.id) {
       throw new RequestError('Checklist target (group) not found', BAD_REQUEST);
     }
-    targetId = group.id;
+    targetId = String(group.id);
     targetType = Group.modelName;
     checklistId = group.checklistId;
     switch (group.memberType) {
