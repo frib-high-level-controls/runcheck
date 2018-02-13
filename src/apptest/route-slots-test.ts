@@ -6,27 +6,19 @@
 
 import { AssertionError } from 'assert';
 
-import { assert } from 'chai';
 import * as express from 'express';
-import * as request from 'supertest';
 
 import { Device } from '../app/models/device';
 import { Slot } from '../app/models/slot';
 
+import {
+  expectPackage,
+  requestFor,
+} from './shared/testing';
+
 import * as app from './app';
 import * as data from './data';
 
-// Utility to get an authenticated agent for the specified user.
-async function requestFor(app: express.Application, username?: string, password?: string) {
-  const agent = request.agent(app);
-  if (username) {
-    await agent
-      .get('/login')
-      .auth(username, password || 'Pa5w0rd')
-      .expect(302);
-  }
-  return agent;
-};
 
 async function getSlotNameOrId(r: { name: string, by: string }) {
   if (r.by === 'ID') {
@@ -47,28 +39,6 @@ async function getDeviceId(r: { device: string }) {
   return device.id;
 }
 
-function expectPackage(data?: {}) {
-  return (res: request.Response) => {
-    if (res.status < 300 || res.status >= 400) {
-      let pkg = <webapi.Pkg<{}>> res.body;
-      assert.isObject(pkg);
-      if (res.status < 300) {
-        assert.isObject(pkg.data);
-        assert.isUndefined(pkg.error);
-        if (data) {
-          // For some reason this function, deepInclude(),
-          // is not in the type definitions (@types/chai@4.0.5)!
-          (<any> assert).deepInclude(pkg.data, data);
-        }
-      } else {
-        assert.isObject(pkg.error);
-        assert.isNumber((<any> pkg.error).code);
-        assert.isString((<any> pkg.error).message);
-        assert.isNotEmpty((<any> pkg.error).message);
-      }
-    }
-  };
-}
 
 describe('Test slot routes', () => {
 
@@ -114,31 +84,6 @@ describe('Test slot routes', () => {
     }
   });
 
-  describe('Assign checklist before device installation', () => {
-    let table = [
-      // User unauthenticated
-      { name: 'FE_TEST:DEVA_D0001', user: '', status: 302, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: '', status: 302, by: 'ID' },
-      // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
-      // Device not installed
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
-    ];
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getSlotNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        return agent
-          .put(`/slots/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-      });
-    }
-  });
-
   describe('Install device', () => {
     let table = [
       // User unauthenticated
@@ -175,39 +120,10 @@ describe('Test slot routes', () => {
           .send({ data: {
               installDeviceId: deviceId,
               installDeviceOn: row.date,
-            }
+            },
           })
           .expect(row.status)
           .expect(expectPackage({ installDeviceOn: row.date }));
-      });
-    }
-  });
-
-  describe('Assign checklist after device installation', () => {
-    let table = [
-      // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: '',     status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: '',     status: 403, by: 'ID' },
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', status: 403, by: 'ID' },
-      // Assign OK
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 201, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 201, by: 'ID' },
-      // Already assigned
-      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, by: 'name' },
-      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', status: 400, by: 'ID' },
-    ];
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getSlotNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        await agent
-          .put(`/slots/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-
-        // TODO: Confirm the checklist TYPE!!
       });
     }
   });

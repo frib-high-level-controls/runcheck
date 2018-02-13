@@ -7,13 +7,16 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
+export type ChecklistType =  'DEVICE-DEFAULT' | 'SLOT-DEFAULT' | 'SLOT-CREDITED' | 'SLOT-ESHIMPACT';
+
 export interface IChecklistSubject {
-  checklistId: ObjectId | null;
-  checklistType: 'device-default' | 'slot-default';
+  checklistId?: ObjectId;
+  checklistType: ChecklistType;
   name: string;
   desc: string;
   order: number;
   final: boolean;
+  primary: boolean;
   required: boolean;
   mandatory: boolean;
   assignees: string[];
@@ -21,12 +24,12 @@ export interface IChecklistSubject {
 
 export interface ChecklistSubject extends IChecklistSubject, history.Document<ChecklistSubject> {
   applyCfg(cfg: ChecklistConfig): void;
+  isCustom(): boolean;
 };
 
 export interface IChecklistConfig {
   checklistId: ObjectId;
   subjectName: string;
-  name?: string;
   required?: boolean;
   assignees?: string[];
 }
@@ -40,18 +43,21 @@ export interface IChecklistStatus {
   subjectName: string;
   value: string;
   comment: string;
-  inputOn: Date;
+  inputAt: Date;
   inputBy: string;
 };
 
 export interface ChecklistStatus extends IChecklistStatus, history.Document<ChecklistStatus> {
-  // no additional methods
+  isApproved(withComment?: boolean): boolean;
 };
 
 export interface IChecklist {
-  checklistType: 'device-default' | 'slot-default';
+  checklistType: ChecklistType;
   targetType: string;
   targetId: ObjectId;
+  approved: boolean;
+  checked: number;
+  total: number;
 };
 
 export interface Checklist extends IChecklist, mongoose.Document {
@@ -65,13 +71,80 @@ const ObjectId = Schema.Types.ObjectId;
 
 export const CHECKLIST_VALUES = ['N', 'Y', 'YC'];
 
-export const CHECKLIST_TYPES = ['device-default', 'slot-default'];
+export const CHECKLIST_TYPES = ['DEVICE-DEFAULT', 'SLOT-DEFAULT', 'SLOT-CREDITED', 'SLOT-ESHIMPACT'];
 
+export function isChecklistValueValid(value?: string): boolean {
+  return value ? CHECKLIST_VALUES.includes(value) : false;
+};
+
+export function isChecklistValueApproved(value?: string, withComment?: boolean): boolean {
+  return (value === 'YC') || (!withComment && (value === 'Y'));
+};
+
+/**
+ * Summarize the status of the checklist, including final approval.
+ */
+// tslint:disable:max-line-length
+export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSubject[], configs: ChecklistConfig[], statuses: ChecklistStatus[], apply?: boolean): boolean {
+  let total = 0;
+  let checked = 0;
+  let finalsTotal = 0;
+  let finalsChecked = 0;
+
+  for (let subject of subjects) {
+    if (checklist.checklistType === subject.checklistType) {
+
+      let config: ChecklistConfig | undefined;
+      for (let c of configs) {
+        if (checklist._id.equals(c.checklistId) && (subject.name === c.subjectName)) {
+          config = c;
+          break;
+        }
+      }
+
+      let status: ChecklistStatus | undefined;
+      for (let s of statuses) {
+        if (checklist._id.equals(s.checklistId) && (subject.name === s.subjectName)) {
+          status = s;
+          break;
+        }
+      }
+
+      // Careful to check the the config 'required' property is actually defined!
+      if (subject.mandatory ||
+          ((!config || config.required === undefined) && subject.required) ||
+            ((config && config.required !== undefined) && config.required)) {
+        total += 1;
+        if (subject.final) {
+          finalsTotal += 1;
+        }
+        if (status && isChecklistValueApproved(status.value)) {
+          checked += 1;
+          if (subject.final) {
+            finalsChecked += 1;
+          }
+        }
+      }
+    }
+  }
+  let approved = (finalsChecked === finalsTotal);
+
+  if (apply) {
+    checklist.approved = approved;
+    checklist.checked = checked;
+    checklist.total = total;
+  }
+
+  return approved;
+};
 
 // A checklist is a list of responses for various subjects:
 //  targetType: the type of the object to which this checklist belongs
 //  targetId: the object to which this checklist belongs
 //  type: the type of this checklist
+//  checked: the number of subjects that are approved
+//  total:  the total number of subjects for this checklist
+//  approved: the approval status of the checklist
 const checklistSchema = new Schema({
   checklistType: {
     type: String,
@@ -87,17 +160,20 @@ const checklistSchema = new Schema({
     refPath: 'targetType',
     required: true,
   },
-  // Consider adding checklist completion information from device
-  // , checkedValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0
-  // },
-  // totalValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0
-  // }
+  approved: {
+    type: Boolean,
+    default: false,
+  },
+  checked: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  total: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
 });
 
 
@@ -109,19 +185,21 @@ export const Checklist = mongoose.model<Checklist>('Checklist', checklistSchema)
 
 
 // A checklistSubject represents single item of a checklist:
-//   type: the checklist type to which this item belongs
-//   subject: name of the subject of this checklist item
-//   checklist: the specific checklist to which this item belongs
+//   type: the checklist type to which this subject belongs
+//   name: name of the subject
+//   desc: description of the subject
+//   checklistId: the specific checklist to which this subject belongs
 //   order: the order in which this item should be rendered
-//   assignee: the roles to which this item is assigned
-//   required: indicates if this item must be completed
-//   mandatory: indicates if this item must be required
+//   assignees: the roles to which this subject is assigned
+//   required: indicates if this subject must be completed
+//   mandatory: indicates if this subject must be required
+//   primary: indicates if this subject is the primary for the checklist
 //   final: indicates of this item finalizes the checklist
 const checklistSubjectSchema = new Schema({
   checklistId: {
     type: ObjectId,
     ref: Checklist.modelName,
-    default: null,
+    required: false,
   },
   checklistType: {
     type: String,
@@ -152,62 +230,53 @@ const checklistSubjectSchema = new Schema({
     type: Boolean,
     required: true,
   },
+  primary: {
+    type: Boolean,
+    required: true,
+  },
   final: {
     type: Boolean,
     required: true,
   },
 });
 
-
-checklistSubjectSchema.statics.applyCfg = function(sub: ChecklistSubject, cfg: ChecklistConfig) {
-  if (sub && cfg) {
-    if (typeof cfg.name === 'string') {
-      sub.name = cfg.name;
-    }
+checklistSubjectSchema.methods.applyCfg = function(this: ChecklistSubject, cfg?: ChecklistConfig): void {
+  if (cfg) {
     if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
-      sub.assignees = Array.from(cfg.assignees);
+      this.assignees = Array.from(cfg.assignees);
     }
     if (typeof cfg.required === 'boolean') {
-      sub.required = cfg.required;
+      this.required = cfg.required;
     }
     if (cfg.history.updatedAt) {
-      if (!sub.history.updatedAt || cfg.history.updatedAt > sub.history.updatedAt) {
-        sub.history.updatedAt = cfg.history.updatedAt;
-        sub.history.updatedBy = cfg.history.updatedBy;
+      if (!this.history.updatedAt || cfg.history.updatedAt > this.history.updatedAt) {
+        this.history.updatedAt = cfg.history.updatedAt;
+        this.history.updatedBy = cfg.history.updatedBy;
       }
     }
     if (cfg.history && Array.isArray(cfg.history.updateIds)) {
-      if (sub.history && Array.isArray(sub.history.updateIds)) {
-        sub.history.updateIds = sub.history.updateIds.concat(cfg.history.updateIds);
+      if (this.history && Array.isArray(this.history.updateIds)) {
+        this.history.updateIds = this.history.updateIds.concat(cfg.history.updateIds);
       } else {
-        sub.history.updateIds = Array.from(cfg.history.updateIds);
+        this.history.updateIds = Array.from(cfg.history.updateIds);
       }
     }
     if (Array.isArray(cfg.history.updates)) {
-      if (Array.isArray(sub.history.updates)) {
-        sub.history.updates = sub.history.updates.concat(cfg.history.updates);
+      if (Array.isArray(this.history.updates)) {
+        this.history.updates = this.history.updates.concat(cfg.history.updates);
       } else {
-        sub.history.updates = Array.from(cfg.history.updates);
+        this.history.updates = Array.from(cfg.history.updates);
       }
     }
   }
-  return sub;
 };
 
-checklistSubjectSchema.methods.applyCfg = function(cfg: ChecklistConfig) {
-  return checklistSubjectSchema.statics.applyCfg(this, cfg);
+checklistSubjectSchema.methods.isCustom = function(this: ChecklistSubject): Boolean {
+  return (this.checklistId !== undefined);
 };
 
 history.addHistory(checklistSubjectSchema, {
-  pathsToWatch: [
-    'name',
-    'desc',
-    'order',
-    'final',
-    'required',
-    'mandatory',
-    'assignees',
-  ],
+  watchAll: true,
 });
 
 export const ChecklistSubject = history.model<ChecklistSubject>('ChecklistSubject', checklistSubjectSchema);
@@ -217,7 +286,6 @@ export const ChecklistSubject = history.model<ChecklistSubject>('ChecklistSubjec
 // A checklistConfig is configuration for a checklist subject:
 //   checklist: the checklist to which this configuration belongs
 //   subjectName: the checklist item to which this configuration applies
-//   name: alternative subject to override the item
 //   assignee: user id of person required to respond to this item
 //   required: indicate if the item must have a response
 const checklistConfigSchema = new Schema({
@@ -229,11 +297,7 @@ const checklistConfigSchema = new Schema({
     type: String,
     required: true,
   },
-  name: {
-    type: String,
-    required: false,
-  },
-  assignee: {
+  assignees: {
     type: [String],
     required: false,
     // normal default is `[]`
@@ -246,11 +310,7 @@ const checklistConfigSchema = new Schema({
 });
 
 history.addHistory(checklistConfigSchema, {
-  pathsToWatch: [
-    'name',
-    'assignee',
-    'required',
-  ],
+  watchAll: true,
 });
 
 export const ChecklistConfig = history.model<ChecklistConfig>('ChecklistConfig', checklistConfigSchema);
@@ -283,7 +343,7 @@ const checklistStatusSchema = new Schema({
     type: String,
     default: '',
   },
-  inputOn: {
+  inputAt: {
     type: Date,
     required: true,
   },
@@ -293,13 +353,12 @@ const checklistStatusSchema = new Schema({
   },
 });
 
+checklistStatusSchema.methods.isApproved = function(this: ChecklistStatus, withComment?: boolean): boolean {
+  return isChecklistValueApproved(this.value, withComment);
+};
+
 history.addHistory(checklistStatusSchema, {
-  pathsToWatch: [
-    'value',
-    'comment',
-    'inputOn',
-    'inputBy',
-  ],
+  watchAll: true,
 });
 
 export const ChecklistStatus = history.model<ChecklistStatus>('ChecklistStatus', checklistStatusSchema);

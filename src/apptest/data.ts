@@ -15,6 +15,11 @@ import {
 } from '../app/models/slot';
 
 import {
+  Group,
+  IGroup,
+} from '../app/models/group';
+
+import {
   ChecklistSubject,
   IChecklistSubject,
 } from '../app/models/checklist';
@@ -34,6 +39,24 @@ export const USERS: forgapi.User[] = [
     firstname: '',
     fullname: 'FE Dept Manager',
     roles: [ 'USR:FEDM', 'GRP:ISF:LAB.DIV.FE', 'GRP:ISF:LAB.DIV.FE#LEADER' ],
+  }, {
+    uid: 'EESME',
+    lastname: '',
+    firstname: '',
+    fullname: 'EE Subject Matter Expert',
+    roles: [ 'USR:EESME', 'GRP:ISF:LAB.DIV.EE', 'GRP:ISF:LAB.DIV.EE#LEADER' ],
+  }, {
+    uid: 'MESME',
+    lastname: '',
+    firstname: '',
+    fullname: 'ME Subject Matter Expert',
+    roles: [ 'USR:MESME', 'GRP:ISF:LAB.DIV.ME', 'GRP:ISF:LAB.DIV.ME#LEADER' ],
+  }, {
+    uid: 'ALTSME',
+    lastname: '',
+    firstname: '',
+    fullname: 'Alternative Subject Matter Expert',
+    roles: [ 'USR:ALTSME', 'GRP:ISF:LAB.DIV.GRP' ],
   },
 ];
 
@@ -73,52 +96,64 @@ export const SLOTS: ISlot[] = [
   },
 ];
 
-const CL_SUBJECTS: IChecklistSubject[] = [
-  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'device-default', order: 0,
-    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ], mandatory: false, required: true, final: false },
-  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'device-default', order: 1,
-    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ], mandatory: false, required: true, final: false },
-  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'device-default', order: 2,
-    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], mandatory: false, required: true, final: false },
-  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'device-default', order: 3,
-    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
-  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'device-default', order: 4,
-    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ],   mandatory: false, required: true, final: false },
-  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'device-default', order: 5,
-    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
-  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'device-default', order: 6,
-    assignees: [ 'VAR:DEPT_LEADER' ], mandatory: true,  required: true, final: true  },
+export const GROUPS: IGroup[] = [
+  {
+    name: 'FE_SLOT_GROUP01',
+    desc: 'Front End Slot Group #1',
+    owner: 'ADB:FRONT_END',
+    memberType: Slot.modelName,
+  }, {
+    name: 'FE_SLOT_GROUP02',
+    desc: 'Front End Slot Group #2',
+    owner: 'ADB:FRONT_END',
+    memberType: Slot.modelName,
+  },
+];
 
-  { name: 'DO',    desc: 'DO',    checklistId: null, checklistType: 'slot-default', order: 0,
-    assignees: [ 'VAR:DEPT_LEADER' ], mandatory: false, required: true, final: false },
-  { name: 'EE',    desc: 'EE',    checklistId: null, checklistType: 'slot-default', order: 1,
-    assignees: [ 'USR:RUSSO#IFS:LAB.FRIB.ASD.ELECENG' ], mandatory: false, required: true, final: false },
-  { name: 'ME',    desc: 'ME',    checklistId: null, checklistType: 'slot-default', order: 2,
-    assignees: [ 'USR:BULTMAN#IFS:LAB.FRIB.ASD.MECHENG' ], mandatory: false, required: true, final: false },
-  { name: 'CRYO',  desc: 'CRYO',  checklistId: null, checklistType: 'slot-default', order: 3,
-    assignees: [ 'USR:CASAGRAN#IFS:LAB.FRIB.ASD.CRYOGENICS' ], mandatory: false, required: true, final: false },
-  { name: 'PHYS',  desc: 'PHYS',  checklistId: null, checklistType: 'slot-default', order: 4,
-    assignees: [ 'USR:OSTROUMO#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
-  { name: 'CTRLS', desc: 'CTRLS', checklistId: null, checklistType: 'slot-default', order: 5,
-    assignees: [ 'USR:DAVIDSON#IFS:LAB.FRIB.ASD.CONTROLS' ], mandatory: false, required: true, final: false },
-  { name: 'ESHQ',  desc: 'ESHQ',  checklistId: null, checklistType: 'slot-default', order: 6,
-    assignees: [ 'USR:FEYZI#IFS:LAB.FRIB.ASD' ], mandatory: false, required: true, final: false },
-  { name: 'AM',    desc: 'AM',    checklistId: null, checklistType: 'slot-default', order: 7,
-    assignees: [ 'VAR:AREA_LEADER' ], mandatory: true,  required: true, final: true },
+const CL_SUBJECTS: IChecklistSubject[] = [
+  {
+    name: 'EE', desc: 'EE', checklistType: 'DEVICE-DEFAULT', order: 0,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:EESME' ],
+  }, {
+    name: 'ME', desc: 'ME', checklistType: 'DEVICE-DEFAULT', order: 1,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:MESME' ],
+  }, {
+    name: 'DO', desc: 'DO', checklistType: 'DEVICE-DEFAULT', order: 2,
+    primary: true, final: true, mandatory: true, required: true,
+    assignees: [ 'VAR:DEPT_LEADER' ],
+  }, {
+    name: 'DO', desc: 'DO', checklistType: 'SLOT-DEFAULT', order: 0,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'VAR:DEPT_LEADER' ],
+  }, {
+    name: 'EE', desc: 'EE', checklistType: 'SLOT-DEFAULT', order: 1,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:EESME' ],
+  }, {
+    name: 'ME', desc: 'ME', checklistType: 'SLOT-DEFAULT', order: 2,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:MESME' ],
+  }, {
+    name: 'AM', desc: 'AM', checklistType: 'SLOT-DEFAULT', order: 3,
+    primary: true, final: true, mandatory: true, required: true,
+    assignees: [ 'VAR:AREA_LEADER' ],
+  },
 ];
 
 
-let initialized: Promise<void> | undefined;
+// let initialized: Promise<void> | undefined;
 
-export function initialize(): Promise<void> {
-  if (initialized) {
-    return initialized;
-  }
-  initialized = doInititialize();
-  return initialized;
-};
+export async function initialize(): Promise<void> {
+//   if (initialized) {
+//     return initialized;
+//   }
+//   initialized = doInititialize();
+//   return initialized;
+// };
 
-async function doInititialize(): Promise<void> {
+// async function doInititialize(): Promise<void> {
   // clear the database
   await mongoose.connection.db.dropDatabase();
 
@@ -130,6 +165,10 @@ async function doInititialize(): Promise<void> {
 
   for (let slot of SLOTS) {
     await new Slot(slot).saveWithHistory('SYS:TEST');
+  }
+
+  for (let group of GROUPS) {
+    await new Group(group).saveWithHistory('SYS:TEST');
   }
 
   for (let subject of CL_SUBJECTS) {

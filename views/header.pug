@@ -12,21 +12,21 @@ header
       .navbar-collapse.collapse
         ul.nav.navbar-nav
           li
-            a(href='/devices/') Devices
+            a(href=basePath + '/devices') Devices
           li
-            a(href='/slots/') Slots
+            a(href=basePath + '/slots') Slots
           li
-            a(href='/groups/slot/') Slot Groups
+            a(href=basePath + '/groups/slot') Slot Groups
           li.dropdown
             a.dropdown-toggle(href='#', data-toggle='dropdown') Checklists
               b.caret
             ul.dropdown-menu
               li
-                a(href='/checklists?type=DEVICE') Devices
+                a(href=basePath + '/checklists?type=DEVICE') Devices
               li
-                a(href='/checklists?type=SLOT') Slots
+                a(href=basePath + '/checklists?type=SLOT') Slots
               li
-                a(href='/checklists?type=SLOTGROUP') Slot Groups
+                a(href=basePath + '/checklists?type=SLOTGROUP') Slot Groups
           //-li
             a(href='/checklists/') Checklists
           //-if (locals.session && locals.session.userid && locals.session.roles && locals.session.roles.admin)
@@ -43,12 +43,9 @@ header
                 //- li
                 //-  a(href=forgurl + '/users/' + auth.username, target='_blank') Profile
                 li
-                  a(href='/logout') Log out
+                  a(href=basePath + '/logout') Log out
           else
             li
               i.fa.fa-user.fa-3x
             li
-              if !originalUrl
-                a(href='/login') Log in
-              else
-                a(href='/login?bounce=' + encodeURIComponent(originalUrl)) Log in
+              a(href=basePath + '/login' onclick='try { window.location.href = this.href + "?bounce=" + encodeURIComponent(window.location); return false; } catch (err) { return true; }') Log in

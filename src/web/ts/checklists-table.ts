@@ -2,346 +2,467 @@
  * Checklists table view
  */
 
-
 $(WebUtil.wrapCatchAll0(async () => {
 
+  type ChecklistTableRow = webapi.ChecklistTableRow & { selected?: boolean };
+
+  type ChecklistSubjectOption = { name: string, desc: string, count: number };
+
+  type ChecklistSubjectTableRow = webapi.ChecklistSubjectTableRow;
+
+  type ChecklistStatusTableRow = webapi.ChecklistStatusTableRow;
+
+  // Define the view model
+
+  /**
+   * Defines the full view model for this page.
+   */
+  class ChecklistsTableViewModel {
+    public updateStatusForm = new UpdateStatusFormViewModel(this);
+    public updateStatusModal = new UpdateStatusModalViewModel(this);
+    public selectedRows = ko.observableArray<DataTables.RowMethods>();
+
+    constructor() {
+      this.selectedRows.subscribe((rows) => {
+        // Find the set of subjects that are common to the selected checklists.
+        let subjectOptions: ChecklistSubjectOption[] = [];
+        for (let r of rows) {
+          // Cast required because 'object' type is used.
+          let data = <ChecklistTableRow> r.data();
+
+          for (let subject of data.subjects) {
+            // Ignore subjects that can not be updated
+            if (!subject.canUpdate) {
+              continue;
+            }
+            // Ignore subjects that are not required
+            if (!subject.mandatory && !subject.required) {
+              continue;
+            }
+            let found = false;
+            for (let opt of subjectOptions) {
+              if (subject.name === opt.name) {
+                opt.count += 1;
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              subjectOptions.push({
+                name: subject.name,
+                desc: subject.desc,
+                count: 1,
+              });
+            }
+          }
+        }
+
+        let commonSubjectOptions: ChecklistSubjectOption[] = [];
+        for (let option of subjectOptions) {
+          if (option.count === rows.length) {
+            commonSubjectOptions.push(option);
+          }
+        }
+        this.updateStatusForm.subjectOptions(commonSubjectOptions);
+      });
+    }
+
+    /**
+     * Add a row (in order by index) to the array of selected rows.
+     */
+    public selectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <ChecklistTableRow> row.data();
+      data.selected = true;
+      let added = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          return;
+        }
+        if (!added && (r.index() > row.index())) {
+          rows.push(row);
+          added = true;
+        }
+        rows.push(r);
+      }
+      if (added) {
+        this.selectedRows(rows);
+      } else {
+        this.selectedRows.push(row);
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+
+    /**
+     * Remove a row (by index) from the array of selected rows.
+     */
+    public deselectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <ChecklistTableRow> row.data();
+      data.selected = false;
+      let removed = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          removed = true;
+          continue;
+        }
+        rows.push(r);
+      }
+      if (removed) {
+        this.selectedRows(rows);
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+  }
+
+  /**
+   * Defines the view model for the update status form.
+   */
+  class UpdateStatusFormViewModel {
+    public value = ko.observable<string>();
+    public comment = ko.observable<string>();
+    public subject = ko.observable<string>();
+
+    public valueOptions = ko.observableArray(['N', 'Y', 'YC']);
+    public subjectOptions = ko.observableArray<ChecklistSubjectOption>();
+
+    public canUpdate = ko.observable(false);
+    public requireComment = ko.observable(false);
+
+    private parent: ChecklistsTableViewModel;
+
+    constructor(parent: ChecklistsTableViewModel) {
+      this.parent = parent;
+
+      let refreshCanUpdate = () => {
+        if (!this.subject()) {
+          this.canUpdate(false);
+        } else if (!this.value()) {
+          this.canUpdate(false);
+        } else if (this.requireComment() && !this.comment()) {
+          this.canUpdate(false);
+        } else {
+          this.canUpdate(true);
+        }
+      };
+
+      this.value.subscribe((v) => {
+        this.requireComment(v === 'YC');
+        refreshCanUpdate();
+      });
+      this.comment.subscribe(refreshCanUpdate);
+      this.subject.subscribe(refreshCanUpdate);
+    }
+
+    public update() {
+      let subject: ChecklistSubjectOption | undefined;
+      for (let option of this.subjectOptions()) {
+        if (option.name === this.subject()) {
+          subject = option;
+        }
+      }
+      if (subject) {
+        this.parent.updateStatusModal.show(this.value(), this.comment(), subject);
+      } else {
+        console.error('Subject option not found: %s', this.subject());
+      }
+    }
+  }
+
+  /**
+   * Defines the view model for the update status modal dialog.
+   */
+  class UpdateStatusModalViewModel {
+    public canUpdate = ko.observable(true);
+    public canClose = ko.observable(true);
+
+    public value = ko.observable<string>();
+    public comment = ko.observable<string>();
+    public subject = ko.observable<ChecklistSubjectOption>({ name: '', desc: '', count: 0});
+
+    public rows = ko.observableArray<UpdateStatusModalRowViewModel>();
+
+    private parent: ChecklistsTableViewModel;
+
+    constructor(parent: ChecklistsTableViewModel) {
+      this.parent = parent;
+    }
+
+    public update() {
+      WebUtil.catchAll(async () => {
+        this.canUpdate(false);
+        this.canClose(false);
+        for (let r of this.rows()) {
+          await r.update();
+        }
+        this.canClose(true);
+      });
+    }
+
+    public close() {
+      this.hide();
+    }
+
+    public show(value: string, comment: string, subject: ChecklistSubjectOption) {
+      this.value(value);
+      this.comment(comment);
+      this.subject(subject);
+
+      let rows: UpdateStatusModalRowViewModel[] = [];
+      for (let row of this.parent.selectedRows()) {
+        rows.push(new UpdateStatusModalRowViewModel(this, row));
+      }
+      this.rows(rows);
+
+      this.canUpdate(true);
+      this.canClose(true);
+
+      $('#updateStatusModal').modal('show');
+    }
+
+    public hide() {
+      $('#updateStatusModal').modal('hide');
+    }
+  }
+
+  /**
+   * Defines the view model for a row in the update status model dialog.
+   */
+  class UpdateStatusModalRowViewModel {
+    public row: DataTables.RowMethods;
+    public data: webapi.ChecklistTableRow;
+    public status = ko.observable<'NONE' | 'WAIT' | 'DONE' | 'FAIL'>('NONE');
+    public message = ko.observable<string>('');
+
+    private parent: UpdateStatusModalViewModel;
+
+    constructor(parent: UpdateStatusModalViewModel, row: DataTables.RowMethods) {
+      this.parent = parent;
+      this.row = row;
+      // Need to cast because 'object' type is used.
+      this.data = <webapi.ChecklistTableRow> row.data();
+    }
+
+    public async update() {
+      let pkg: webapi.Pkg<webapi.ChecklistStatusDetails>;
+      try {
+        this.status('WAIT');
+        pkg = await $.ajax({
+          url: `${basePath}/checklists/${this.data.id}/statuses/${this.parent.subject().name}`,
+          method: 'PUT',
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            data: {
+              value: this.parent.value(),
+              comment: this.parent.comment(),
+            },
+          }),
+        });
+      } catch (xhr) {
+        pkg = xhr.responseJSON;
+        let message = `Unknown error updating checklist status`;
+        if (pkg && pkg.error && pkg.error.message) {
+          message = pkg.error.message;
+        }
+        this.message(message);
+        this.status('FAIL');
+        return;
+      }
+
+      // Update the local checklist status data
+      for (let idx = 0; idx < this.data.statuses.length; idx += 1) {
+        if (this.data.statuses[idx].subjectName === pkg.data.subjectName) {
+          this.data.statuses[idx] = pkg.data;
+          break;
+        }
+      }
+
+      // Update the local checklist summary data
+      // Modified version of the algorithm found in /sr/app/models/checklist.ts
+      // If changes are made to that algorithm they may also apply here.
+      let total = 0;
+      let checked = 0;
+      let finalTotal = 0;
+      let finalChecked = 0;
+      for (let subject of this.data.subjects) {
+        if (subject.mandatory || subject.required) {
+          total += 1;
+          if (subject.final) {
+            finalTotal += 1;
+          }
+          for (let status of this.data.statuses) {
+            if (subject.name === status.subjectName) {
+              if (status.value === 'Y' || status.value === 'YC') {
+                checked += 1;
+                if (subject.final) {
+                  finalChecked += 1;
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+      this.data.approved = (finalChecked === finalTotal);
+      this.data.checked = checked;
+      this.data.total = total;
+      this.row.invalidate();
+
+      this.message('Success');
+      this.status('DONE');
+    }
+  }
+
+  function isCustomSubject(subject: webapi.ChecklistSubject): boolean {
+    return Boolean(subject.name.match(/C\w{8}/));
+  }
+
+  function formatStatus(subject: ChecklistSubjectTableRow, status?: ChecklistStatusTableRow, label?: boolean): string {
+    let desc = subject.desc || subject.name;
+    if (!subject.mandatory && !subject.required) {
+      return `<div>${label ? desc + ': ' : ''}N/A</div>`;
+    }
+
+    let canUpdate = subject.canUpdate;
+    let value = status ? status.value : 'N';
+    // Sanitize the comment to be safely used in tooltip
+    let comment = (status && status.comment) ? status.comment.replace('"', '&quot;') : '';
+    return  `<div>${label ? desc + ':' : ''}
+              <span class="${value === 'N' ? 'bg-danger' : 'bg-success'}">
+                <strong title="${value === 'YC' ? comment : ''}">${value}</strong>
+              </span>
+              ${canUpdate ? '&nbsp;<span class="fa fa-pencil"/>' : ''}
+            </div>`;
+  }
+
+
+  const vm = new ChecklistsTableViewModel();
+  ko.applyBindings(vm);
+
   $('#checklists-message')
-    .html('Loading Checklists...')
+    .html(`<div class="alert alert-info">
+        <span>Loading Checklists...</span>
+      </div>
+    `)
     .removeClass('hidden');
 
-  let pkg: webapi.Pkg<webapi.Checklist[]>;
+  let pkg: webapi.Pkg<webapi.ChecklistTableRow[]>;
 
   try {
     pkg = await $.ajax({
       dataType: 'json',
     });
   } catch (xhr) {
+    pkg = xhr.responseJSON;
+    let message = 'Unknown error loading checklists';
+    if (pkg && pkg.error && pkg.error.message) {
+      message = pkg.error.message;
+    }
+    $('#checklists-message')
+      .html(`<div class="alert alert-danger">
+        <span>Error Loading Checklists: ${message}</span>
+      </div>
+    `).removeClass('hidden');
     return;
   }
 
   let checklists = pkg.data;
 
+  let customSubjects: string[] = [];
   let standardSubjects: string[] = [];
-  let hasCustomSubjects = false;
-
 
   for (let checklist of checklists) {
     for (let subject of checklist.subjects) {
-      if (!subject.checklistId) {
-        //console.log('Its a standard subject %s', subject.subject);
-        if (standardSubjects.indexOf(subject.subject) === -1) {
-          // TODO: ORDER!
-          standardSubjects.push(subject.subject);
+      if (!isCustomSubject(subject)) {
+        if (standardSubjects.indexOf(subject.name) === -1) {
+          // TODO: Do these need to be sorted!
+          standardSubjects.push(subject.name);
         }
       } else {
-        hasCustomSubjects = true;
+        if (customSubjects.indexOf(subject.name) === -1) {
+          customSubjects.push(subject.name);
+        }
       }
     }
   }
 
-
-  //let targetType = String((<any> window).checklistTargetType);
-
-
-
-
-  const checklistColumns: ColumnSettings[] = [
+  const checklistTableColumns: ColumnSettings[] = [
     {
       title: '',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
-        //return `<a href="/devices/${row.id}">${row.name}</a>`;
-        return '<input type="checkbox"/>';
+      render: (row: ChecklistTableRow): string => {
+        return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
       },
       searching: false,
     }, {
       title: 'Name',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
-        //return `<a href="/devices/${row.id}">${row.name}</a>`;
-        return row.targetName || row.targetId;
+      render: (row: ChecklistTableRow): string => {
+        switch (row.targetType.toUpperCase()) {
+        case 'SLOT':
+          return `<a href="${basePath}/slots/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        case 'DEVICE':
+          return `<a href="${basePath}/devices/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        case 'GROUP':
+          return `<a href="${basePath}/groups/slot/${row.targetId}" target="_blank">${row.targetName}</a>`;
+        default:
+          return String(row.targetName || row.targetId);
+        }
       },
       searching: true,
     }, {
       title: 'Description',
       data: <any> null,
-      render: (row: webapi.Checklist): string => {
-        //return String(row.desc ? row.desc : '-');
-        return row.targetDesc || '';
+      render: (row: ChecklistTableRow): string => {
+        return String(row.targetDesc || '');
       },
       searching: true,
     },
-    // {
-    //   title: 'EE',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-success"><strong>Y</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'ME',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-success"><strong>Y</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'PHYS',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-success"><strong>Y</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'CTRLS',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-success"><strong>Y</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'ESHQ',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-success"><strong>Y</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'DO',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '<span class="bg-danger"><strong>N</strong></span>';
-    //   },
-    // },
-    // {
-    //   title: 'AM',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'Custom',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return `
-    //       <div>Custom1:<span class="bg-success">Y</span></div>
-    //       <div>Custom2:<span class="bg-danger">N</span></div>
-    //     `;
-    //   },
-    // },
-
-
-    // {
-    //   title: 'C1',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-    // {
-    //   title: 'C2',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C3',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C4',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C5',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C6',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C7',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C8',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    
-    // {
-    //   title: 'C9',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-    // {
-    //   title: 'C10',
-    //   orderable: false,
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return '-';
-    //   },
-    // },
-
-
-    // {
-    //   title: 'Status',
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //     return `
-    //       <span class="bg-success">EE:<strong>Y</strong></span>,
-    //       ME:<span class="bg-success"><strong>Y</strong></span>,
-    //       CRYO:<span class="text-success"><strong>Y</strong></span>,
-    //       PHYS:<span class="text-success" data-toggle="popover" title="Comment" data-content="This is a comment">YC</span>,
-    //       CTRLS:<span class="text-success">Y</span>
-    //       ESHQ:<span class="text-danger">N</span>
-    //       <span class="bg-danger">DO:N</span>        
-    //     `;
-    //   },
-    //   searching: true,
-    // },
-    
-    // {
-    //   title: 'Approved',
-    //   data: <any> null,
-    //   render: (row: webapi.Checklist) => {
-    //      return 'No';
-    //   },
-    // },
-    // {
-    //   title: 'Type',
-    //   data: <any> null,
-    //   render: (row: webapi.DeviceTableRow): string => {
-    //     return String(row.deviceType);
-    //   },
-    //   searching: true,
-    // }, {
-    //   title: 'Department',
-    //   data: <any> null,
-    //   render: (row: webapi.DeviceTableRow): string => {
-    //     return String(row.dept);
-    //   },
-    //   searching: true,
-    // }, {
-    //   title: 'Installation Slot',
-    //   data: <any> null,
-    //   render: (row: webapi.DeviceTableRow): string => {
-    //     if (!row.installSlotName) {
-    //       return '-';
-    //     }
-    //     return `<a href="/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
-    //   },
-    //   searching: true,
-    // }, {
-    //   title: 'Checklist',
-    //   //order: true,
-    //   type: 'numeric',
-    //   //autoWidth: false,
-    //   width: '105px',
-    //   data: (row: webapi.DeviceTableRow): string => {
-    //     // return Table.progressBar(source.checkedValue, source.totalValue);
-    //     return 'N/A';
-    //   },
-    // },
   ];
 
-  console.log(standardSubjects.length);
   for (let subjectName of standardSubjects) {
-    checklistColumns.push({
+    checklistTableColumns.push({
       title: subjectName,
       data: <any> null,
-      render: (row: webapi.Checklist) => {
+      render: (row: ChecklistTableRow) => {
         for (let subject of row.subjects) {
-          if (subject.subject === subjectName) {
-            if (!subject.mandatory && !subject.required) {
-              return 'N/A';
+          if (subject.name === subjectName) {
+            for (let status of row.statuses) {
+              if (status.subjectName === subjectName) {
+                return formatStatus(subject, status);
+              }
             }
-            break;
+            return formatStatus(subject);
           }
         }
-        let statusValue = 'N';
-        for (let status of row.statuses) {
-          //console.log('%s =? %s', status.subjectId, subjectName);
-          if (status.subjectId === subjectName) {
-            statusValue = status.value;
-            break;
-          }
-        }
-
-        return `<span class="${statusValue === 'Y' ? 'bg-success' : 'bg-danger'}">
-                  <strong>${statusValue}</strong>
-                </span>`;
-        //'<span class="bg-success"><strong>Y</strong></span>';
+        return '-';
       },
       orderable: false,
       searchable: false,
     });
   }
 
-  if (hasCustomSubjects) {
-    checklistColumns.push({
+  if (customSubjects.length > 0) {
+    checklistTableColumns.push({
       title: 'Custom',
       data: <any> null,
-      render: (row: webapi.Checklist) => {
+      render: (row: webapi.ChecklistTableRow) => {
         let html = '';
         for (let subject of row.subjects) {
-          if (!subject.checklistId) {
+          if (isCustomSubject(subject)) {
+            let found = false;
             for (let status of row.statuses) {
-              if (status.subjectId === subject.subject) {
-                html += `<div>${subject.subject}:
-                  <span class="${status.value === 'Y' ? 'bg-success' : 'bg-danger'}">
-                    <strong>${status.value}</strong>
-                  </span></div>`;
+              if (status.subjectName === subject.name) {
+                html += formatStatus(subject, status, true);
+                found = true;
                 break;
               }
+            }
+            if (!found) {
+              html += formatStatus(subject, undefined, true);
             }
           }
         }
@@ -355,17 +476,18 @@ $(WebUtil.wrapCatchAll0(async () => {
     });
   }
 
-
-  checklistColumns.push({
+  checklistTableColumns.push({
     title: 'Approved',
     data: <any> null,
     render: (row: webapi.Checklist) => {
-       return 'No';
+      if (row.approved) {
+        return '<div><span class="fa fa-check text-success"/></div>';
+      }
+      return `<div><strong>${row.checked} / ${row.total - 1}</strong></div>`;
     },
   });
 
-
-  $('#checklists-table').DataTable({
+  let checklistTable = $('#checklists-table').DataTable({
     data: checklists,
     // ajax: {
     //   url: '/checklists',
@@ -374,11 +496,6 @@ $(WebUtil.wrapCatchAll0(async () => {
     //   dataSrc: 'data',
     // },
     dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
-    // initComplete: function () {
-    //   Holder.run({
-    //     images: '.user img'
-    //   });
-    // },
     autoWidth: false,
     processing: true,
     pageLength: 25,
@@ -390,16 +507,31 @@ $(WebUtil.wrapCatchAll0(async () => {
       loadingRecords: 'Loading Checklists...',
     },
     deferRender: true,
-    columns: checklistColumns,
+    columns: checklistTableColumns,
     order: [
       [0, 'asc'],
     ],
   });
 
-  DataTablesUtil.addFilterHead('#checklists-table', checklistColumns);
-  //Table.filterEvent();
-  //Table.selectEvent();
+  DataTablesUtil.addFilterHead('#checklists-table', checklistTableColumns);
 
   $('#checklists-table').removeClass('hidden');
+
   $('#checklists-message').addClass('hidden');
+
+  $('#checklists-table').on('click', '.row-select-box', WebUtil.wrapCatchAll1((event) => {
+    let selectbox = $(event.target);
+    if (selectbox.is(':checked')) {
+      let tr = selectbox.parents('tr').first();
+      tr.addClass('selected active');
+      let row = checklistTable.row(tr.get(0));
+      vm.selectRow(row);
+    } else {
+      let tr = selectbox.parents('tr').first();
+      tr.removeClass('selected active');
+      let row = checklistTable.row(tr.get(0));
+      vm.deselectRow(row);
+    }
+  }));
+
 }));

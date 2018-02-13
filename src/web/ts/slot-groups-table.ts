@@ -18,7 +18,7 @@ $(() => {
       //defaultContent: 'unknown',
       data: <any> null, // 'name',
       render: (row: webapi.GroupTableRow): string => {
-        return `<a href="/groups/slot/${row.id}" target="_blank">${row.name || 'Unknown'}</a>`;
+        return `<a href="${basePath}/groups/slot/${row.id}" target="_blank">${row.name || 'Unknown'}</a>`;
       },
       searching: true,
     },
@@ -43,8 +43,14 @@ $(() => {
       // autoWidth: false,
       width: '105px',
       data: (row: webapi.GroupTableRow): string => {
-        // return Table.progressBar(source.checkedValue, source.totalValue);
-        return 'N/A';
+        if (row.checklistApproved) {
+          return '<div><span class="fa fa-check text-success"/></div>';
+        }
+        if (row.checklistChecked !== undefined && row.checklistTotal !== undefined) {
+          // Subtract one from the total because the primary subject is not included
+          return `<div><strong>${row.checklistChecked} / ${row.checklistTotal - 1}</strong></div>`;
+        }
+        return  '<div>N/A</div>';
       },
     },
       // slotGroup columns end
@@ -54,7 +60,6 @@ $(() => {
 
   $('#slot-groups-table').DataTable({
     ajax: {
-      url: '/groups/slot',
       dataType: 'json',
       dataSrc: 'data',
     },

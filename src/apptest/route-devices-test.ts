@@ -6,26 +6,18 @@
 
 import { AssertionError } from 'assert';
 
-import { assert } from 'chai';
 import * as express from 'express';
-import * as request from 'supertest';
 
 import { Device } from '../app/models/device';
+
+import {
+  expectPackage,
+  requestFor,
+} from './shared/testing';
 
 import * as app from './app';
 import * as data from './data';
 
-// Utility to get an authenticated agent for the specified user.
-async function requestFor(app: express.Application, username?: string, password?: string) {
-  const agent = request.agent(app);
-  if (username) {
-    await agent
-      .get('/login')
-      .auth(username, password || 'Pa5w0rd')
-      .expect(302);
-  }
-  return agent;
-};
 
 async function getDeviceNameOrId(r: { name: string, by: string }) {
   if (r.by === 'ID') {
@@ -36,29 +28,6 @@ async function getDeviceNameOrId(r: { name: string, by: string }) {
     return device.id;
   }
   return r.name;
-}
-
-function expectPackage(data?: {}) {
-  return (res: request.Response) => {
-    if (res.status < 300 || res.status >= 400) {
-      let pkg = <webapi.Pkg<{}>> res.body;
-      assert.isObject(pkg);
-      if (res.status < 300) {
-        assert.isObject(pkg.data);
-        assert.isUndefined(pkg.error);
-        if (data) {
-          // For some reason this function, deepInclude(),
-          // is not in the type definitions (@types/chai@4.0.5)!
-          (<any> assert).deepInclude(pkg.data, data);
-        }
-      } else {
-        assert.isObject(pkg.error);
-        assert.isNumber((<any> pkg.error).code);
-        assert.isString((<any> pkg.error).message);
-        assert.isNotEmpty((<any> pkg.error).message);
-      }
-    }
-  };
 }
 
 
@@ -106,33 +75,4 @@ describe('Test device routes', () => {
     }
   });
 
-  describe('Assign checklist', () => {
-    let table = [
-      // User unauthenticated
-      { name: 'T99999-DEVA-0009-0099-S00001', user: '',     status: 302, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: '',     status: 302, by: 'ID' },
-      // User unauthorized
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', status: 403, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', status: 403, by: 'ID' },
-      // Assign OK
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 201, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 201, by: 'ID' },
-      // Already assigned
-      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', status: 400, by: 'name' },
-      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', status: 400, by: 'ID' },
-    ];
-
-    for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' assign checklist to ${row.name} by ${row.by}`, async () => {
-        const nameOrId = await getDeviceNameOrId(row);
-        const agent = await requestFor(handler, row.user);
-        await agent
-          .put(`/devices/${nameOrId}/checklistId`)
-          .set('Accept', 'application/json')
-          .expect(row.status)
-          .expect(expectPackage());
-          // TODO: Confirm the checklist TYPE!!
-      });
-    }
-  });
 });

@@ -11,7 +11,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.SlotTableRow): string => {
-        return `<a href="/slots/${row.name}">${row.name}</a>`;
+        return `<a href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -62,7 +62,7 @@ $(() => {
         if (!row.installDeviceName) {
           return '-';
         }
-        return `<a href="/devices/${row.installDeviceName}" target="_blank">${row.installDeviceName}</a>`;
+        return `<a href="${basePath}/devices/${row.installDeviceName}" target="_blank">${row.installDeviceName}</a>`;
       },
       searching: true,
     }, {
@@ -72,8 +72,14 @@ $(() => {
       // autoWidth: false,
       width: '105px',
       data: (row: webapi.SlotTableRow): string => {
-        // return Table.progressBar(source.checkedValue, source.totalValue);
-        return 'N/A';
+        if (row.checklistApproved) {
+          return '<div><span class="fa fa-check text-success"/></div>';
+        }
+        if (row.checklistChecked !== undefined && row.checklistTotal !== undefined) {
+          // Subtract one from the total because the primary subject is not included
+          return `<div><strong>${row.checklistChecked} / ${row.checklistTotal - 1}</strong></div>`;
+        }
+        return  '<div>N/A</div>';
       },
     },
     // {
@@ -155,7 +161,6 @@ $(() => {
 
   $('#slots-table').DataTable({
     ajax: {
-      url: '/slots',
       dataType: 'json',
       dataSrc: 'data',
     },

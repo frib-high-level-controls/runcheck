@@ -54,24 +54,20 @@ declare namespace webapi {
     dept: string;
     deviceType: string;
     installSlotName?: string;
-  }
-
-  export interface SlotTableRow {
-    id: string;
-    name: string;
-    desc: string;
-    area: string;
-    deviceType: string;
-    careLevel: string; 
-    drr: string;
-    arr: string;
-    installDeviceName?: string;
+    checklistId?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
   }
 
   export interface GroupTableRow {
     id: string;
     name: string;
     desc: string;
+    checklistId?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
   }
 
   export interface DevicePerms {
@@ -90,7 +86,7 @@ declare namespace webapi {
     desc: string;
     dept: string;
     deviceType: string;
-    checklistId: string | null;
+    checklistId?: string;
     installSlotId?: string;
     installSlotOn?: string;
     installSlotBy?: string;
@@ -103,8 +99,26 @@ declare namespace webapi {
   }
 
   export interface SlotPerms {
+    //? canGroup?: boolean;
     canAssign?: boolean;
     canInstall?: boolean;
+  }
+
+  export interface SlotBase { // TODO: rename to 'Slot'
+    id: string,
+    name: string;
+    desc: string;
+    area: string;
+    deviceType: string;
+    checklistId?: string;
+    careLevel: string;
+    safetyLevel: string;
+    arr: string;
+    drr: string;
+    groupId?: string;
+    installDeviceId?: string;
+    installDeviceOn?: string;
+    installDeviceBy?: string;
   }
 
   export interface Slot extends SlotPerms, SlotInstall {
@@ -113,7 +127,7 @@ declare namespace webapi {
     desc: string;
     area: string;
     deviceType: string;
-    checklistId: string | null;
+    checklistId?: string;
     careLevel: string;
     safetyLevel: string;
     arr: string;
@@ -121,45 +135,80 @@ declare namespace webapi {
     groupId?: string;
   }
 
+  export interface SlotTableRow extends SlotBase {
+    installDeviceName?: string;
+    checklistApproved?: boolean;
+    checklistChecked?: number;
+    checklistTotal?: number;
+  }
+
   export interface Group {
     id: string;
     name: string;
     desc: string;
     owner: string;
-    checklistId: string | null;
+    checklistId?: string;
   }
 
   interface Checklist {
     id: string;
     targetId: string;
-    targetName?: string;
-    targetDesc?: string;
-    type: string;
-    editable: boolean;
-    subjects: ChecklistSubject[];
-    statuses: ChecklistStatus[];
+    targetType: string;
+    checklistType: string;
+    approved: boolean;
+    checked: number;
+    total: number;
+  }
+
+  interface ChecklistPerms {
+    canEdit: boolean
+  }
+
+  interface ChecklistTableRow extends Checklist {
+    targetName: string;
+    targetDesc: string;
+    subjects: ChecklistSubjectTableRow[];
+    statuses: ChecklistStatusTableRow[];
+  }
+
+  interface ChecklistDetails extends Checklist, ChecklistPerms {
+    subjects: ChecklistSubjectDetails[];
+    statuses: ChecklistStatusDetails[];
   }
 
   interface ChecklistSubject {
-    id: string;
-    checklistType: string;
-    subject: string;
-    checklistId: string;
+    name: string;
+    desc: string;
     order: number;
-    assignee: string[];
+    assignees: string[];
+    final: boolean;
+    primary: boolean;
     required: boolean;
     mandatory: boolean;
-    final: boolean;
+  }
+
+  interface ChecklistSubjectTableRow extends ChecklistSubject {
+    canUpdate: boolean;
+  }
+
+  interface ChecklistSubjectDetails extends ChecklistSubject {
+    canUpdate: boolean;
+    // history? //
   }
 
   interface ChecklistStatus {
-    id: string;
-    checklistId: string;
-    subjectId: string;
+    subjectName: string;
     value: string;
     comment: string;
-    inputOn: string;
+    inputAt: string;
     inputBy: string;
+  }
+
+  interface ChecklistStatusTableRow extends ChecklistStatus {
+    // no additional properties needed //
+  }
+
+  interface ChecklistStatusDetails extends ChecklistStatus {
     history: History;
   }
 }

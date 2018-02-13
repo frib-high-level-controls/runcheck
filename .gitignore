@@ -32,6 +32,7 @@ bower_components/
 
 # IDE configure file
 .idea/
+.vscode/
 
 # photoes
 userphoto/
@@ -76,3 +77,6 @@ npm-debug.log
 
 # Ignore configuration files
 /config/
+
+# Ignore test coverage results
+/.nyc_output

@@ -11,7 +11,6 @@ import * as models from '../shared/models';
 
 import {
   Checklist,
-  IChecklist,
 } from '../models/checklist';
 
 import {
@@ -53,15 +52,17 @@ function getPermissions(req: express.Request, device: Device) {
 
 
 
-export const router = express.Router();
+export const router = express.Router({strict: true});
 
 /**
  * Get the list view of devices (HTML) or list of devices (JSON).
  */
-router.get('/', catchAll(async (req, res) => {
+router.get('/devices', catchAll(async (req, res) => {
   return format(res, {
     'text/html': () => {
-      res.render('devices');
+      res.render('devices', {
+        basePath: '..',
+      });
     },
     'application/json': async () => {
       let conds: { deviceType?: string } = {};
@@ -75,9 +76,10 @@ router.get('/', catchAll(async (req, res) => {
       if (debug.enabled) {
         debug('Find Devices with %s', JSON.stringify(conds));
       }
-      const [ devices, slots ] = await Promise.all([
+      const [ devices, slots, checklists ] = await Promise.all([
         Device.find(conds).exec(),
         models.mapById(Slot.find({ installDeviceId: { $exists: true }}).exec()),
+        models.mapById(Checklist.find({ targetType: Device.modelName }).exec()),
       ]);
       const rows: webapi.DeviceTableRow[] =  [];
       for (let device of devices) {
@@ -90,6 +92,7 @@ router.get('/', catchAll(async (req, res) => {
           desc: device.desc,
           dept: device.dept,
           deviceType: device.deviceType,
+          checklistId: device.checklistId ? device.checklistId.toHexString() : undefined,
         };
         if (device.installSlotId) {
           const slotId = device.installSlotId.toHexString();
@@ -98,6 +101,14 @@ router.get('/', catchAll(async (req, res) => {
             row.installSlotName = slot.name;
           } else {
             log.warn('Installation slot not found: %s', slotId);
+          }
+        }
+        if (device.checklistId) {
+          let checklist = checklists.get(device.checklistId.toHexString());
+          if (checklist) {
+            row.checklistApproved = checklist.approved;
+            row.checklistChecked = checklist.checked;
+            row.checklistTotal = checklist.total;
           }
         }
         rows.push(row);
@@ -113,7 +124,7 @@ router.get('/', catchAll(async (req, res) => {
  * Get the device specified by name or ID
  * and then respond with either HTML or JSON.
  */
-router.get('/:name_or_id', catchAll(async (req, res) => {
+router.get('/devices/:name_or_id', catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Device (and history) with name or id: %s', nameOrId);
 
@@ -136,7 +147,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
     desc: device.desc,
     dept: device.dept,
     deviceType: device.deviceType,
-    checklistId: device.checklistId ? device.checklistId.toHexString() : null,
+    checklistId: device.checklistId ? device.checklistId.toHexString() : undefined,
     installSlotId: device.installSlotId ? device.installSlotId.toHexString() : undefined,
     installSlotBy: device.installSlotBy,
     installSlotOn: device.installSlotOn ? device.installSlotOn.toISOString().split('T')[0] : undefined,
@@ -148,6 +159,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
       res.render('device', {
         device: apiDevice,
         moment: moment,
+        basePath: '..',
       });
     },
     'application/json': () => {
@@ -159,7 +171,7 @@ router.get('/:name_or_id', catchAll(async (req, res) => {
 }));
 
 
-router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
+router.get('/devices/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);
 
   debug('Find Device with id: %s', id);
@@ -169,50 +181,6 @@ router.get('/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) 
   }
 
   res.json(<webapi.Pkg<string>> {
-    data: device.checklistId.toHexString(),
-  });
-}));
-
-
-router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  const nameOrId = String(req.params.name_or_id);
-  debug('Find Device with name or id: %s', nameOrId);
-
-  let device: Device | null;
-  if (models.isValidId(nameOrId)) {
-    device = await Device.findById(nameOrId).exec();
-  } else {
-    device = await Device.findOne({ name: nameOrId.toUpperCase() });
-  }
-
-  if (!device || !device.id) {
-    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
-  }
-
-  const username = auth.getUsername(req);
-  const permissions = getPermissions(req, device);
-  if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
-  }
-
-  if (device.checklistId) {
-    throw new RequestError('Device already assigned checklist', HttpStatus.BAD_REQUEST);
-  }
-
-  const doc: IChecklist = {
-    checklistType: 'device-default',
-    targetType: models.getModelName(device),
-    targetId: device._id,
-  };
-
-  debug('Create new Checklist with type: %s', doc.checklistType);
-  const checklist = await Checklist.create(doc);
-
-  debug('Update Device with new checklist id: %s', checklist._id);
-  device.checklistId = models.ObjectId(checklist._id);
-  await device.saveWithHistory(auth.formatRole('USR', username));
-
-  res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
     data: device.checklistId.toHexString(),
   });
 }));

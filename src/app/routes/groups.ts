@@ -7,8 +7,9 @@ import * as express from 'express';
 //import * as auth from '../shared/auth';
 
 import {
-  ObjectId,
   isValidId,
+  mapById,
+  ObjectId,
 } from '../shared/models';
 
 import {
@@ -26,25 +27,45 @@ import {
   Group,
 } from '../models/group';
 
-const debug = dbg('runcheck:groups')
+import {
+  Checklist,
+} from '../models/checklist';
 
-export const router = express.Router();
+const debug = dbg('runcheck:groups');
 
-router.get('/slot', catchAll(async (req, res) => {
+export const router = express.Router({strict: true});
+
+router.get('/groups/slot', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slot-groups');
+      res.render('slot-groups', {
+        basePath: '../..',
+      });
     },
     'application/json': async () => {
       const rows: webapi.GroupTableRow[] = [];
-      const groups = await Group.find({ memberType: Slot.modelName }).exec();
+      const [ groups, checklists ] = await Promise.all([
+        Group.find({ memberType: Slot.modelName }).exec(),
+        mapById(Checklist.find({ targetType: Group.modelName }).exec()),
+      ]);
       for (let group of groups) {
-        rows.push({
+        let row: webapi.GroupTableRow = {
           id: group._id,
           name: group.name,
           desc: group.desc,
-        });
+          checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
+        };
+        if (group.checklistId) {
+          let checklist = checklists.get(group.checklistId.toHexString());
+          if (checklist) {
+            row.checklistApproved = checklist.approved;
+            row.checklistChecked = checklist.checked;
+            row.checklistTotal = checklist.total;
+          }
+        }
+        rows.push(row);
       }
+
       res.json(<webapi.Pkg<webapi.GroupTableRow[]>> {
         data: rows,
       });
@@ -53,7 +74,7 @@ router.get('/slot', catchAll(async (req, res) => {
 }));
 
 
-router.get('/slot/:name_or_id', catchAll(async (req, res) => {
+router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Group with name or id: %s', nameOrId);
 
@@ -73,13 +94,14 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     name: group.name,
     desc: group.desc,
     owner: group.owner,
-    checklistId: group.checklistId ? group.checklistId.toHexString() : null,
+    checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
   };
 
   return format(res, {
     'text/html': () => {
       res.render('slot-group', {
         group: apiGroup,
+        basePath: '../..',
       });
     },
     'application/json': () => {
@@ -91,7 +113,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
 }));
 
 
-router.get('/slot/:id/members', catchAll(async (req, res) => {
+router.get('/groups/slot/:id/members', catchAll(async (req, res) => {
   const id = String(req.params.id);
   // if (!group) {
   //   throw new RequestError('Group not found', HttpStatus.NOT_FOUND);
@@ -106,7 +128,7 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
       desc: slot.desc,
       area: slot.area,
       deviceType: slot.deviceType,
-      checklistId: slot.checklistId ? ObjectId(slot.checklistId).toHexString() : null,
+      checklistId: slot.checklistId ? ObjectId(slot.checklistId).toHexString() : undefined,
       careLevel: slot.careLevel,
       safetyLevel: slot.safetyLevel,
       arr: slot.arr,

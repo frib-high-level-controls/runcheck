@@ -4,12 +4,10 @@
 import * as dbg from 'debug';
 import * as express from 'express';
 import * as moment from 'moment';
-//var _ = require('lodash');
 
 import * as auth from '../shared/auth';
 import * as log from '../shared/logging';
 import * as models from '../shared/models';
-//var reqUtils = require('../lib/req-utils');
 
 import {
   catchAll,
@@ -26,24 +24,24 @@ import {
   Device,
 } from '../models/device';
 
-// import {
-//   Group,
-// } from '../models/group';
-
 import {
   IInstall,
   Install,
 } from '../models/install';
 
 import {
+  Group,
+} from '../models/group';
+
+import {
   Checklist,
-  IChecklist,
 } from '../models/checklist';
 
 
 const debug = dbg('runcheck:slots');
 
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
+const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
 /**
  * Compute the permissions of the current user for the specified slot.
@@ -66,18 +64,22 @@ function getPermissions(req: express.Request, slot: Slot) {
 };
 
 
-export const router = express.Router();
+export const router = express.Router({strict: true});
 
-router.get('/', catchAll(async (req, res) => {
+router.get('/slots', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slots');
+      res.render('slots', {
+        basePath: '..',
+      });
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
-      const [ slots, devices ] = await Promise.all([
+      const [ slots, groups, devices, checklists ] = await Promise.all([
         Slot.find().exec(),
+        models.mapById(Group.find({ memberType: Slot.modelName }).exec()),
         models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
+        models.mapById(Checklist.find({ targetType: { $in: [ Slot.modelName, Group.modelName ] }}).exec()),
       ]);
       for (let slot of slots) {
         const row: webapi.SlotTableRow = {
@@ -85,10 +87,16 @@ router.get('/', catchAll(async (req, res) => {
           name: slot.name,
           desc: slot.desc,
           area: slot.area,
+          checklistId: slot.checklistId ? slot.checklistId.toHexString() : undefined,
           deviceType: slot.deviceType,
           careLevel: slot.careLevel,
+          safetyLevel: slot.safetyLevel,
           drr: slot.drr,
           arr: slot.arr,
+          groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
+          installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
+          installDeviceBy: slot.installDeviceBy,
+          installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
         };
         if (slot.installDeviceId) {
           const deviceId = slot.installDeviceId.toHexString();
@@ -97,6 +105,27 @@ router.get('/', catchAll(async (req, res) => {
             row.installDeviceName = device.name;
           } else {
             log.warn('Installation device not found: %s', deviceId);
+          }
+        }
+        if (slot.groupId) {
+          let group = groups.get(slot.groupId.toHexString());
+          if (!group) {
+            throw new RequestError(`Slot group not found: ${slot.groupId}`, INTERNAL_SERVER_ERROR);
+          }
+          if(group.checklistId) {
+            const checklist = checklists.get(group.checklistId.toHexString());
+            if (checklist) {
+              row.checklistApproved = checklist.approved;
+              row.checklistChecked = checklist.checked;
+              row.checklistTotal = checklist.total;
+            }
+          }
+        } else if (slot.checklistId) {
+          const checklist = checklists.get(slot.checklistId.toHexString());
+          if (checklist) {
+            row.checklistApproved = checklist.approved;
+            row.checklistChecked = checklist.checked;
+            row.checklistTotal = checklist.total;
           }
         }
         rows.push(row);
@@ -144,7 +173,7 @@ router.get('/', catchAll(async (req, res) => {
  * Get the slot specified by name or ID
  * and then respond with either HTML or JSON.
  */
-router.get('/:name_or_id', catchAll( async (req, res) => {
+router.get('/slots/:name_or_id', catchAll( async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot (and history) with name or id: %s', nameOrId);
 
@@ -167,7 +196,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
     desc: slot.desc,
     area: slot.area,
     deviceType: slot.deviceType,
-    checklistId: slot.checklistId ? slot.checklistId.toHexString() : null,
+    checklistId: slot.checklistId ? slot.checklistId.toHexString() : undefined,
     careLevel: slot.careLevel,
     safetyLevel: slot.safetyLevel,
     drr: slot.drr,
@@ -185,6 +214,7 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
       res.render('slot', {
         slot: apiSlot,
         moment: moment,
+        basePath: '..',
       });
     },
     'application/json': () => {
@@ -197,75 +227,9 @@ router.get('/:name_or_id', catchAll( async (req, res) => {
 
 
 /**
- * Assign a Checklist to the specified slot.
- */
-router.put('/:name_or_id/checklistId', auth.ensureAuthenticated, catchAll(async (req, res) => {
-  const nameOrId = String(req.params.name_or_id);
-  debug('Find Slot with name or id: %s', nameOrId);
-
-  let slot: Slot | null;
-  if (models.isValidId(nameOrId)) {
-    slot = await Slot.findById(nameOrId).exec();
-  } else {
-    slot = await Slot.findOne({name: nameOrId.toUpperCase() });
-  }
-
-  if (!slot || !slot.id) {
-    throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
-  }
-
-  const username = auth.getUsername(req);
-  const permissions = getPermissions(req, slot);
-  if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to assign checklist', HttpStatus.FORBIDDEN);
-  }
-
-  if (!slot.installDeviceId) {
-    throw new RequestError('Device must be installed', BAD_REQUEST);
-  }
-
-  if (slot.checklistId) {
-    throw new RequestError('Slot already assigned checklist', HttpStatus.BAD_REQUEST);
-  }
-
-  let checklistType: 'slot-default';
-
-  switch (slot.safetyLevel) {
-  case 'NORMAL':
-  case 'CONTROL':
-  default:
-    checklistType = 'slot-default'; // UPPERCASE?
-    break;
-  case 'CREDITED':
-    checklistType = 'slot-default'; // 'SLOT_CREDITED';
-    break;
-  case 'ESHIMPACT':
-    checklistType = 'slot-default'; // 'SLOT_ESHIMPACT';
-    break;
-  }
-
-  const doc: IChecklist = {
-    checklistType: checklistType,
-    targetType: models.getModelName(slot),
-    targetId: models.ObjectId(slot._id),
-  };
-
-  debug('Create new Checklist with type: %s', doc.checklistType);
-  const checklist = await Checklist.create(doc);
-
-  debug('Update Slot with new checklist id: %s', checklist._id);
-  slot.checklistId = models.ObjectId(checklist._id);
-  await slot.saveWithHistory(auth.formatRole('USR', username ));
-
-  res.status(HttpStatus.CREATED).json(<webapi.Pkg<string>> {
-    data: slot.checklistId.toHexString(),
-  });
-}));
-
-/**
  * Install Device in Slot
  */
-router.put('/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async (req, res) => {
+router.put('/slots/:name_or_id/installation', auth.ensureAuthenticated, catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot with name or id: %s', nameOrId);
 

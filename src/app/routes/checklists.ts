@@ -3,15 +3,17 @@
  */
 import * as dbg  from 'debug';
 import * as express from 'express';
+import * as lodash from 'lodash';
 import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
-import * as log from '../shared/logging';
 import * as models from '../shared/models';
 
 import {
   catchAll,
   ensureAccepts,
+  ensurePackage,
+  findQueryParam,
   format,
   HttpStatus,
   RequestError,
@@ -22,6 +24,7 @@ import {
 } from '../models/device';
 
 import {
+  SafetyLevel,
   Slot,
 } from '../models/slot';
 
@@ -35,9 +38,13 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  ChecklistType,
+  IChecklist,
   IChecklistConfig,
   IChecklistStatus,
   IChecklistSubject,
+  isChecklistApproved,
+  isChecklistValueApproved,
 } from '../models/checklist';
 
 type ObjectId = mongoose.Types.ObjectId;
@@ -45,134 +52,238 @@ type ObjectId = mongoose.Types.ObjectId;
 interface Target {
   name: string;
   desc: string;
-  checklistId?: ObjectId | null;
+  dept?: string;
+  area?: string;
+  owner?: string;
+  memberType?: string;
+  checklistId?: ObjectId;
 };
 
 
 const debug = dbg('runcheck:checklists');
 
-
-// async function findChecklistSubjects(cl: Checklist): Promise<ChecklistSubject[]> {
-//   let query = ChecklistSubject.find({
-//     checklistType: cl.checklistType,
-//     checklistId: { $in: [null, cl._id] },
-//   });
-//   let items = await query.sort('order').exec();
-
-//   let prms = new Array<Promise<void>>();
-//   for (let item of items) {
-//     prms.push(item.populateUpdates());
-//   }
-//   await Promise.all(prms);
-
-//   return items;
-// };
+const CREATED = HttpStatus.CREATED;
+const CONFLICT = HttpStatus.CONFLICT;
+const FORBIDDEN = HttpStatus.FORBIDDEN;
+const NOT_FOUND = HttpStatus.NOT_FOUND;
+const BAD_REQUEST = HttpStatus.BAD_REQUEST;
+const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-// async function findChecklistConfigs(cl: Checklist): Promise<ChecklistConfig[]> {
-//   let query = ChecklistConfig.find({
-//     checklistId: cl._id,
-//   });
-//   let cfgs = await query.exec();
+let adminRoles: string[] = [ 'ADM:RUNCHECK' ];
 
-//   let prms = new Array<Promise<void>>();
-//   for (let cfg of cfgs) {
-//     prms.push(cfg.populateUpdates());
-//   }
-//   await Promise.all(prms);
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
 
-//   return cfgs;
-// };
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
 
-
-// async function findChecklistStatuses(cl: Checklist): Promise<ChecklistStatus[]> {
-//   let query = ChecklistStatus.find({
-//     checklistId: cl._id,
-//   });
-//   let datas = await query.exec();
-
-//   let prms = new Array<Promise<void>>();
-//   for (let data of datas) {
-//     prms.push(data.populateUpdates());
-//   }
-//   await Promise.all(prms);
-
-//   return datas;
-// };
-
-export function findQueryParam(req: express.Request, name: string): string | undefined {
-  // If name is an exact match then do not do case insensitive search.
-  if (req.query[name]) {
-    return String(req.query[name]);
-  }
-  name = name.toUpperCase();
-  for (let key in req.query) {
-    if (req.query.hasOwnProperty(key)) {
-      if (key.toUpperCase() === name) {
-        return String(req.query(key));
+/**
+ * Map the specified array of objects by checklist type property
+ */
+function mapByChecklistType<T extends { checklistType?: string }>(p: Promise<T[]>): Promise<Map<string, T[]>> {
+  let m = new Map<string, T[]>();
+  return p.then((docs) => {
+    for (let doc of docs) {
+      if (doc.checklistType) {
+        let group = m.get(doc.checklistType);
+        if (group) {
+          group.push(doc);
+        } else {
+          m.set(doc.checklistType, [ doc ]);
+        }
       }
     }
+    return m;
+  });
+}
+
+/**
+ * Map the specified array of objects by checklist ID property
+ */
+function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>): Promise<Map<string, T[]>> {
+  let m = new Map<string, T[]>();
+  return p.then((docs) => {
+    for (let doc of docs) {
+      if (doc.checklistId) {
+        let checklistId = doc.checklistId.toHexString();
+        let group = m.get(checklistId);
+        if (group) {
+          group.push(doc);
+        } else {
+          m.set(checklistId, [ doc ]);
+        }
+      }
+    }
+    return m;
+  });
+}
+
+/**
+ * Get the checklist type for a slot (or slot group)
+ */
+function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
+  switch (safetyLevel) {
+  case 'NORMAL':
+  case 'CONTROL':
+  default:
+    return 'SLOT-DEFAULT';
+  case 'CREDITED':
+    return 'SLOT-CREDITED';
+  case 'ESHIMPACT':
+    return 'SLOT-ESHIMPACT';
   }
-  return;
+}
+
+/**
+ * Get the checklist type for a device
+ */
+function getDeviceChecklistType(): ChecklistType {
+  return 'DEVICE-DEFAULT';
+}
+
+function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
+  if (cfg) {
+    // if (typeof cfg.name === 'string') {
+    //   subject.name = cfg.name;
+    // }
+    if (Array.isArray(cfg.assignees) && (cfg.assignees.length > 0)) {
+      subject.assignees = Array.from(cfg.assignees);
+    }
+    if (typeof cfg.required === 'boolean') {
+      subject.required = cfg.required;
+    }
+    // TODO: HISTORY!!!
+  }
 }
 
 
+/**
+ * Get the variable roles based on target type
+ */
+function getVarRoles(target: Target): [string, string] {
+  if (target.dept) {
+    return ['DEPT_LEADER', auth.formatRole('GRP', target.dept, 'LEADER')];
+  }
+  if (target.area) {
+    return ['AREA_LEADER', auth.formatRole('GRP', target.area, 'LEADER')];
+  }
+  if (target.owner) {
+    if (target.memberType === Slot.modelName) {
+      return ['AREA_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
+    }
+    if (target.memberType === Device.modelName) {
+      return ['DEPT_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
+    }
+  }
+  return ['', ''];
+}
+
+/**
+ * Substitute any 'VAR' roles in the list of roles with those in the array.
+ */
+function subVarRoles(roles: string[], varRoles: Array<[string, string]>): string[] {
+  let varRolesMap = new Map<string, string>(varRoles);
+  let subRoles = new Array<string>();
+  for (let role of roles) {
+    let r = auth.parseRole(role);
+    if (r && r.scheme === 'VAR') {
+      let varRole = varRolesMap.get(r.identifier);
+      if (varRole) {
+        subRoles.push(varRole);
+      }
+    } else {
+      subRoles.push(role);
+    }
+  }
+  return subRoles;
+};
 
 
+export const router = express.Router({strict: true});
 
-export const router = express.Router();
-
-
-router.get('/', catchAll(async (req, res) => {
+/**
+ * Get list of checklists for either SLOT, DEVICE, SLOTGROUP or everything.
+ */
+router.get('/checklists', catchAll(async (req, res) => {
   let targetType = findQueryParam(req, 'type');
   debug('Checklist target type: %s', targetType);
 
-
-  // let qType: string | undefined;
-  // for (let name in req.query) {
-  //   if (req.query.hasOwnProperty(name)) {
-  //     if (name.toUpperCase() === 'TYPE') {
-  //       qType = String(req.query[name]).toUpperCase();
-  //     }
-  //   }
-  // }
-
-  if (!targetType) {
-    return;
-  }
-
-  format(res, {
+  return format(res, {
     'text/html': () => {
       res.render('checklists', {
         targetType: targetType,
+        basePath: '..',
       });
     },
     'application/json': async () => {
       let targets: Target[];
+      let checklistVarRoles = new Map<string, Array<[string, string]>>();
 
-      switch (String(targetType).toUpperCase()) {
-      case 'SLOT':
-        debug('Find Slots with assigned checklist');
-        targets = await Slot.find({ checklistId: { $exists: true } /*, groupId: { $exists: false }*/}).exec();
-        break;
-      case 'DEVICE':
-        debug('Find Devices with assigned checklist');
-        targets = await Device.find({ checklistId: { $exists: true } }).exec();
-        break;
-      case 'SLOTGROUP':
-        debug('Find Groups with assigned checklist');
-        targets = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
-        break;
-      default:
-      targets = [];
-      let [ devices, slots, slotgroups ] = await Promise.all([
-          Device.find({ checklistId: { $exists: true } }).exec(),
-          Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
-          Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec(),
-        ]);
-        targets = targets.concat(devices, slots, slotgroups);
+      switch (targetType ? targetType.toUpperCase() : undefined) {
+      case 'SLOT': {
+        debug('Find Slots with assigned checklist (that are not group members)');
+        let slots = await Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
+        for (let slot of slots) {
+          if (slot.checklistId) {
+            checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
+          }
+        }
+        targets = slots;
         break;
       }
+      case 'DEVICE': {
+        debug('Find Devices with assigned checklist');
+        let devices = await Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
+        for (let device of devices) {
+          if (device.checklistId) {
+            checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
+          }
+        }
+        targets = devices;
+        break;
+      }
+      case 'SLOTGROUP': {
+        debug('Find Groups of Slots with assigned checklist');
+        let groups = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
+        for (let group of groups) {
+          if (group.checklistId) {
+            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
+          }
+        }
+        targets = groups;
+        break;
+      }
+      default: {
+        debug('Find Slots, Devices and Groups with assigned checklist');
+        let [ slots, devices, groups ] = await Promise.all([
+          Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Group.find({ checklistId: { $exists: true } }).exec(),
+        ]);
+        targets = [];
+        for (let slot of slots) {
+          if (slot.checklistId) {
+            targets.push(slot);
+            checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
+          }
+        }
+        for (let device of devices) {
+          if (device.checklistId) {
+            targets.push(device);
+            checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
+          }
+        }
+        for (let group of groups) {
+          if (group.checklistId) {
+            targets.push(group);
+            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
+          }
+        }
+        break;
+      }}
 
       let checklistIds: ObjectId[] = [];
       for (let target of targets) {
@@ -181,222 +292,444 @@ router.get('/', catchAll(async (req, res) => {
         }
       }
 
-      debug('Find checklists for targets (length: %s)', checklistIds.length);
-
-      let [ checklists, subjects, /*configs,*/ statuses ] = await Promise.all([
+      let [ checklists, checklistSubjects, checklistConfigs, checklistStatuses ] = await Promise.all([
         models.mapById(Checklist.find({ _id: { $in: checklistIds } }).exec()),
-        ChecklistSubject.find({ checklistId: { $in: (<Array<ObjectId | null>> checklistIds).concat(null) } }).exec(),
-        //ChecklistConfig.find({ checklistId: { $in: checklistIds } }).exec(),
-        ChecklistStatus.find({ checklistId: { $in: checklistIds } }).exec(),
+        mapByChecklistType(ChecklistSubject.find({
+          $or: [ {checklistId: { $exists: false }}, {checklistId: { $in: checklistIds }} ],
+        }).exec()),
+        mapByChecklistId(ChecklistConfig.find({ checklistId: { $in: checklistIds } }).exec()),
+        mapByChecklistId(ChecklistStatus.find({ checklistId: { $in: checklistIds } }).exec()),
       ]);
 
-      debug('Found checklists');
+      debug('Found Checklists: %s', checklists.size);
 
-      let apiChecklists: webapi.Checklist[] = [];
+      let webChecklists: webapi.ChecklistTableRow[] = [];
       for (let target of targets) {
         if (!target.checklistId) {
           continue;
         }
-        let checklist = checklists.get(target.checklistId.toHexString());
-        if (!checklist) {
+
+        let checklistId = target.checklistId.toHexString();
+
+        let checklist = checklists.get(checklistId);
+        if (!checklist || !checklist.id) {
           continue;
         }
-        let apiStatuses: webapi.ChecklistStatus[] = [];
-        for (let status of statuses) {
-          if (status.checklistId.equals(checklist._id)) {
-            apiStatuses.push({
-              id: '', // String(status.id),
-              checklistId: '', //status.checklistId.toHexString(),
-              subjectId: status.subjectName,
-              value: status.value,
-              comment: status.comment,
-              inputBy: status.inputBy,
-              inputOn: status.inputOn.toISOString(),
-              history: {
-                updates: [],
-                updatedAt: '',
-                updatedBy: '',
-              },
-            });
-          }
+
+        let subjects = checklistSubjects.get(checklist.checklistType);
+        if (!subjects) {
+          continue;
         }
 
-        let apiSubjects: webapi.ChecklistSubject[] = [];
+        let configs = checklistConfigs.get(checklistId);
+        if (!configs) {
+          configs = [];
+        }
+
+        let statuses = checklistStatuses.get(checklistId);
+        if (!statuses) {
+          statuses = [];
+        }
+
+        let varRoles = checklistVarRoles.get(checklistId);
+        if (!varRoles) {
+          varRoles = [];
+        }
+
+        let webSubjects: webapi.ChecklistSubjectTableRow[] = [];
         for (let subject of subjects) {
-          if (subject.checklistType === checklist.checklistType && (!subject.checklistId || subject.checklistId === checklist._id)) {
-            apiSubjects.push({
-              id: '', //String(subject.id),
-              checklistType: subject.checklistType,
-              subject: subject.name,
-              checklistId: '', // subject.checklistId ? subject.checklistId.toHexString() : String(checklist.id),
+          if (!subject.checklistId || subject.checklistId.equals(checklist._id)) {
+
+            let webSubject: webapi.ChecklistSubjectTableRow = {
+              name: subject.name,
+              desc: subject.desc,
               order: subject.order,
-              assignee: subject.assignees,
+              assignees: subject.assignees,
+              final: subject.final,
+              primary: subject.primary,
               required: subject.required,
               mandatory: subject.mandatory,
-              final: subject.final,
-            });
+              canUpdate: false, // restricted by default
+            };
+
+            for (let config of configs) {
+              if (config.subjectName === subject.name) {
+                applyCfg(webSubject, config);
+                break;
+              }
+            }
+
+            webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+            webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+
+            webSubjects.push(webSubject);
           }
         }
 
-        apiChecklists.push({
-          id: String(checklist.id),
+        let webStatuses: webapi.ChecklistStatusTableRow[] = [];
+        for (let status of statuses) {
+          webStatuses.push({
+            subjectName: status.subjectName,
+            value: status.value,
+            comment: status.comment,
+            inputBy: status.inputBy,
+            inputAt: status.inputAt.toISOString(),
+          });
+        }
+
+        webChecklists.push({
+          id: checklist.id,
           targetId: checklist.targetId.toHexString(),
+          targetType: checklist.targetType,
           targetName: target.name,
           targetDesc: target.desc,
-          type: checklist.checklistType,
-          editable: false,
-          subjects: apiSubjects,
-          statuses: apiStatuses,
+          checklistType: checklist.checklistType,
+          subjects: webSubjects,
+          statuses: webStatuses,
+          approved: checklist.approved,
+          checked: checklist.checked,
+          total: checklist.total,
         });
       }
 
-      res.json(<webapi.Pkg<webapi.Checklist[]>> {
-        data: apiChecklists,
+      res.json(<webapi.Pkg<webapi.ChecklistTableRow[]>> {
+        data: webChecklists,
       });
-
     },
   });
-
 }));
 
 
+/**
+ * Create a new checklist for the specified target.
+ */
+// tslint:disable-next-line:max-line-length
+router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request', INTERNAL_SERVER_ERROR);
+  }
 
-router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
+  let pkg: webapi.Pkg<{ targetId?: {}, targetType?: {} }> = req.body;
+
+  let targetId = pkg.data.targetId ? String(pkg.data.targetId) : undefined;
+  debug('New Checklist targetId: %s', targetId);
+  if (!targetId) {
+    throw new RequestError('Checklist target ID is required', BAD_REQUEST);
+  }
+
+  let targetType = pkg.data.targetType ? String(pkg.data.targetType).toUpperCase() : undefined;
+  debug('New Checklist targetType: %s', targetType);
+  if (!targetType) {
+    throw new RequestError('Checklist target type is required', BAD_REQUEST);
+  }
+
+  let slot: Slot | null = null;
+  let device: Device | null = null;
+  let group: Group | null = null;
+
+  let varRoles: Array<[string, string]>;
+  let ownerRole: string | undefined;
+  let checklistId: ObjectId | undefined;
+  let checklistType: ChecklistType | undefined;
+
+  switch (targetType) {
+  case Slot.modelName.toUpperCase(): {
+    debug('Find slot with id: %s', targetId);
+    [ slot, device ] = await Promise.all([
+      Slot.findById(targetId).exec(),
+      Device.findOne({ installSlotId: targetId }).exec(),
+    ]);
+    if (!slot || !slot.id) {
+      throw new RequestError('Checklist target (slot) not found', BAD_REQUEST);
+    }
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
+    targetId = slot.id;
+    targetType = Slot.modelName;
+    checklistId = slot.checklistId;
+    checklistType = getSlotChecklistType(slot.safetyLevel);
+    device = null; // Clear the device since target type is Slot
+    break;
+  }
+  case Device.modelName.toUpperCase(): {
+    debug('Find device with id: %s', targetId);
+    device = await Device.findById(targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Checklist target (device) not found', BAD_REQUEST);
+    }
+    targetId = device.id;
+    targetType = Device.modelName;
+    checklistType = getDeviceChecklistType();
+    checklistId = device.checklistId;
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  case Group.modelName.toUpperCase(): {
+    debug('Find group with id: %s', targetId);
+    group = await Group.findById(targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Checklist target (group) not found', BAD_REQUEST);
+    }
+    targetId = group.id;
+    targetType = Group.modelName;
+    checklistId = group.checklistId;
+    switch (group.memberType) {
+    case Slot.modelName:
+      // TODO: Need to get safety level for slot
+      // checklistType = getSlotChecklistType(group.safetyLevel);
+      checklistType = getSlotChecklistType();
+      break;
+    case Device.modelName:
+      checklistType = getDeviceChecklistType();
+      break;
+    default:
+      throw new RequestError(`Group member type '${group.memberType}' not supported`, INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  default:
+    throw new RequestError('Checklist target type is invalid', BAD_REQUEST);
+  }
+
+  debug('Assert user has any role: %s', ownerRole);
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
+    throw new RequestError('Not permitted to assign checklist', FORBIDDEN);
+  }
+
+  if (slot && !slot.installDeviceId) {
+    throw new RequestError('Slot must have device installed', BAD_REQUEST);
+  }
+
+  if (checklistId) {
+    throw new RequestError('Target already assigned checklist', CONFLICT);
+  }
+
+  let subjects = await ChecklistSubject.find({
+    checklistType: checklistType,
+    checklistId: {$exists: false},
+  }).exec();
+
+  const doc: IChecklist = {
+    checklistType: checklistType,
+    targetType: targetType,
+    targetId: models.ObjectId(targetId),
+    approved: false,
+    checked: 0,
+    total: 0,
+  };
+
+  debug('Create new Checklist with type: %s', doc.checklistType);
+  const checklist = new Checklist(doc);
+
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, [], [], true);
+  await checklist.save();
+
+  if (slot) {
+    debug('Update target (slot) with new checklist id: %s', checklist._id);
+    slot.checklistId = models.ObjectId(checklist._id);
+    await slot.saveWithHistory(auth.formatRole('USR', username));
+  }
+  if (device) {
+    debug('Update target (device) with new checklist id: %s', checklist._id);
+    device.checklistId = models.ObjectId(checklist._id);
+    await device.saveWithHistory(auth.formatRole('USR', username));
+  }
+  if (group) {
+    debug('Update target (group) with new checklist id: %s', checklist._id);
+    group.checklistId = models.ObjectId(checklist._id);
+    await group.saveWithHistory(auth.formatRole('USR', username));
+  }
+
+  let webSubjects: webapi.ChecklistSubjectDetails[] = [];
+  for (let subject of subjects) {
+    let webSubject: webapi.ChecklistSubjectDetails = {
+      name: subject.name,
+      desc: subject.desc,
+      order: subject.order,
+      final: subject.final,
+      primary: subject.primary,
+      required: subject.required,
+      mandatory: subject.mandatory,
+      assignees: subject.assignees,
+      canUpdate: false, // restricted by default
+    };
+
+    webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+
+    webSubjects.push(webSubject);
+  }
+
+  let webChecklist: webapi.ChecklistDetails = {
+    id: String(checklist.id),
+    targetId: targetId,
+    targetType: targetType,
+    checklistType: checklist.checklistType,
+    // If user can assign checklist,
+    // then they can edit checklist.
+    canEdit: true,
+    subjects: webSubjects,
+    statuses: [],
+    approved: checklist.approved,
+    checked: checklist.checked,
+    total: checklist.total,
+  };
+
+  res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistDetails>> {
+    data: webChecklist,
+  });
+}));
+
+/**
+ * Get checklist details for the checklist with the specified ID.
+ */
+router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);
-
   debug('Find Checklist with id: %s', id);
+
   let checklist = await Checklist.findById(id);
   if (!checklist || !checklist.id) {
-    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Checklist not found', NOT_FOUND);
   }
 
   // Defer these results until they are needed later.
-  let deferred = Promise.all([
-    //findChecklistSubjects(checklist),
+  let pending = Promise.all([
     ChecklistSubject.findWithHistory({
       checklistType: checklist.checklistType,
-      checklistId: { $in: [null, checklist._id] },
+      $or: [{checklistId: {$exists: false}}, {checklistId: checklist._id}],
     }),
-    //findChecklistConfigs(checklist),
-    ChecklistConfig.findWithHistory({
-      checklistId : checklist._id,
-    }),
-    //findChecklistStatuses(checklist),
-    ChecklistStatus.findWithHistory({
-      checklistId : checklist._id,
-    }),
+    ChecklistConfig.findWithHistory({ checklistId : checklist._id }),
+    ChecklistStatus.findWithHistory({ checklistId : checklist._id }),
   ]);
 
-  let ownerRole = '';
-  let varRoleMap = new Map<string, string>();
+  let varRoles: Array<[string, string]>;
+  let ownerRole: string | undefined;
 
-  if (checklist.targetType === Device.modelName) {
+  switch (checklist.targetType) {
+  case Device.modelName: {
     let device = await Device.findById(checklist.targetId).exec();
     if (!device || !device.id) {
-      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    ownerRole = 'GRP:' + device.dept + '#LEADER';
-    varRoleMap.set('VAR:DEPT_LEADER', ownerRole);
-  } else if (checklist.targetType === Slot.modelName) {
-    let slot = await Slot.findById(checklist.targetId).exec();
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  case Slot.modelName: {
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
     if (!slot || !slot.id) {
-      throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
-    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
-  } else if (checklist.targetType === Group.modelName) {
-    let slot = await Slot.findOne({ groupId: checklist.targetId }).exec();
-    if (!slot || !slot.id) {
-      throw new RequestError('Slot not found', HttpStatus.INTERNAL_SERVER_ERROR);
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
     }
-    varRoleMap.set('VAR:AREA_LEADER', 'GRP:' + slot.area + '#LEADER');
-  } else {
-    throw new RequestError('Target type not supported: ' + checklist.targetType);
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
   }
 
-  let [subjects, configs, statuses ] = await deferred;
-  debug('Checklist subjects: %s', subjects.length);
-  debug('Checklist configs: %s', configs.length);
-  debug('Checklist statuses: %s', statuses.length);
+  let [subjects, configs, statuses ] = await pending;
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
 
-  const webChecklist: webapi.Checklist = {
+  let webSubjects: webapi.ChecklistSubjectDetails[] = [];
+  for (let subject of subjects) {
+
+    let webSubject = {
+      order: subject.order,
+      name: subject.name,
+      desc: subject.desc,
+      assignees: subject.assignees,
+      final: subject.final,
+      primary: subject.primary,
+      required: subject.required,
+      mandatory: subject.mandatory,
+      canUpdate: false, // restricted by default
+    };
+
+    for (let config of configs) {
+      if (config.subjectName === subject.name) {
+        applyCfg(webSubject, config);
+        break;
+      }
+    }
+
+    webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+
+    webSubjects.push(webSubject);
+  }
+
+  let webStatuses: webapi.ChecklistStatusDetails[] = [];
+  for (let status of statuses) {
+    const h = status.history;
+    let webHistory: webapi.History = {
+      updates: [],
+      updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
+      updatedBy: h.updatedBy || '',
+    };
+    if (h.updates) {
+      for (let update of h.updates) {
+        webHistory.updates.push({
+          at: String(update.at),
+          by: update.by,
+          paths: update.paths,
+        });
+      }
+    }
+
+    let webStatus: webapi.ChecklistStatusDetails = {
+      subjectName: status.subjectName,
+      value: status.value,
+      comment: status.comment,
+      inputBy: status.inputBy,
+      inputAt: status.inputAt.toISOString(),
+      history: webHistory,
+    };
+
+    webStatuses.push(webStatus);
+  }
+
+  const webChecklist: webapi.ChecklistDetails = {
     id: String(checklist.id),
     targetId: checklist.targetId.toHexString(),
-    type: checklist.checklistType,
-    editable: auth.hasAnyRole(req, [ 'SYS:RUNCHECK', ownerRole ]),
-    subjects: [],
-    statuses: [],
+    targetType: checklist.targetType,
+    checklistType: checklist.checklistType,
+    canEdit: auth.hasAnyRole(req, adminRoles, ownerRole),
+    subjects: webSubjects,
+    statuses: webStatuses,
+    approved: checklist.approved,
+    checked: checklist.checked,
+    total: checklist.total,
   };
-
-  for (let subject of subjects) {
-    if (subject.id) {
-      for (let cfg of configs) {
-        if (cfg.subjectName === subject.name) {
-          subject.applyCfg(cfg);
-          break;
-        }
-      }
-
-      let assignees: string[] = [];
-      for (let assignee of subject.assignees) {
-        // TODO: use URL parser and handle fragment
-        let role = varRoleMap.get(assignee);
-        if (role) {
-          debug('Replace assignee: %s => %s', assignee, role);
-          assignees.push(role);
-        } else {
-          assignees.push(assignee);
-        }
-      }
-
-      webChecklist.subjects.push({
-        id: subject.id,
-        checklistType: subject.checklistType,
-        checklistId: checklist.id,
-        order: subject.order,
-        subject: subject.name,
-        assignee: assignees,
-        required: subject.required,
-        mandatory: subject.mandatory,
-        final: subject.final,
-      });
-    }
-  }
-
-  for (let status of statuses) {
-    if (status.id) {
-      //let webUpdate
-      //let webHistory: webapi.History | undefined;
-      //let webUpdates: webapi.Update[] = [];
-      const h = status.history;
-      let webHistory: webapi.History = {
-        updates: [],
-        updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
-        updatedBy: h.updatedBy || '',
-      };
-      if (h.updates) {
-        for (let update of h.updates) {
-          webHistory.updates.push({
-            at: String(update.at),
-            by: update.by,
-            paths: update.paths,
-          });
-        }
-      }
-
-      let webStatus = {
-        id: status.id,
-        checklistId: status.checklistId.toHexString(),
-        subjectId: status.subjectName,
-        value: status.value,
-        comment: status.comment,
-        inputBy: status.inputBy,
-        inputOn: status.inputOn.toISOString(),
-        history: webHistory,
-      };
-
-      webChecklist.statuses.push(webStatus);
-    }
-  }
 
   res.json(<webapi.Pkg<webapi.Checklist>> {
     data: webChecklist,
@@ -404,449 +737,583 @@ router.get('/:id', ensureAccepts('json'), catchAll(async (req, res) => {
 }));
 
 
-router.put('/:id/subjects', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
+/**
+ * Create a new (custom) checklist subject.
+ */
+// tslint:disable-next-line:max-line-length
+router.post('/checklists/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
+  debug('Find Checklist with id: %s', id);
 
   let username = auth.getUsername(req);
   if (!username) {
-    throw new RequestError('No username on authenticated request.');
-  }
-
-  if (!Array.isArray(req.body.data)) {
-    throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
+    throw new RequestError('No username on authenticated request', INTERNAL_SERVER_ERROR);
   }
 
   let checklist = await Checklist.findById(id).exec();
   if (!checklist) {
-    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Checklist not found', NOT_FOUND);
   }
 
-  // A checklist is custom if it is associated with a checklist
-  function isCustom(subject: ChecklistSubject): boolean {
-    if (!checklist || !subject.checklistId) {
-      return false;
-    }
-    return subject.checklistId.equals(checklist._id);
-  }
-
-  let deferred = Promise.all([
-    //findChecklistSubjects(checklist),
-    ChecklistSubject.findWithHistory({
+  let pending = Promise.all([
+    ChecklistSubject.find({
       checklistType: checklist.checklistType,
-      checklistId: { $in: [null, checklist._id] },
-    }),
-    //findChecklistConfigs(checklist),
-    ChecklistConfig.findWithHistory({
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).exec(),
+    ChecklistStatus.find({
+      checklistId: checklist._id,
+    }).exec(),
+  ]);
+
+  let varRoles: Array<[string, string]>;
+  let ownerRole: string;
+
+  switch (checklist.targetType) {
+  case Device.modelName: {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  case Slot.modelName: {
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  }
+
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
+    throw new RequestError('Not permitted to create subject', FORBIDDEN);
+  }
+
+  let pkg: webapi.Pkg<{ desc?: {}, assignees?: {} }> = req.body;
+
+  if (typeof pkg.data.desc !== 'string' || pkg.data.desc === '') {
+    throw new RequestError('Subject description is required', BAD_REQUEST);
+  }
+  let desc = String(pkg.data.desc);
+
+  if (!Array.isArray(pkg.data.assignees)) {
+    throw new RequestError('Subject assignees are required', BAD_REQUEST);
+  }
+  let assignees: string[] = [];
+  for (let assignee of pkg.data.assignees) {
+    if (typeof assignee !== 'string' || assignee === '') {
+      throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+    }
+    let role = auth.parseRole(assignee);
+    if (!role) {
+      throw new RequestError(`Subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+    }
+    assignees.push(auth.formatRole(role));
+  }
+
+  let [ subjects, configs, statuses] = await pending;
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
+
+  let doc: IChecklistSubject = {
+    name: `C${Math.random().toString(16).substring(2, 10).toUpperCase()}`,
+    desc: desc,
+    order: 0,
+    final: false,
+    primary: false,
+    required: true,
+    mandatory: true,
+    assignees: assignees,
+    checklistId: models.ObjectId(checklist._id),
+    checklistType: checklist.checklistType,
+  };
+  let subject = new ChecklistSubject(doc);
+
+  await subject.saveWithHistory(auth.formatRole('USR', username));
+
+  subjects.push(subject);
+
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, configs, statuses, true);
+  await checklist.save();
+
+  let webSubject: webapi.ChecklistSubjectDetails = {
+    name: subject.name,
+    desc: subject.desc,
+    order: subject.order,
+    final: subject.final,
+    primary: subject.primary,
+    required: subject.required,
+    mandatory: subject.mandatory,
+    assignees: subject.assignees,
+    canUpdate: false, // restricted by default
+  };
+
+  webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+  webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+
+  res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
+    data: webSubject,
+  });
+}));
+
+/**
+ * Update a checklist subject specified by name
+ */
+// tslint:disable-next-line:max-line-length
+router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let id = String(req.params.id).toUpperCase();
+  let name = String(req.params.name).toUpperCase();
+  debug('Find Checklist with id: %s', id);
+
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request.', INTERNAL_SERVER_ERROR);
+  }
+
+  let checklist = await Checklist.findById(id).exec();
+  if (!checklist) {
+    throw new RequestError('Checklist not found', NOT_FOUND);
+  }
+
+  let pending = Promise.all([
+    ChecklistSubject.find({
+      checklistType: checklist.checklistType,
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).exec(),
+    ChecklistStatus.find({
+      checklistId: checklist._id,
+    }).exec(),
+  ]);
+
+  let varRoles: Array<[string, string]>;
+  let ownerRole: string;
+
+  switch (checklist.targetType) {
+  case Device.modelName: {
+    let device = await Device.findById(checklist.targetId).exec();
+    if (!device || !device.id) {
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  case Slot.modelName: {
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  }
+
+  let [subjects, configs, statuses ] = await pending;
+  debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
+
+  let subject: IChecklistSubject | undefined;
+  for (let s of subjects) {
+    if (s.name === name) {
+      subject = s;
+      break;
+    }
+  }
+  if (!subject) {
+    throw new RequestError(`Checklist subject not found`, NOT_FOUND);
+  }
+
+  let config: ChecklistConfig | undefined;
+  for (let c of configs) {
+    if (c.subjectName === name) {
+      config = c;
+      break;
+    }
+  }
+
+  if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
+    throw new RequestError('Not permitted to modify subject', FORBIDDEN);
+  }
+
+  let pkg: webapi.Pkg<{ required?: {}, assignees?: {} }> = req.body;
+
+  if (pkg.data.required !== undefined) {
+    if (typeof pkg.data.required !== 'boolean') {
+      throw new RequestError('Checklist Subject required is invalid', BAD_REQUEST);
+    }
+    let required = pkg.data.required;
+    if (config) {
+      if (config.required !== required) {
+        config.required = required;
+      }
+    } else if (subject.required !== required) {
+      if (subject.mandatory) {
+        throw new RequestError('Checklist subject is mandatory', BAD_REQUEST);
+      }
+      config = new ChecklistConfig(<IChecklistConfig> {
+        required: required,
+        subjectName: subject.name,
+        checklistId: checklist._id,
+      });
+      configs.push(config);
+    }
+  }
+
+  if (pkg.data.assignees !== undefined) {
+    if (!Array.isArray(pkg.data.assignees)) {
+      throw new RequestError('Checklist subject assignees are invalid', BAD_REQUEST);
+    }
+
+    let assignees: string[] = [];
+    for (let assignee of pkg.data.assignees) {
+      if (typeof assignee !== 'string' || assignee === '') {
+        throw new RequestError(`Checklist subject assignee is empty`, BAD_REQUEST);
+      }
+      let role = auth.parseRole(assignee);
+      if (!role) {
+        throw new RequestError(`Checklist subject assignee is invalid: ${assignee}`, BAD_REQUEST);
+      }
+      assignees.push(auth.formatRole(role));
+    }
+    if (config) {
+      if (!lodash.isEqual(config.assignees, assignees)) {
+        config.assignees = assignees;
+      }
+    } else if (!lodash.isEqual(subject.assignees, assignees)) {
+      if (subject.primary) {
+        throw new RequestError('Checklist subject assignees are not editable', BAD_REQUEST);
+      }
+      config = new ChecklistConfig(<IChecklistConfig> {
+        assignees: assignees,
+        subjectName: subject.name,
+        checklistId: checklist._id,
+      });
+      configs.push(config);
+    }
+  }
+
+  if (config) {
+    debug('Save subject configuration: %s', config.subjectName);
+    await config.saveWithHistory(auth.formatRole('USR', username));
+  }
+
+  debug('Save checklist with updated summary');
+  isChecklistApproved(checklist, subjects, configs, statuses, true);
+  await checklist.save();
+
+  let webSubject: webapi.ChecklistSubjectDetails = {
+    name: subject.name,
+    desc: subject.desc,
+    order: subject.order,
+    final: subject.final,
+    primary: subject.primary,
+    required: subject.required,
+    mandatory: subject.mandatory,
+    assignees: subject.assignees,
+    canUpdate: false, // restricted by default
+  };
+
+  if (config) {
+    debug('Apply config to subject: %s', subject.name);
+    applyCfg(webSubject, config);
+  }
+
+  webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
+  webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+
+  res.json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
+    data: webSubject,
+  });
+
+}));
+
+/**
+ * Update subject status for the given checklist and subject.
+ */
+// tslint:disable-next-line:max-line-length
+router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+  let id = String(req.params.id);
+  let name = String(req.params.name).toUpperCase();
+  debug('Find Checklist with id: %s', id);
+
+  let username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request.', INTERNAL_SERVER_ERROR);
+  }
+
+  let checklist = await Checklist.findById(id).exec();
+  if (!checklist) {
+    throw new RequestError('Checklist not found', NOT_FOUND);
+  }
+
+  let pending = Promise.all([
+    ChecklistSubject.find({
+      checklistType: checklist.checklistType,
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).exec(),
+    ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).exec(),
+    ChecklistStatus.findWithHistory({
       checklistId: checklist._id,
     }),
   ]);
 
-  let varRoleMap = new Map<string, string>();
+  let varRoles: Array<[string, string]>;
 
-  if (checklist.targetType === Device.modelName) {
+  switch (checklist.targetType) {
+  case Device.modelName: {
     let device = await Device.findById(checklist.targetId).exec();
     if (!device || !device.id) {
-      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
-    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
+    varRoles = [ getVarRoles(device) ];
+    break;
+  }
+  case Slot.modelName: {
+    let [ slot, device ] = await Promise.all([
+      Slot.findById(checklist.targetId).exec(),
+      Device.findOne({ installSlotId: checklist.targetId }).exec(),
+    ]);
+    if (!slot || !slot.id) {
+      throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(slot) ];
+    if (slot.installDeviceId) {
+      if (!device) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles.push(getVarRoles(device));
+    }
+    break;
+  }
+  case Group.modelName: {
+    let group = await Group.findById(checklist.targetId).exec();
+    if (!group || !group.id) {
+      throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+    }
+    varRoles = [ getVarRoles(group) ];
+    break;
+  }
+  default:
+    throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+  }
+
+  let [subjects, configs, statuses ] = await pending;
+
+  // Need to track 'basic' (ie non-primary, non-final) subjects
+  let basic: string[] = [];
+  let primary: string[] = [];
+
+  let subject: IChecklistSubject | undefined;
+  for (let s of subjects) {
+    if (s.name === name) {
+      subject = s;
+    }
+    if ((s.mandatory || s.required) && !s.primary && !s.final) {
+      basic.push(s.name);
+    }
+    if (s.primary) {
+      primary.push(s.name);
+    }
+  }
+
+  if (!subject) {
+    throw new RequestError(`Checklist subject not found`, NOT_FOUND);
+  }
+
+  let config: ChecklistConfig | undefined;
+  for (let c of configs) {
+    if (c.subjectName === name) {
+      config = c;
+      break;
+    }
+  }
+  if (config) {
+    debug('Apply config to subject: %s', subject.name);
+    applyCfg(<webapi.ChecklistSubject> subject, config);
+  }
+
+  let basicComment = false;
+  let primaryApproved: boolean | undefined;
+  let status: ChecklistStatus | undefined;
+  for (let s of statuses) {
+    if (s.subjectName === name) {
+      status = s;
+    }
+    if (basic.includes(s.subjectName)) {
+      basicComment = basicComment || isChecklistValueApproved(s.value, true);
+    }
+    if (primary.includes(s.subjectName)) {
+      if (primaryApproved === undefined) {
+        primaryApproved = true;
+      }
+      primaryApproved = primaryApproved && isChecklistValueApproved(s.value);
+    }
+  }
+
+  subject.assignees = subVarRoles(subject.assignees, varRoles);
+
+  debug('Assert user has any role: [%s]', subject.assignees);
+  if (!auth.hasAnyRole(req, adminRoles, subject.assignees)) {
+    throw new RequestError('Not permitted to modify subject', FORBIDDEN);
+  }
+
+  let pkg = <webapi.Pkg<{ value?: {}, comment?: {} }>> req.body;
+
+  // If primary subject(s) is approved than basic subjects are locked.
+  if (primaryApproved && basic.includes(subject.name)) {
+    throw new RequestError('Checklist status is locked', BAD_REQUEST);
+  }
+
+  // Non-mandatory and non-required subjects can not be updated.
+  if (!subject.mandatory && !subject.required) {
+    throw new RequestError('Checklist status is not required', BAD_REQUEST);
+  }
+
+  let value = pkg.data.value ? String(pkg.data.value).trim().toUpperCase() : undefined;
+  debug('Checklist Status value: %s', value);
+  if (!value) {
+    throw new RequestError(`Checklist status value required`, BAD_REQUEST);
+  }
+  if (!CHECKLIST_VALUES.includes(value)) {
+    throw new RequestError(`Checklist status value invalid: ${value}`, BAD_REQUEST);
+  }
+  // If a basic subject is approved with comment than primary subject requires a comment.
+  if (basicComment && primary.includes(subject.name)
+      && isChecklistValueApproved(value) && !isChecklistValueApproved(value, true)) {
+    throw new RequestError(`Checklist status requires a comment`, BAD_REQUEST);
+  }
+
+  let comment = pkg.data.comment ? String(pkg.data.comment).trim() : '';
+  debug('Checklist status comment: "%s"', comment);
+  if (!isChecklistValueApproved(value, true)) {
+    comment = ''; // Comment is cleared if the value is not YC!
+  } else if (comment === '') {
+    throw new RequestError(`Checklist status comment is required`, BAD_REQUEST);
+  }
+
+  if (status) {
+    if (status.value !== value) {
+      status.value = value;
+    }
+    if (status.comment !== comment) {
+      status.comment = comment;
+    }
+    status.inputBy = username;
+    status.inputAt = new Date();
+
   } else {
-    throw new RequestError('Target type not supported: ' + checklist.targetType);
+    let doc: IChecklistStatus = {
+      value: value,
+      comment: comment,
+      subjectName: name,
+      checklistId: checklist._id,
+      inputBy: username,
+      inputAt: new Date(),
+    };
+    status = new ChecklistStatus(doc);
+    statuses.push(status);
   }
 
-  let [subjects, configs ] = await deferred;
-
-  let cfgMap = new Map<string, ChecklistConfig>();
-  for (let config of configs) {
-    //if (config.subjectId) {
-    cfgMap.set(config.subjectName, config);
-    //}
-  }
-
-  let subjectMap = new Map<string, ChecklistSubject>();
-  for (let subject of subjects) {
-    if (subject.id) {
-      subjectMap.set(subject.id, subject);
+  if (status.isModified()) {
+    // A checklist can only become approved or unapproved
+    // through a change in status. To ensure failsafe
+    // operation the checklist approval is revoked before
+    // a change in status and then (possibly) re-approved
+    // after the change in status is completed successful.
+    // If a failure occurs during this process the
+    // checklist will fail in the more safe unapproved state.
+    if (checklist.approved) {
+      debug('Save checklist with approval revoked (failsafe)');
+      checklist.approved = false;
+      await checklist.save();
     }
+    debug('Save checklist status with history');
+    await status.saveWithHistory(auth.formatRole('USR', username));
+
+    debug('Save checklist with updated summary');
+    isChecklistApproved(checklist, subjects, configs, statuses, true);
+    await checklist.save();
   }
 
-  let newItemSet = new Set<string>();
-  let itemPms = new Array<Promise<ChecklistSubject>>();
-  let cfgPms = new Array<Promise<ChecklistConfig>>();
-  for (let newSubject of <webapi.ChecklistSubject[]> req.body.data) {
-    if (typeof newSubject.id !== 'string') {
-      log.warn('Submitted checklist item missing _id');
-      continue;
-    }
-    newItemSet.add(newSubject.id);
-
-    let subject = subjectMap.get(newSubject.id);
-    let cfg = cfgMap.get(newSubject.id);
-    if (subject) {
-      itemPms.push(Promise.resolve(new ChecklistSubject(subject)));
-      debug('Update ChecklistItem (%s) with subject: %s', subject._id, subject.name);
-    } else {
-      subject = new ChecklistSubject(<IChecklistSubject> {
-        //_id: models.generateId(),
-        checklistType: checklist.checklistType,
-        checklistId: models.ObjectId(checklist._id),
-        name: 'SUBJECT',
+  const h = status.history;
+  let webHistory: webapi.History = {
+    updates: [],
+    updatedAt: h.updatedAt ? h.updatedAt.toISOString() : '',
+    updatedBy: h.updatedBy || '',
+  };
+  if (h.updates) {
+    for (let update of h.updates) {
+      webHistory.updates.push({
+        at: update.at.toISOString(),
+        by: update.by,
+        paths: update.paths,
       });
-
-      subject._id = models.generateId();
-
-      if (typeof newSubject.subject === 'string') {
-        subject.name = newSubject.subject;
-      }
-
-      debug('Add new ChecklistItem (%s) with subject: %s', subject.id, subject.name);
-
-      // let opts = {
-      //   userid: username,
-      //   desc: 'Add checklist item',
-      // };
-
-      itemPms.push(subject.saveWithHistory(username).catch((err) => {
-        log.error('Error saving new ChecklistItem: ' + err);
-        return Promise.reject(err);
-      }));
-    }
-
-    if (isCustom(subject)) {
-      if (typeof newSubject.subject === 'string') {
-        if (cfg && (typeof cfg.name === 'string')) {
-          if (cfg.name !== newSubject.subject) {
-            if (subject.name !== newSubject.subject) {
-              cfg.name = newSubject.subject;
-            } else {
-              cfg.name = undefined; // fallback to subject
-            }
-          }
-        } else {
-          if (subject.name !== newSubject.subject) {
-            if (!cfg) {
-              cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectName: subject.name,
-                checklistType: checklist.checklistType,
-                checklistId: models.ObjectId(checklist._id),
-              });
-            }
-            cfg.name = newSubject.subject;
-          }
-        }
-      } else {
-        log.error('warn: ChecklistSubject property, "name", expecting type String');
-      }
-    }
-
-    if (!subject.mandatory) {
-      if (typeof newSubject.required === 'boolean') {
-        if (cfg && (typeof cfg.required === 'boolean')) {
-          if (cfg.required !== newSubject.required) {
-            if (subject.required !== newSubject.required) {
-              cfg.required = newSubject.required;
-            } else {
-              cfg.required = undefined; // defer to item
-            }
-          }
-        } else {
-          if (subject.required !== newSubject.required) {
-            if (!cfg) {
-              cfg = new ChecklistConfig(<IChecklistConfig> {
-                subjectName: subject.name,
-                checklistType: checklist.checklistType,
-                checklistId: models.ObjectId(checklist._id),
-              });
-            }
-            cfg.required = newSubject.required;
-          }
-        }
-      } else {
-        log.error('warn: ChecklistItem property, "required", expecting type Boolean');
-      }
-    }
-
-    // if (typeof newSubject.assignee === 'string') {
-    //   if (cfg && (typeof cfg.assignee === 'string')) {
-    //     if (cfg.assignee !== newSubject.assignee) {
-    //       if (item.assignee !== newSubject.assignee) {
-    //         cfg.assignee = newSubject.assignee;
-    //       } else {
-    //         cfg.assignee = undefined; // defer to item
-    //       }
-    //     }
-    //   } else {
-    //     if (item.assignee !== newItem.assignee) {
-    //       if (!cfg) {
-    //         cfg = new ChecklistItemCfg({
-    //           item: item._id,
-    //           type: checklist.type,
-    //           checklist: checklist._id,
-    //         });
-    //       }
-    //       cfg.assignee = newSubject.assignee;
-    //     }
-    //   }
-    // } else {
-    //   log.error('warn: ChecklistItem property, "assignee", expecting String');
-    // }
-
-    if (cfg) {
-      if (cfg.isModified()) {
-        debug('save ChecklistItemCfg: %s', cfg._id);
-        // let opts = {
-        //   userid: req.session.userid,
-        //   desc: 'Update checklist item',
-        // };
-        cfgPms.push(cfg.saveWithHistory(username).catch((err) => {
-          log.error('warn: Error saving ChecklistItemCfg (%s): %s', cfg ? cfg._id : 'undefined', err);
-          return Promise.reject(err);
-        }));
-      } else {
-        cfgPms.push(Promise.resolve(cfg));
-      }
     }
   }
 
-  let rmItemPms = new Array<Promise<ChecklistSubject>>();
-  for (let subject of subjects) {
-    if (isCustom(subject) && !newItemSet.has(subject._id)) {
-      rmItemPms.push(subject.remove().catch((err) => {
-        log.error('warn: Error removing ChecklistItem (%s):', subject.id, err);
-        return Promise.reject(err);
-      }));
-      debug('Remove ChecklistItem: %s', subject.id);
-    }
-  }
+  let webStatus: webapi.ChecklistStatusDetails = {
+    subjectName: status.subjectName,
+    value: status.value,
+    comment: status.comment,
+    inputBy: status.inputBy,
+    inputAt: status.inputAt.toISOString(),
+    history: webHistory,
+  };
 
-  await Promise.all([checklist, Promise.all(itemPms), Promise.all(cfgPms), Promise.all(rmItemPms)]);
-
-  res.status(200).json({});
-}));
-
-
-router.put('/:id/statuses', ensureAccepts('json'), auth.ensureAuthenticated, catchAll(async (req, res) => {
-  let id = String(req.params.id);
-
-  let username = auth.getUsername(req);
-  if (!username) {
-    throw new RequestError('No username on authenticated request.');
-  }
-
-  if (!Array.isArray(req.body.data)) {
-    throw new RequestError('Invalid request data', HttpStatus.UNPROCESSABLE_ENTITY);
-  }
-
-  let checklist = await Checklist.findById(id).exec();
-  if (!checklist) {
-    throw new RequestError('Checklist not found', HttpStatus.NOT_FOUND);
-  }
-
-  let deferred = Promise.all([
-    //findChecklistSubjects(checklist),
-    ChecklistSubject.findWithHistory({
-      checklistType: checklist.checklistType,
-      checklistId: { $in: [null, checklist._id] },
-    }),
-    //findChecklistConfigs(checklist),
-    ChecklistConfig.findWithHistory({
-      checklistId : checklist._id,
-    }),
-    //findChecklistStatuses(checklist),
-    ChecklistStatus.findWithHistory({
-      checklistId : checklist._id,
-    }),
-  ]);
-
-  let varRoleMap = new Map<string, string>();
-
-  if (checklist.targetType === Device.modelName) {
-    let device = await Device.findById(checklist.targetId).exec();
-    if (!device || !device.id) {
-      throw new RequestError('Device not found', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-    varRoleMap.set('VAR:DEPT_LEADER', 'GRP:' + device.dept + '#LEADER');
-  } else {
-    throw new RequestError('Target type not supported: ' + checklist.targetType);
-  }
-
-  let [ subjects, configs, statuses ] = await deferred;
-
-  const configMap = new Map<string, ChecklistConfig>();
-  for (let config of configs) {
-    configMap.set(config.subjectName, config);
-  }
-
-  const subjectMap = new Map<string, ChecklistSubject>();
-  for (let subject of subjects) {
-    if (subject.id) {
-      subjectMap.set(subject.id, subject);
-      let config = configMap.get(subject.id);
-      if (config) {
-        subject.applyCfg(config);
-      }
-    }
-
-    let assignees: string[] = [];
-    for (let assignee of subject.assignees) {
-      // TODO: use URL parser and handle fragment
-      let role = varRoleMap.get(assignee);
-      if (role) {
-        debug('Replace assignee: %s => %s', assignee, role);
-        assignees.push(role);
-      } else {
-        assignees.push(assignee);
-      }
-    }
-    subject.assignees = assignees;
-  }
-
-  let statusMap = new Map<string, ChecklistStatus>();
-  for (let status of statuses) {
-    statusMap.set(status.subjectName, status);
-  }
-
-  let prms = new Array<Promise<ChecklistStatus>>();
-  for (let newStatus of <any[]> req.body.data) {
-    //if (typeof newStatus.subjectId !== 'string') {
-    //  log.warn('Submitted checklist item data missing _id');
-    //  continue;
-    //}
-    let subject = subjectMap.get(newStatus.subjectId);
-    let status = statusMap.get(newStatus.subjectId);
-
-
-    if (subject && (subject.mandatory || subject.required)) {
-      debug('Status submitted name: "%s", value: "%s", comment:"%s"', subject.name, newStatus.value, newStatus.comment);
-      if (!auth.hasAnyRole(req, [ 'SYS:RUNCHECK' ].concat(subject.assignees))) {
-        throw new RequestError('Not Permitted', HttpStatus.FORBIDDEN);
-      }
-
-      if (status) {
-        if (newStatus.value && (newStatus.value !== status.value) && (CHECKLIST_VALUES.includes(newStatus.value))) {
-          debug('Update status value: %s', newStatus.value);
-          status.value = newStatus.value;
-          status.inputOn = new Date();
-          status.inputBy = username;
-        }
-        if ((newStatus.comment !== status.comment) && (typeof newStatus.comment === 'string')) {
-          debug('Update status comment: %s', newStatus.comment);
-          status.comment = newStatus.comment;
-          status.inputOn = new Date();
-          status.inputBy = username;
-        }
-
-        if (status.isModified()) {
-          prms.push(status.saveWithHistory(username).catch((err) => {
-            log.error('Error saving ChecklistStatus: %s', err);
-            return Promise.reject(err);
-          }));
-        }
-      } else {
-        debug('Create new checklist status');
-        debug(newStatus.value !== 'N');
-        debug(newStatus.value);
-        debug(CHECKLIST_VALUES);
-        if (newStatus.value && (newStatus.value !== 'N') && (CHECKLIST_VALUES.includes(newStatus.value))) {
-          debug('Crete input: value: %s, comment: %s', newStatus.value, newStatus.comment);
-          status = new ChecklistStatus(<IChecklistStatus> {
-            subjectName: subject.name,
-            checklistId: checklist._id,
-            value: newStatus.value,
-            comment: newStatus.comment,
-            inputOn: new Date(),
-            inputBy: username,
-          });
-          prms.push(status.saveWithHistory(username).catch((err) => {
-            log.error('Error saving ChecklistStatus: %s', err);
-            return Promise.reject(err);
-          }));
-        }
-      }
-    }
-  }
-
-  await Promise.all(prms);
-
-  let data: webapi.ChecklistStatus[] = [];
-  // for (let status of statuses) {
-  //   if (status.id) {
-  //     //let webUpdate
-  //     let webUpdates: webapi.Update[] = [];
-
-  //     if (status.history.updates) {
-  //       for (let update of status.history.updates) {
-  //         webUpdates.push({
-  //           at: String(update.at),
-  //           by: update.by,
-  //           paths: update.paths,
-  //         });
-  //       }
-  //     }
-
-  //     let webStatus = {
-  //       id: status.id,
-  //       checklistId: status.checklistId.toHexString(),
-  //       subjectId: status.subjectId.toHexString(),
-  //       value: status.value,
-  //       comment: status.comment,
-  //       inputBy: status.inputBy,
-  //       inputOn: status.inputOn.toISOString(),
-  //       history: {
-  //         updatedAt: status.history.updatedAt.toISOString(),
-  //         updatedBy: status.history.updatedBy,
-  //         updates: webUpdates,
-  //       },
-  //     };
-
-  //     data.push(webStatus);
-  //   }
-  // }
-
-  for (let status of statuses) {
-    if (status.id) {
-      //let webUpdate
-      //let webHistory: webapi.History;
-      //let webUpdates: webapi.Update[] = [];
-
-
-      //if (status.history) {
-      let webHistory: webapi.History = {
-        updates: [],
-        updatedAt: status.history.updatedAt ? status.history.updatedAt.toISOString() : '',
-        updatedBy: status.history.updatedBy || '',
-      };
-
-      if ( status.history.updates) {
-        for (let update of status.history.updates) {
-          webHistory.updates.push({
-            at: String(update.at),
-            by: update.by,
-            paths: update.paths,
-          });
-        }
-      }
-
-      //}
-
-      let webStatus = {
-        id: status.id,
-        checklistId: status.checklistId.toHexString(),
-        subjectId: status.subjectName,
-        value: status.value,
-        comment: status.comment,
-        inputBy: status.inputBy,
-        inputOn: status.inputOn.toISOString(),
-        history: webHistory,
-      };
-
-      data.push(<any> webStatus);
-      //webChecklist.statuses.push(webStatus);
-    }
-
-  }
-
-
-  res.json(<webapi.Pkg<webapi.ChecklistStatus[]>> {
-    data: data,
+  res.json(<webapi.Pkg<webapi.ChecklistStatusDetails>> {
+    data: webStatus,
   });
+
 }));

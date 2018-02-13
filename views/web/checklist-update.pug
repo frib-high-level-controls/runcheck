@@ -8,20 +8,21 @@ form
         th.text-left.col-md-2 Subject
         th.text-center.col-md-1 Status
         th.text-left.col-md-6 &nbsp;
-        th.text-left.col-md-3 Assignee
+        th.text-left.col-md-3 Assignees
+        th.text-left.col-md-3 &nbsp;
     tbody
       for subject in subjects
-        - var status = statuses[subject.subject]
-        tr.form-group.cl-subject(id=subject.id)
+        - var status = statuses[subject.name]
+        tr.form-group.cl-subject(id=subject.name)
           td.text-left.form-control-static
-            if status && (status.history.updates.length > 0)
+            if status && (status.history.length > 0)
               span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history
             else
               span.btn.glyphicon.glyphicon-triangle-right.cl-subject-show-history.hidden
             span.btn.glyphicon.glyphicon-triangle-bottom.cl-subject-hide-history.hidden
           td.text-left
             //-input.form-control.cl-subject-id(type='hidden', value=subject.id)
-            .form-control-static.cl-subject-subject #{subject.subject}
+            .form-control-static.cl-subject-subject #{subject.desc}
           td.text-center
             if subject.mandatory || subject.required
               select.form-control.cl-subject-status-value(disabled='disabled')
@@ -48,18 +49,48 @@ form
             else
               | &nbsp;
           td.text-left
-            if subject.assignee
-              .form-control-static.cl-subject-assignee= subject.assignee 
+            if subject.assignees
+              .form-control-static.cl-subject-assignee= subject.assignees
             else
               .form-control-static.cl-subject-assignee UNASSIGNED
-          if status && (status.history.updates.length > 0)
+          td.text-left
+            .form-control-static
+              if status && status.requestStatus === 'DONE'
+                //- span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL"
+                span.like-btn.text-success.fa.fa-check-circle.cl-subject-update-status
+              else if status && status.requestStatus === 'FAIL'
+                span.like-btn.text-danger.fa.fa-exclamation-circle.cl-subject-update-status(title=status.requestStatusMsg)
+              else
+                span.like-btn.cl-subject-update-status
+
+          for update in status.history
+            tr.cl-subject-history.hidden
+              td.text-center.text-primary
+                span.glyphicon.glyphicon-time
+                //-td.text-left.text-primary
+                  span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
+              td.text-left.text-primary
+                span(data-toggle='tooltip', title=update.inputAt.format('MMM D YYYY, h:mm:ss A'))= update.inputAt.fromNow()
+              td.text-center.text-primary
+                span= update.value
+              td.text-left.text-primary
+                span= update.comment || 'NONE'
+              td.text-left.text-primary
+                span= update.inputBy
+              td.text-left.text-primary
+                span &nbsp;
+
+          //- if status && (status.history.updates.length > 0)
+            - var value = status.value || 'N';
+            - var comment = status.comment || '';
+            - var inputBy = status.inputBy || 'UNKNOWN';
+            - var inputAt = status.inputAt || 'UNKNOWN';
             for update in status.history.updates.reverse()
               tr.cl-subject-history.hidden
                 td.text-center.text-primary
                   span.glyphicon.glyphicon-time
                 //-td.text-left.text-primary
                   span(data-toggle='tooltip' title=moment(update.at).format('MMM D YYYY, h:mm:ss A'))= moment(update.at).fromNow()
-                - var value = 'NONE', comment = 'NONE', inputBy = 'UNKNOWN', inputOn = 'UNKNOWN';
                 for path in update.paths
                   if path.name === 'value' && path.value
                     - value = path.value
@@ -67,16 +98,18 @@ form
                     - comment = path.value
                   if path.name === 'inputBy' && path.value
                     - inputBy = path.value
-                  if path.name === 'inputOn' && path.value
-                    - inputOn = path.value
+                  if path.name === 'inputAt' && path.value
+                    - inputAt = path.value
                 td.text-left.text-primary
-                  span(data-toggle='tooltip', title=moment(inputOn).format('MMM D YYYY, h:mm:ss A'))= moment(inputOn).fromNow()
+                  span(data-toggle='tooltip', title=moment(inputAt).format('MMM D YYYY, h:mm:ss A'))= moment(inputAt).fromNow()
                 td.text-center.text-primary
                   span= value
                 td.text-left.text-primary
-                  span= comment
+                  span= comment || 'NONE'
                 td.text-left.text-primary
                   span= inputBy
+                td.text-left.text-primary
+                  span &nbsp;
   .row
     .col-xs-6.text-left
       button.btn.btn-default.cl-update-edit(type='button', disabled='disabled') Edit

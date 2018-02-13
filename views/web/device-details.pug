@@ -4,7 +4,7 @@ table.table
       th Name
       if embedded
         th
-          a(href='/devices/'+device.name, target='_blank')= device.name
+          a(href=basePath + '/devices/'+device.name, target='_blank')= device.name
       else
         th= device.name
   tbody
