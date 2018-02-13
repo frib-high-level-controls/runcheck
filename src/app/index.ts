@@ -328,6 +328,9 @@ async function doStart(): Promise<express.Application> {
   app.use(express.static(path.resolve(__dirname, '..', 'public')));
   app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
+  // Redirect requests ending in '/' and set response locals 'basePath'
+  app.use(handlers.basePathHandler());
+
   // Authentication handlers
   app.use(auth.getProvider().initialize());
 
