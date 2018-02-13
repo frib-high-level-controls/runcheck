@@ -167,18 +167,6 @@ export function ensurePackage(allowError?: boolean) {
   };
 };
 
-/**
- * Ensure the request contains a valid web API package.
- */
-export function ensurePackage(allowError?: boolean) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.body || (!req.body.data || (allowError && !req.body.error))) {
-      next(new RequestError('Request body not a valid data package', HttpStatus.BAD_REQUEST));
-    }
-    next();
-  };
-};
-
 export function ensureAccepts(type: string): RequestHandler;
 export function ensureAccepts(type: string[]): RequestHandler;
 export function ensureAccepts(...type: string[]): RequestHandler;
