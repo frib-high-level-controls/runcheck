@@ -246,7 +246,9 @@ async function doStart(): Promise<express.Application> {
   });
 
   status.setComponentError('MongoDB', 'Never Connected');
-  info('Mongoose default connection: %s', mongoUrl);
+  // Remove password from the mongoUrl to avoid logging the password!
+  const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:******@');
+  info('Mongoose default connection: %s', safeMongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
   // Authentication configuration
