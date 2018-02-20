@@ -11,6 +11,10 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
+export type CareLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type SafetyLevel = 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
+
 export interface ISlot {
   name: string;
   desc: string;
@@ -18,8 +22,8 @@ export interface ISlot {
   deviceType: string;
   checklistId?: ObjectId;
   groupId?: ObjectId;
-  careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  safetyLevel: 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
+  careLevel: CareLevel;
+  safetyLevel: SafetyLevel;
   arr: string;
   drr: string;
   installDeviceId?: ObjectId;
