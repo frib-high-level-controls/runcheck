@@ -5,11 +5,15 @@ import * as mongoose from 'mongoose';
 
 import { Checklist } from './checklist';
 import { MODEL_NAME as DEVICE_MODEL_NAME } from './device';
-import { Group } from './group';
+import { MODEL_NAME as GROUP_MODEL_NAME } from './group';
 
 import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
+
+export type CareLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type SafetyLevel = 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
 
 export interface ISlot {
   name: string;
@@ -18,8 +22,8 @@ export interface ISlot {
   deviceType: string;
   checklistId?: ObjectId;
   groupId?: ObjectId;
-  careLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  safetyLevel: 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
+  careLevel: CareLevel;
+  safetyLevel: SafetyLevel;
   arr: string;
   drr: string;
   installDeviceId?: ObjectId;
@@ -32,7 +36,7 @@ export interface Slot extends ISlot, history.Document<Slot> {
 };
 
 // Needed to stop cyclical dependency
-// between Slot and Device models.
+// between Slot and Device and Group models.
 export const MODEL_NAME = 'Slot';
 
 export const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
@@ -91,7 +95,7 @@ const slotSchema = new Schema({
   },
   groupId: {
     type: ObjectId,
-    ref: Group.modelName,
+    ref: GROUP_MODEL_NAME,
     required: false,
   },
   careLevel: {
