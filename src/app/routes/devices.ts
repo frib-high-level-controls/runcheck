@@ -105,12 +105,11 @@ router.get('/devices', catchAll(async (req, res) => {
           checklistId: device.checklistId ? device.checklistId.toHexString() : undefined,
         };
         if (device.installSlotId) {
-          const slotId = device.installSlotId.toHexString();
-          const slot = slots.get(slotId);
+          const slot = slots.get(device.installSlotId.toHexString());
           if (slot) {
             row.installSlotName = slot.name;
           } else {
-            log.warn('Installation slot not found: %s', slotId);
+            throw new RequestError(`Installed Slot not found: ${device.installSlotId}`);
           }
         }
         if (device.checklistId) {
