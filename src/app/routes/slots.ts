@@ -16,7 +16,6 @@ import {
   format,
   HttpStatus,
   RequestError,
-  //findQueryParam,
 } from '../shared/handlers';
 
 import {
@@ -26,10 +25,6 @@ import {
 import {
   Device,
 } from '../models/device';
-
-import {
-  Group,
-} from '../models/group';
 
 import {
   IInstall,
@@ -76,22 +71,12 @@ router.get('/', catchAll(async (req, res) => {
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
-      let conds: { groupId: string | undefined } = { groupId: undefined };
-      // let conds: { area?: string } = {};
-      // let groupId = findQueryParam(req, 'GROUPID', false, false);
-      // if (groupId) {
-      //   let group = await Group.find({_id: groupId}).exec();
-      //   conds.area = group[0].owner;
-      // }
       const [ slots, devices ] = await Promise.all([
-        Slot.find(conds).exec(),
+        Slot.find().exec(),
         models.mapById(Device.find({ installSlotId: { $exists: true }}).exec()),
       ]);
 
       for (let slot of slots) {
-        //Hack to display slots with area matching some existing group
-        let group = await Group.findOne({owner: slot.area}).exec();
-        if(group) {
         const row: webapi.SlotTableRow = {
           id: models.ObjectId(slot._id).toHexString(),
           name: slot.name,
@@ -114,7 +99,6 @@ router.get('/', catchAll(async (req, res) => {
           }
         }
         rows.push(row);
-      }
     }
       res.json(<webapi.Pkg<webapi.SlotTableRow[]>> {
         data: rows,
