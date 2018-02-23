@@ -137,6 +137,7 @@ $(WebUtil.wrapCatchAll0(async () => {
   class NewGroupModalViewModel {
     public canSubmit = ko.observable(false);
     public canClose = ko.observable(true);
+    public isSubmitted = false;
 
     public name = ko.observable<string>();
     public description = ko.observable<string>();
@@ -168,7 +169,9 @@ $(WebUtil.wrapCatchAll0(async () => {
     public close() {
       this.hide();
       //$('#slots-table').DataTable().ajax.reload();
-      location.reload();
+      if (this.isSubmitted === true) {
+        location.reload();
+      }
     }
 
     public reset() {
@@ -178,6 +181,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.description('');
       this.canSubmit(false);
       this.canClose(true);
+      this.isSubmitted = false;
     }
 
     public show(groupOwner: string, safetyLevel: string) {
@@ -193,6 +197,7 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public async createNewGroupandAddSlot() {
       let pkg: webapi.Pkg<webapi.Group>;
+      this.isSubmitted = true;
       try {
         pkg = await $.ajax({
           url: '/groups/slot',
@@ -332,6 +337,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     public groupOptions = ko.observableArray<string>();
     public selectedGroup = ko.observable<string>();
     public groupOptionsObject: {name: string, id: string}[] = [];
+    public isSubmitted = false;
 
     private parent: SlotsTableViewModel;
 
@@ -357,7 +363,9 @@ $(WebUtil.wrapCatchAll0(async () => {
     public close() {
       this.hide();
       //$('#slots-table').DataTable().ajax.reload();
-      location.reload();
+      if (this.isSubmitted === true) {
+        location.reload();
+      }
     }
 
     public reset() {
@@ -366,6 +374,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.groupOptionsObject = [];
       this.canSubmit(false);
       this.canClose(true);
+      this.isSubmitted = false;
     }
 
     public show(groups: webapi.GroupTableRow[]) {
@@ -383,6 +392,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     }
 
     public async addToExistingGroup() {
+      this.isSubmitted = true;
       // Add the slots to group
       for (let row of this.parent.selectedRows()) {
         let data = <SlotTableRow>row.data();

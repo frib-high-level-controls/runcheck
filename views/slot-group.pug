@@ -40,10 +40,12 @@ block content
       .col-md-12
         .panel.panel-default
           .panel-heading.clearfix
-            form.form-inline.clearfix(data-bind='with: deleteSlotButton')
-              button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canDelete')
-                | Delete from group
-            .panel-title.pull-left Slots
+            .pull-right
+              form.form-inline.clearfix(data-bind='with: deleteSlotButton')
+                button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canDelete')
+                  | Delete from group
+            .pull-left
+              .panel-title Slots
           .panel-body
             .table-responsive
               table.table.table-condensed.table-bordered.table-hover#slot-table
