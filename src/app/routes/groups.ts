@@ -91,7 +91,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Group not found', NOT_FOUND);
   }
 
-  let perms = getPermissionsToModifyGroup(req, group.owner);
+  let perms = getPermissions(req, group.owner);
 
   const apiGroup: webapi.Group = {
     id: ObjectId(group._id).toHexString(),
@@ -100,7 +100,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     owner: group.owner,
     safetyLevel: group.safetyLevel,
     checklistId: group.checklistId ? group.checklistId.toHexString() : null,
-    canManage: perms.assign,
+    canManage: perms.manage,
   };
 
   return format(res, {
@@ -237,16 +237,6 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
  * @param req HTTP Request
  * @param slot Model
  */
-<<<<<<< HEAD
-function getPermissionsToModifyGroup(req: express.Request, area: string) {
-  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', area, 'LEADER') ];
-  const assign = auth.hasAnyRole(req, roles);
-  if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
-  }
-  return {
-    assign: assign,
-=======
 function getPermissions(req: express.Request, owner: string) {
   const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', owner, 'LEADER') ];
   const manage = auth.hasAnyRole(req, roles);
@@ -255,7 +245,6 @@ function getPermissions(req: express.Request, owner: string) {
   }
   return {
     manage: manage,
->>>>>>> 644e40f475b319346e24f6be20f572b38d3a1f4b
   };
 };
 

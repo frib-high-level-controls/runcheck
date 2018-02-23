@@ -48,11 +48,7 @@ $(() => {
       } else {
         this.selectedRows.push(row);
       }
-<<<<<<< HEAD
-      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
-=======
       // console.log("SELECTED ROWS: %s", this.selectedRows().length);
->>>>>>> 644e40f475b319346e24f6be20f572b38d3a1f4b
     }
 
     /**
@@ -74,11 +70,7 @@ $(() => {
       if (removed) {
         this.selectedRows(rows);
       }
-<<<<<<< HEAD
-      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
-=======
       // console.log("SELECTED ROWS: %s", this.selectedRows().length);
->>>>>>> 644e40f475b319346e24f6be20f572b38d3a1f4b
     }
   }
 
