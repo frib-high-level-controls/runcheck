@@ -50,7 +50,7 @@ router.get('/slot', catchAll(async (req, res) => {
       const rows: webapi.GroupTableRow[] = [];
 
       let conds: { safetyLevel?: string, owner?: string, memberType: string } = { memberType: Slot.modelName };
-      let ownerParam = findQueryParam(req, 'SLOTAREA', false, false);
+      let ownerParam = findQueryParam(req, 'OWNER');
       if (ownerParam) {
         conds.owner = ownerParam.trim().toUpperCase();
       }

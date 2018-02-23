@@ -320,7 +320,7 @@ $(WebUtil.wrapCatchAll0(async () => {
               type: 'GET',
               dataType: 'json',
               data: {
-                SLOTAREA: dataFirstRow.area,
+                OWNER: dataFirstRow.area,
                 SAFETYLEVEL: dataFirstRow.safetyLevel,
               },
             });
