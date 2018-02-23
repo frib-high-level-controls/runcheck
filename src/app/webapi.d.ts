@@ -56,7 +56,7 @@ declare namespace webapi {
     installSlotName?: string;
   }
 
-  export interface SlotTableRow {
+  export interface SlotTableRow extends SlotPerms {
     id: string;
     name: string;
     desc: string;
@@ -97,6 +97,10 @@ declare namespace webapi {
     installSlotBy?: string;
   }
 
+  export interface GroupPerms {
+    canManage?: boolean; 
+  }
+
   export interface Device extends DevicePerms, DeviceInstall {
     id: string,
     name: string;
@@ -118,6 +122,7 @@ declare namespace webapi {
   export interface SlotPerms {
     canAssign?: boolean;
     canInstall?: boolean;
+    canGroup?: boolean;
   }
 
   export interface Slot extends SlotPerms, SlotInstall {
@@ -134,7 +139,7 @@ declare namespace webapi {
     groupId?: string;
   }
 
-  export interface Group {
+  export interface Group extends GroupPerms {
     id: string;
     name: string;
     desc: string;

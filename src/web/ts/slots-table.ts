@@ -111,6 +111,9 @@ $(WebUtil.wrapCatchAll0(async () => {
             }
           }
         }
+        if (dataFirstRow.canGroup === false) {
+          cancreate = false;
+        }
         if (cancreate === false) {
           this.canCreate(false);
         } else {
@@ -198,6 +201,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     public async createNewGroupandAddSlot() {
       let pkg: webapi.Pkg<webapi.Group>;
       this.isSubmitted = true;
+      this.canSubmit(false);
       try {
         pkg = await $.ajax({
           url: '/groups/slot',
@@ -312,7 +316,9 @@ $(WebUtil.wrapCatchAll0(async () => {
             }
           }
         }
-
+        if (dataFirstRow.canGroup === false) {
+          canadd = false;
+        }
         if (canadd === true) {
           try {
             this.pkg = await $.ajax({
@@ -415,6 +421,7 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public async addToExistingGroup() {
       this.isSubmitted = true;
+      this.canSubmit(false);
       // Add the slots to group
       for (let row of this.parent.selectedRows()) {
         let data = <SlotTableRow> row.data();

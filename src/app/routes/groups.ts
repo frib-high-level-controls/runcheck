@@ -91,6 +91,8 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Group not found', NOT_FOUND);
   }
 
+  let perms = getPermissions(req, group.owner);
+
   const apiGroup: webapi.Group = {
     id: ObjectId(group._id).toHexString(),
     name: group.name,
@@ -98,6 +100,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
     owner: group.owner,
     safetyLevel: group.safetyLevel,
     checklistId: group.checklistId ? group.checklistId.toHexString() : null,
+    canManage: perms.manage,
   };
 
   return format(res, {

@@ -85,7 +85,9 @@ $(() => {
 
     public checkToShowButton(rows: DataTables.RowMethods[]) {
       // Check here for delete authorization
-      this.canDelete(true);
+      if (group && group.canManage) {
+        this.canDelete(true);
+      }
     }
 
     public deleteSlot() {
@@ -117,6 +119,11 @@ $(() => {
       this.reset();
       this.canSubmit(true);
       this.canClose(true);
+      if (this.parent.selectedRows().length > 1) {
+        $('#delete_message').text(`Are you sure you want to delete these ${this.parent.selectedRows().length} slots?`)
+      } else {
+        $('#delete_message').text(`Are you sure you want to delete this slot?`)
+      }
       $('#removeSlotModal').modal('show');
     }
 
@@ -129,6 +136,7 @@ $(() => {
 
     public async deleteSlot() {
       this.isSubmitted = true;
+      this.canSubmit(false);
       for (let row of this.parent.selectedRows()) {
         let data = <GroupMemberTableRow> row.data();
         let pkg: webapi.Pkg<webapi.Slot>;
@@ -144,7 +152,7 @@ $(() => {
           });
         } catch (xhr) {
           pkg = xhr.responseJSON;
-          let message = 'Unknown error adding slot';
+          let message = 'Unknown error removing slot';
           if (pkg && pkg.error && pkg.error.message) {
             message = pkg.error.message;
           }

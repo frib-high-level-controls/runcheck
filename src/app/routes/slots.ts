@@ -51,13 +51,16 @@ function getPermissions(req: express.Request, slot: Slot) {
   const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', slot.area, 'LEADER') ];
   const assign = auth.hasAnyRole(req, roles);
   const install = assign;
+  const group = assign;
   if (debug.enabled) {
     debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
     debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
+    debug('PERM: GROUP: %s (%s)', assign, roles.join(' | '));
   }
   return {
     assign: assign,
     install: install,
+    group: group,
   };
 };
 
@@ -77,6 +80,8 @@ router.get('/', catchAll(async (req, res) => {
       ]);
 
       for (let slot of slots) {
+        let perms: {assign: boolean, install: boolean, group: boolean} = {assign: false, install: false, group: false};
+        perms = getPermissions(req, slot);
         const row: webapi.SlotTableRow = {
           id: models.ObjectId(slot._id).toHexString(),
           name: slot.name,
@@ -88,6 +93,7 @@ router.get('/', catchAll(async (req, res) => {
           drr: slot.drr,
           arr: slot.arr,
           groupId: slot.groupId ? slot.groupId.toHexString() : undefined,
+          canGroup: perms.group,
         };
         if (slot.installDeviceId) {
           const deviceId = slot.installDeviceId.toHexString();
