@@ -343,6 +343,9 @@ router.delete('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), en
 
 router.post('/slot', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let passData: {name?: string, owner?: string, description?: string, safetyLevel?: string} = req.body.data;
+  if (debug.enabled) {
+    debug('Create slot group with data: %s', JSON.stringify(passData));
+  }
 
   if (!passData.name || passData.name.trim().length < 1) {
     throw new RequestError('Slot Group name is required', BAD_REQUEST);

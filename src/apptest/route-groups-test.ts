@@ -6,7 +6,9 @@
 
 import { AssertionError } from 'assert';
 
+import { assert } from 'chai';
 import * as express from 'express';
+import * as request from 'supertest';
 
 import { Group } from '../app/models/group';
 import { Slot } from '../app/models/slot';
@@ -53,10 +55,12 @@ describe('Test group routes', () => {
   describe('Add slot to existing group', () => {
     let table = [
       // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: '', status: 302, group: 'FE_TEST:GROUP_1' },
+      { name: 'FE_TEST:DEVA_D0001', user: '',     status: 302, group: 'FE_TEST:GROUP_1' },
       { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, group: 'FE_TEST:GROUP_1' },
       // Assign OK
       { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 200, group: 'FE_TEST:GROUP_1' },
+      // Slot already in group
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, group: 'FE_TEST:GROUP_1' },
       // Bad Request (safety level unmatch)
       { name: 'FE_TEST:DEVA_D0002', user: 'FEAM', status: 400, group: 'FE_TEST:GROUP_1' },
       // Bad Request (owner, slot area unmatch)
@@ -66,16 +70,42 @@ describe('Test group routes', () => {
     ];
     for (let row of table) {
       it(`User '${row.user || 'Anonymous'}' add slot ${row.name} to ${row.group}`, async () => {
-      const groupid = await getGroupId(row);
+      const groupId = await getGroupId(row);
       const slotId = await getSlotId(row);
+
+      let nMembers = -1;
+      await request(handler)
+        .get(`/groups/slot/${groupId}/members`)
+        .set('Accept', 'application/json')
+        .expect(expectPackage())
+        .expect(200)
+        .expect((res: request.Response) => {
+          assert.isArray(res.body.data);
+          nMembers = res.body.data.length;
+        });
+
       const agent = await requestFor(handler, row.user);
       await agent
-        .post(`/groups/slot/${groupid}/members`)
+        .post(`/groups/slot/${groupId}/members`)
         .set('Accept', 'application/json')
         .set('Content-Type', 'application/json')
         .send({ data: { id: slotId } } )
-        .expect(row.status)
-        .expect(expectPackage());
+        .expect(expectPackage(/* TODO: { groupId: groupId } */))
+        .expect(row.status);
+
+      if (row.status < 300) {
+        nMembers += 1;
+      }
+
+      await request(handler)
+        .get(`/groups/slot/${groupId}/members`)
+        .set('Accept', 'application/json')
+        .expect(expectPackage())
+        .expect(200)
+        .expect((res: request.Response) => {
+          assert.isArray(res.body.data);
+          assert.strictEqual(res.body.data.length, nMembers);
+        });
       });
     }
   });
@@ -83,46 +113,88 @@ describe('Test group routes', () => {
   describe('Remove slot from a group', () => {
     let table = [
       // User unauthorized
-      { name: 'FE_TEST:DEVA_D0001', user: '', status: 302, group: 'FE_TEST:GROUP_1' },
+      { name: 'FE_TEST:DEVA_D0001', user: '',     status: 302, group: 'FE_TEST:GROUP_1' },
       { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', status: 403, group: 'FE_TEST:GROUP_1' },
       // Remove OK
       { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 200, group: 'FE_TEST:GROUP_1' },
+      // Slot not in group
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 400, group: 'FE_TEST:GROUP_1' },
     ];
     for (let row of table) {
       it(`User '${row.user || 'Anonymous'}' remove slot ${row.name} from ${row.group}`, async () => {
-      const groupid = await getGroupId(row);
+      const groupId = await getGroupId(row);
       const slotId = await getSlotId(row);
+
+      let nMembers = -1;
+      await request(handler)
+        .get(`/groups/slot/${groupId}/members`)
+        .set('Accept', 'application/json')
+        .expect(expectPackage())
+        .expect(200)
+        .expect((res: request.Response) => {
+          assert.isArray(res.body.data);
+          nMembers = res.body.data.length;
+        });
+
       const agent = await requestFor(handler, row.user);
       await agent
-        .delete(`/groups/slot/${groupid}/members`)
+        .delete(`/groups/slot/${groupId}/members`)
         .set('Accept', 'application/json')
         .set('Content-Type', 'application/json')
         .send({ data: { id: slotId } } )
-        .expect(row.status)
-        .expect(expectPackage());
+        .expect(expectPackage())
+        .expect(row.status);
+
+      if (row.status < 300) {
+        nMembers -= 1;
+      }
+
+      await request(handler)
+        .get(`/groups/slot/${groupId}/members`)
+        .set('Accept', 'application/json')
+        .expect(expectPackage())
+        .expect(200)
+        .expect((res: request.Response) => {
+          assert.isArray(res.body.data);
+          assert.strictEqual(res.body.data.length, nMembers);
+        });
       });
     }
   });
 
   describe('Add new slot group', () => {
-    let table = [
+    // TODO: the type definition here seems to be required for TypeScript v2.5.3, remove later if possible!
+    let table: Array<{ user: string; status: number; data: { name?: string; description?: string; owner?: string; safetyLevel?: string; }}> = [
       // User unauthorized
-      { name: 'FE_TEST:GROUP_3', user: '', status: 302, desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' },
+      { user: '',     status: 302, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEDM', status: 403, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      // Slot Group name, owner and safety level are required
+      { user: 'FEAM', status: 400, data: {}},
+      // Slot Group name is required
+      { user: 'FEAM', status: 400, data: {                          description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: { name: '',                description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      // Slot Group owner is required
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3',            safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: '', safetyLevel: 'NORMAL' }},
+      // Slot Group safety level is required
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END'                        }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: ''       }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'INVALD' }},
       // Assign OK
-      { name: 'FE_TEST:GROUP_3', user: 'FEAM', status: 200, desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' },
+      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
       // Add again - Duplicate groups allowed
-      { name: 'FE_TEST:GROUP_3', user: 'FEAM', status: 200, desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' },
+      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
     ];
     for (let row of table) {
-      it(`User '${row.user || 'Anonymous'}' add new slot group ${row.name}`, async () => {
+      it(`User '${row.user || 'Anonymous'}' add new slot group ${row.data.name}`, async () => {
       const agent = await requestFor(handler, row.user);
       await agent
         .post(`/groups/slot`)
         .set('Accept', 'application/json')
         .set('Content-Type', 'application/json')
-        .send({ data: { name: row.name, owner: row.owner, description: row.desc, safetyLevel: row.safetyLevel } } )
-        .expect(row.status)
-        .expect(expectPackage());
+        .send({ data: row.data } )
+        .expect(expectPackage(row.data))
+        .expect(row.status);
       });
     }
   });
