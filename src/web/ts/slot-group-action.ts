@@ -101,6 +101,7 @@ $(() => {
     public canSubmit = ko.observable(false);
     public canClose = ko.observable(true);
     private parent: GroupMemberTableViewModel;
+    public isSubmitted = false;
 
     constructor(parent: GroupMemberTableViewModel) {
       this.parent = parent;
@@ -108,7 +109,12 @@ $(() => {
       this.canClose = ko.observable(true);
     }
 
+    public reset() {
+      this.isSubmitted = false;
+    }
+    
     public show() {
+      this.reset();
       this.canSubmit(true);
       this.canClose(true);
       $('#removeSlotModal').modal('show');
@@ -116,10 +122,13 @@ $(() => {
 
     public close() {
       $('#removeSlotModal').modal('hide');
-      location.reload();
+      if (this.isSubmitted === true) {
+        location.reload();
+      }
     }
 
     public async deleteSlot() {
+      this.isSubmitted = true;
       for (let row of this.parent.selectedRows()) {
         let data = <GroupMemberTableRow> row.data();
         let pkg: webapi.Pkg<webapi.Slot>;
