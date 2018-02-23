@@ -34,6 +34,11 @@ import {
 
 const debug = dbg('runcheck:groups');
 
+const CONFLICT = HttpStatus.CONFLICT;
+const FORBIDDEN = HttpStatus.FORBIDDEN;
+const NOT_FOUND = HttpStatus.NOT_FOUND;
+const BAD_REQUEST = HttpStatus.BAD_REQUEST;
+
 export const router = express.Router();
 
 router.get('/slot', catchAll(async (req, res) => {
@@ -83,7 +88,7 @@ router.get('/slot/:name_or_id', catchAll(async (req, res) => {
   }
 
   if (!group || !group.id) {
-    throw new RequestError('Group not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Group not found', NOT_FOUND);
   }
 
   const apiGroup: webapi.Group = {
@@ -248,38 +253,38 @@ router.post('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), ensu
 
   let group = await Group.findOne({ _id: id, memberType: Slot.modelName }).exec();
   if (!group) {
-    throw new RequestError('Slot Group not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Slot Group not found', NOT_FOUND);
   }
 
   let passData: {id?: string} = req.body.data;
   if (!passData.id) {
-    throw new RequestError('Slot to add is required', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot to add is required', BAD_REQUEST);
   }
 
   let slot = await Slot.findById(passData.id).exec();
   if (!slot) {
-    throw new RequestError('Slot to add is not found', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot to add is not found', BAD_REQUEST);
   }
 
   if (slot.groupId) {
     if (slot.groupId.equals(group._id)) {
-      throw new RequestError('Slot is already in this group', HttpStatus.BAD_REQUEST);
+      throw new RequestError('Slot is already in this group', BAD_REQUEST);
     }
-    throw new RequestError('Slot is in another group', HttpStatus.CONFLICT);
+    throw new RequestError('Slot is in another group', CONFLICT);
   }
 
   if (group.owner !== slot.area) {
-    throw new RequestError('Slot area does not match group', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot area does not match group', BAD_REQUEST);
   }
 
   if (slot.safetyLevel !== group.safetyLevel) {
-    throw new RequestError('Slot safety level does not match group', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot safety level does not match group', BAD_REQUEST);
   }
 
   const username = auth.getUsername(req);
   const permissions = getPermissionsToModifyGroup(req, slot.area);
   if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
+    throw new RequestError('Not permitted to add this slot', FORBIDDEN);
   }
 
   slot.groupId = group._id;
@@ -298,7 +303,7 @@ router.post('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), ensu
     drr: slot.drr,
   };
 
-  res.status(HttpStatus.OK).json(<webapi.Pkg<webapi.Slot>>{
+  res.json(<webapi.Pkg<webapi.Slot>> {
     data: webslot,
   });
 }));
@@ -308,33 +313,33 @@ router.delete('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), en
 
   let group = await Group.findById({ _id: id, memberType: Slot.modelName }).exec();
   if (!group) {
-    throw new RequestError('Slot Group not found', HttpStatus.NOT_FOUND);
+    throw new RequestError('Slot Group not found', NOT_FOUND);
   }
 
   let passData: {id?: string} = req.body.data;
   if (!passData.id) {
-    throw new RequestError('Slot to remove is required', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot to remove is required', BAD_REQUEST);
   }
 
   let slot = await Slot.findById(passData.id).exec();
   if (!slot) {
-    throw new RequestError('Slot to remove is not found', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot to remove is not found', BAD_REQUEST);
   }
 
   if (!slot.groupId || !slot.groupId.equals(group._id)) {
-    throw new RequestError('Slot is not a member of this group', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot is not a member of this group', BAD_REQUEST);
   }
 
   const username = auth.getUsername(req);
   const permissions = getPermissionsToModifyGroup(req, slot.area);
   if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to remove this slot', HttpStatus.FORBIDDEN);
+    throw new RequestError('Not permitted to remove this slot', FORBIDDEN);
   }
 
   slot.groupId = undefined;
   await slot.saveWithHistory(auth.formatRole('USR', username));
 
-  res.status(HttpStatus.OK).json(<webapi.Pkg<{}>> {
+  res.json(<webapi.Pkg<{}>> {
     data: {},
   });
 }));
@@ -343,15 +348,15 @@ router.post('/slot', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('j
   let passData: {name?: string, owner?: string, description?: string, safetyLevel?: string} = req.body.data;
 
   if (!passData.name || passData.name.trim().length < 1) {
-    throw new RequestError('Slot Group name is required', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot Group name is required', BAD_REQUEST);
   }
 
   if (!passData.owner || passData.owner.trim().length < 1) {
-    throw new RequestError('Slot Group owner is required', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot Group owner is required', BAD_REQUEST);
   }
 
   if (!passData.safetyLevel) {
-    throw new RequestError('Slot Group safety level is required', HttpStatus.BAD_REQUEST);
+    throw new RequestError('Slot Group safety level is required', BAD_REQUEST);
   }
 
   passData.safetyLevel = passData.safetyLevel.trim().toUpperCase();
@@ -363,13 +368,13 @@ router.post('/slot', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('j
     }
   }
   if (!safetyLevel) {
-    throw new RequestError(`Slot Group safety level is invalid: ${passData.safetyLevel}`, HttpStatus.BAD_REQUEST);
+    throw new RequestError(`Slot Group safety level is invalid: ${passData.safetyLevel}`, BAD_REQUEST);
   }
 
   const username = auth.getUsername(req);
   const permissions = getPermissionsToModifyGroup(req, passData.owner);
   if (!username || !permissions.assign) {
-    throw new RequestError('Not permitted to add this slot', HttpStatus.FORBIDDEN);
+    throw new RequestError('Not permitted to add this slot', FORBIDDEN);
   }
 
   let doc: IGroup = {
