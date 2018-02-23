@@ -234,17 +234,14 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
  * @param req HTTP Request
  * @param slot Model
  */
-function getPermissionsToModifyGroup(req: express.Request, area: string) {
-  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', area, 'LEADER') ];
-  const assign = auth.hasAnyRole(req, roles);
-  const install = assign;
+function getPermissions(req: express.Request, owner: string) {
+  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', owner, 'LEADER') ];
+  const manage = auth.hasAnyRole(req, roles);
   if (debug.enabled) {
-    debug('PERM: ASSIGN: %s (%s)', assign, roles.join(' | '));
-    debug('PERM: INSTALL: %s (%s)', assign, roles.join(' | '));
+    debug('PERM: MANAGE: %s (%s)', manage, roles.join(' | '));
   }
   return {
-    assign: assign,
-    install: install,
+    manage: manage,
   };
 };
 
@@ -282,8 +279,8 @@ router.post('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), ensu
   }
 
   const username = auth.getUsername(req);
-  const permissions = getPermissionsToModifyGroup(req, slot.area);
-  if (!username || !permissions.assign) {
+  const permissions = getPermissions(req, slot.area);
+  if (!username || !permissions.manage) {
     throw new RequestError('Not permitted to add this slot', FORBIDDEN);
   }
 
@@ -331,8 +328,8 @@ router.delete('/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), en
   }
 
   const username = auth.getUsername(req);
-  const permissions = getPermissionsToModifyGroup(req, slot.area);
-  if (!username || !permissions.assign) {
+  const permissions = getPermissions(req, slot.area);
+  if (!username || !permissions.manage) {
     throw new RequestError('Not permitted to remove this slot', FORBIDDEN);
   }
 
@@ -372,8 +369,8 @@ router.post('/slot', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('j
   }
 
   const username = auth.getUsername(req);
-  const permissions = getPermissionsToModifyGroup(req, passData.owner);
-  if (!username || !permissions.assign) {
+  const permissions = getPermissions(req, passData.owner);
+  if (!username || !permissions.manage) {
     throw new RequestError('Not permitted to add this slot', FORBIDDEN);
   }
 
