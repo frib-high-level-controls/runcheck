@@ -39,9 +39,9 @@ export interface Slot extends ISlot, history.Document<Slot> {
 // between Slot and Device and Group models.
 export const MODEL_NAME = 'Slot';
 
-export const CARE_LEVELS = [ 'LOW', 'MEDIUM', 'HIGH' ];
+export const CARE_LEVELS: CareLevel[] = [ 'LOW', 'MEDIUM', 'HIGH' ];
 
-export const SAFETY_LEVELS = [ 'NORMAL', 'CONTROL', 'CREDITED', 'ESHIMPACT' ];
+export const SAFETY_LEVELS: SafetyLevel[] = [ 'NORMAL', 'CONTROL', 'CREDITED', 'ESHIMPACT' ];
 
 const Schema = mongoose.Schema;
 
