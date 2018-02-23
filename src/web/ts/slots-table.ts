@@ -212,7 +212,7 @@ $(WebUtil.wrapCatchAll0(async () => {
             data: {
               name: this.name(),
               owner: this.groupOwner(),
-              description: this.description(),
+              desc: this.description(),
               safetyLevel: this.safetyLevel(),
             },
           }),

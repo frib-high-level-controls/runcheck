@@ -164,26 +164,26 @@ describe('Test group routes', () => {
 
   describe('Add new slot group', () => {
     // TODO: the type definition here seems to be required for TypeScript v2.5.3, remove later if possible!
-    let table: Array<{ user: string; status: number; data: { name?: string; description?: string; owner?: string; safetyLevel?: string; }}> = [
+    let table: Array<{ user: string; status: number; data: { name?: string; desc?: string; owner?: string; safetyLevel?: string; }}> = [
       // User unauthorized
-      { user: '',     status: 302, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
-      { user: 'FEDM', status: 403, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: '',     status: 302, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEDM', status: 403, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
       // Slot Group name, owner and safety level are required
       { user: 'FEAM', status: 400, data: {}},
       // Slot Group name is required
-      { user: 'FEAM', status: 400, data: {                          description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
-      { user: 'FEAM', status: 400, data: { name: '',                description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: {                          desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: { name: '',                desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
       // Slot Group owner is required
-      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3',            safetyLevel: 'NORMAL' }},
-      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: '', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3',            safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: '', safetyLevel: 'NORMAL' }},
       // Slot Group safety level is required
-      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END'                        }},
-      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: ''       }},
-      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'INVALD' }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END'                        }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: ''       }},
+      { user: 'FEAM', status: 400, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'INVALD' }},
       // Assign OK
-      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
       // Add again - Duplicate groups allowed
-      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', description: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
+      { user: 'FEAM', status: 200, data: { name: 'FE_TEST:GROUP_3', desc: 'Test Group #3', owner: 'ADB:FRONT_END', safetyLevel: 'NORMAL' }},
     ];
     for (let row of table) {
       it(`User '${row.user || 'Anonymous'}' add new slot group ${row.data.name}`, async () => {
