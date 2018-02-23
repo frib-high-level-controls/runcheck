@@ -8,8 +8,8 @@ $(() => {
   type GroupMemberTableRow = webapi.GroupMemberTableRow & { selected?: boolean };
 
   /**
-  * Defines the full view model for this page.
-  */
+   * Defines the full view model for this page.
+   */
   class GroupMemberTableViewModel {
     public deleteSlotButton = new DeleteSlotButtonViewModel(this);
     public deleteSlotModal = new DeleteSlotModalViewModel(this);
@@ -22,7 +22,7 @@ $(() => {
         } else {
           this.deleteSlotButton.disable();
         }
-      })
+      });
     }
     /**
      * Add a row (in order by index) to the array of selected rows.
@@ -48,7 +48,11 @@ $(() => {
       } else {
         this.selectedRows.push(row);
       }
+<<<<<<< HEAD
       //console.log("SELECTED ROWS: %s", this.selectedRows().length);
+=======
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+>>>>>>> 644e40f475b319346e24f6be20f572b38d3a1f4b
     }
 
     /**
@@ -70,13 +74,17 @@ $(() => {
       if (removed) {
         this.selectedRows(rows);
       }
+<<<<<<< HEAD
       //console.log("SELECTED ROWS: %s", this.selectedRows().length);
+=======
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+>>>>>>> 644e40f475b319346e24f6be20f572b38d3a1f4b
     }
   }
 
   class DeleteSlotButtonViewModel {
-    private parent: GroupMemberTableViewModel;
     public canDelete = ko.observable(false);
+    private parent: GroupMemberTableViewModel;
 
     constructor(parent: GroupMemberTableViewModel) {
       this.parent = parent;
@@ -102,8 +110,8 @@ $(() => {
   class DeleteSlotModalViewModel {
     public canSubmit = ko.observable(false);
     public canClose = ko.observable(true);
-    private parent: GroupMemberTableViewModel;
     public isSubmitted = false;
+    private parent: GroupMemberTableViewModel;
 
     constructor(parent: GroupMemberTableViewModel) {
       this.parent = parent;
@@ -114,7 +122,7 @@ $(() => {
     public reset() {
       this.isSubmitted = false;
     }
-    
+
     public show() {
       this.reset();
       this.canSubmit(true);
@@ -142,14 +150,14 @@ $(() => {
         let pkg: webapi.Pkg<webapi.Slot>;
         try {
           pkg = await $.ajax({
-            url: `/groups/slot/${ group? group.id : '' }/members`,
+            url: `/groups/slot/${ group ? group.id : '' }/members`,
             type: 'DELETE',
             dataType: 'json',
             contentType: 'application/json',
             data: JSON.stringify({
-              data: { id: data.id }
-            })
-          })
+              data: { id: data.id },
+            }),
+          });
         } catch (xhr) {
           pkg = xhr.responseJSON;
           let message = 'Unknown error removing slot';
@@ -164,8 +172,12 @@ $(() => {
           `).removeAttr('disabled');
           return;
         }
-        $('#message2').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + 'Slot ' + data.name + ' was deleted successfully. </div>');
-        //$('#slot-table').DataTable().ajax.reload();
+        $('#message2').append(`
+          <div class="alert alert-success">
+            <button class="close" data-dismiss="alert">x</button>
+            Slot ${data.name} was deleted successfully.
+          </div>`);
+        // $('#slot-table').DataTable().ajax.reload();
       }
     }
   }
@@ -218,7 +230,7 @@ $(() => {
         return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
       },
       searching: false,
-    },{
+    }, {
       title: 'Name',
       data: <any> null,
       render: (row: GroupMemberTableRow): string => {

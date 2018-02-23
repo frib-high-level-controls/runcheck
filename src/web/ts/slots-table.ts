@@ -8,7 +8,7 @@ let forgurl: string | undefined;
 $(WebUtil.wrapCatchAll0(async () => {
   type SlotTableRow = webapi.SlotTableRow & { selected?: boolean };
 
-   /**
+  /**
    * Defines the full view model for this page.
    */
   class SlotsTableViewModel {
@@ -27,7 +27,7 @@ $(WebUtil.wrapCatchAll0(async () => {
           this.newGroupButton.disable();
           this.existingGroupButton.disable();
         }
-      })
+      });
     }
     /**
      * Add a row (in order by index) to the array of selected rows.
@@ -53,7 +53,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       } else {
         this.selectedRows.push(row);
       }
-      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
     }
 
     /**
@@ -75,15 +75,15 @@ $(WebUtil.wrapCatchAll0(async () => {
       if (removed) {
         this.selectedRows(rows);
       }
-      //console.log("SELECTED ROWS: %s", this.selectedRows().length);
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
     }
   }
 
   class NewGroupButtonViewModel {
-    private parent: SlotsTableViewModel;
     public groupOwner: string;
     public safetyLevel: string;
     public canCreate = ko.observable(false);
+    private parent: SlotsTableViewModel;
 
     constructor(parent: SlotsTableViewModel) {
       this.parent = parent;
@@ -93,7 +93,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     public checkToShowButton(rows: DataTables.RowMethods[]) {
       let cancreate: boolean = false;
       if (rows.length > 0) {
-        let dataFirstRow = <SlotTableRow>rows[0].data();
+        let dataFirstRow = <SlotTableRow> rows[0].data();
         if (rows.length === 1) {
           if (!dataFirstRow.groupId) {
             cancreate = true;
@@ -101,7 +101,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         } else {
           // Check to see if groupid is null, area & safety level is same for each row
           for (let r of rows) {
-            let data = <SlotTableRow>r.data();
+            let data = <SlotTableRow> r.data();
             if (data.groupId || (data.area !== dataFirstRow.area) || (data.safetyLevel !== dataFirstRow.safetyLevel)) {
               cancreate = false;
               break;
@@ -123,7 +123,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         }
       }
     }
-      
+
     public createNewGroup() {
       // Open the modal
       this.parent.newGroupModal.show(this.groupOwner, this.safetyLevel);
@@ -153,7 +153,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.parent = parent;
       this.canSubmit = ko.observable(false);
       this.canClose = ko.observable(true);
-      
+
       let refreshCanSubmit = () => {
         if (!this.name()) {
           this.canSubmit(false);
@@ -171,7 +171,7 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public close() {
       this.hide();
-      //$('#slots-table').DataTable().ajax.reload();
+      // $('#slots-table').DataTable().ajax.reload();
       if (this.isSubmitted === true) {
         location.reload();
       }
@@ -209,9 +209,14 @@ $(WebUtil.wrapCatchAll0(async () => {
           dataType: 'json',
           contentType: 'application/json',
           data: JSON.stringify({
-            data: { name: this.name(), owner: this.groupOwner(), description: this.description(), safetyLevel: this.safetyLevel() }
-          })
-        })
+            data: {
+              name: this.name(),
+              owner: this.groupOwner(),
+              description: this.description(),
+              safetyLevel: this.safetyLevel(),
+            },
+          }),
+        });
       } catch (xhr) {
         pkg = xhr.responseJSON;
         let message = 'Unknown error creating new group';
@@ -227,16 +232,23 @@ $(WebUtil.wrapCatchAll0(async () => {
         return;
       }
       if (!pkg.data || !pkg.data.id) {
-        $('#message').prepend('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>Group creation failed. Missing ID. </div>');
+        $('#message').prepend(`
+          <div class="alert alert-danger">
+            <button class="close" data-dismiss="alert">x</button>
+            Group creation failed. Missing ID.
+          </div>`);
         return;
-      } 
-      $('#message').prepend('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>Group ' + pkg.data.name + 
-      ' created successfully. </div>');
-     
+      }
+      $('#message').prepend(`
+        <div class="alert alert-success">
+          <button class="close" data-dismiss="alert">x</button>
+          Group ${pkg.data.name} created successfully.
+        </div>`);
+
       // Add the slots to created group
-  
+
       for (let row of this.parent.selectedRows()) {
-        let data = <SlotTableRow>row.data();
+        let data = <SlotTableRow> row.data();
         let slotpkg: webapi.Pkg<webapi.Slot>;
         try {
           slotpkg = await $.ajax({
@@ -245,8 +257,8 @@ $(WebUtil.wrapCatchAll0(async () => {
             dataType: 'json',
             contentType: 'application/json',
             data: JSON.stringify({
-              data: { id: data.id }
-            })
+              data: { id: data.id },
+            }),
           });
         } catch (xhr) {
           slotpkg = xhr.responseJSON;
@@ -263,16 +275,19 @@ $(WebUtil.wrapCatchAll0(async () => {
           $('#newGroupModal').modal('hide');
           return;
         }
-        $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button> Slot ' + data.name + 
-        ' added to group ' + pkg.data.name + ' succesfully. </div>');
+        $('#message').append(`
+          <div class="alert alert-success">
+            <button class="close" data-dismiss="alert">x</button>
+            Slot ${data.name} added to group ${pkg.data.name} succesfully.
+          </div>`);
       }
     }
   }
 
   class ExistingGroupButtonViewModel {
-    private parent: SlotsTableViewModel;
     public canAdd = ko.observable(false);
     public pkg: webapi.Pkg<webapi.GroupTableRow[]>;
+    private parent: SlotsTableViewModel;
 
     constructor(parent: SlotsTableViewModel) {
       this.parent = parent;
@@ -283,7 +298,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       let canadd: boolean = false;
 
       if (rows.length > 0) {
-        let dataFirstRow = <SlotTableRow>rows[0].data();
+        let dataFirstRow = <SlotTableRow> rows[0].data();
         if (rows.length === 1) {
           if (!dataFirstRow.groupId) {
             canadd = true;
@@ -291,7 +306,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         } else {
           // Check to see if groupid is null, area & safety level is same for each row
           for (let r of rows) {
-            let data = <SlotTableRow>r.data();
+            let data = <SlotTableRow> r.data();
             if (data.groupId || (data.area !== dataFirstRow.area) || (data.safetyLevel !== dataFirstRow.safetyLevel)) {
               canadd = false;
               break;
@@ -310,10 +325,17 @@ $(WebUtil.wrapCatchAll0(async () => {
               url: '/groups/slot',
               type: 'GET',
               dataType: 'json',
-              data: { 'SLOTAREA': dataFirstRow.area, 'SAFETYLEVEL': dataFirstRow.safetyLevel },
+              data: {
+                OWNER: dataFirstRow.area,
+                SAFETYLEVEL: dataFirstRow.safetyLevel,
+              },
             });
           } catch (err) {
-            $('#message').prepend('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' + 'Failed to get Groups' + err.responseText + '</div>');
+            $('#message').prepend(`
+              <div class="alert alert-danger">
+                <button class="close" data-dismiss="alert">x</button>
+                Failed to get Groups ${err.responseText}
+              </div>`);
           }
         }
         if ((canadd === false) || (this.pkg.data.length === 0)) {
@@ -323,7 +345,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         }
       }
     }
-      
+
     public addToExistingGroup() {
       // Open the modal
       this.parent.existingGroupModal.show(this.pkg.data);
@@ -342,7 +364,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     public canClose = ko.observable(true);
     public groupOptions = ko.observableArray<string>();
     public selectedGroup = ko.observable<string>();
-    public groupOptionsObject: {name: string, id: string}[] = [];
+    public groupOptionsObject: Array<{name: string, id: string}> = [];
     public isSubmitted = false;
 
     private parent: SlotsTableViewModel;
@@ -352,7 +374,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.groupOptionsObject = [];
       this.canSubmit = ko.observable(false);
       this.canClose = ko.observable(true);
-      
+
       let refreshCanSubmit = () => {
         if (!this.selectedGroup()) {
           this.canSubmit(false);
@@ -368,7 +390,7 @@ $(WebUtil.wrapCatchAll0(async () => {
 
     public close() {
       this.hide();
-      //$('#slots-table').DataTable().ajax.reload();
+      // $('#slots-table').DataTable().ajax.reload();
       if (this.isSubmitted === true) {
         location.reload();
       }
@@ -402,7 +424,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.canSubmit(false);
       // Add the slots to group
       for (let row of this.parent.selectedRows()) {
-        let data = <SlotTableRow>row.data();
+        let data = <SlotTableRow> row.data();
         let selectedGroupId: string = '';
         for (let g of this.groupOptionsObject) {
           if (g.name === this.selectedGroup()) {
@@ -419,9 +441,9 @@ $(WebUtil.wrapCatchAll0(async () => {
             dataType: 'json',
             contentType: 'application/json',
             data: JSON.stringify({
-              data: { id: data.id }
-            })
-          })
+              data: { id: data.id },
+            }),
+          });
         } catch (xhr) {
           pkg = xhr.responseJSON;
           let message = 'Unknown error adding slot';
@@ -436,8 +458,11 @@ $(WebUtil.wrapCatchAll0(async () => {
           `).removeAttr('disabled');
           return;
         }
-        $('#message2').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' + 'Slot ' + data.name + 
-        ' added successfully to group ' + this.selectedGroup() + '</div>');
+        $('#message2').append(`
+          <div class="alert alert-success">
+            <button class="close" data-dismiss="alert">x</button>
+            Slot ${data.name} added successfully to group ${this.selectedGroup()}
+          </div>`);
       }
     }
   }
@@ -623,7 +648,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     deferRender: true,
     columns: slotColumns,
     order: [
-      [2, 'asc']
+      [2, 'asc'],
     ],
   });
   DataTablesUtil.addFilterHead('#slots-table', slotColumns);

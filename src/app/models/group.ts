@@ -6,7 +6,11 @@ import * as mongoose from 'mongoose';
 import * as history from '../shared/history';
 
 import { Checklist } from './checklist';
-import { SAFETY_LEVELS } from './slot';
+
+import {
+  SAFETY_LEVELS,
+  SafetyLevel,
+} from './slot';
 
 type ObjectId = mongoose.Types.ObjectId;
 
@@ -15,7 +19,7 @@ export interface IGroup {
   desc: string;
   owner: string;
   memberType: string;
-  safetyLevel?: 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
+  safetyLevel?: SafetyLevel;
   checklistId?: ObjectId;
 };
 
