@@ -120,9 +120,9 @@ $(() => {
       this.canSubmit(true);
       this.canClose(true);
       if (this.parent.selectedRows().length > 1) {
-        $('#delete_message').text(`Are you sure you want to delete these ${this.parent.selectedRows().length} slots?`)
+        $('#delete_message').text(`Are you sure you want to remove these ${this.parent.selectedRows().length} slots?`);
       } else {
-        $('#delete_message').text(`Are you sure you want to delete this slot?`)
+        $('#delete_message').text(`Are you sure you want to remove this slot?`);
       }
       $('#removeSlotModal').modal('show');
     }
@@ -167,7 +167,7 @@ $(() => {
         $('#message2').append(`
           <div class="alert alert-success">
             <button class="close" data-dismiss="alert">x</button>
-            Slot ${data.name} was deleted successfully.
+            Slot ${data.name} was removed successfully.
           </div>`);
         // $('#slot-table').DataTable().ajax.reload();
       }
