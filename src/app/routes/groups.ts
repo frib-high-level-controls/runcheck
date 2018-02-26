@@ -39,6 +39,16 @@ const FORBIDDEN = HttpStatus.FORBIDDEN;
 const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 
+let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+
+export function getAdminRoles(): string[] {
+  return Array.from(adminRoles);
+}
+
+export function setAdminRoles(roles: string[]) {
+  adminRoles = Array.from(roles);
+}
+
 export const router = express.Router();
 
 router.get('/slot', catchAll(async (req, res) => {
@@ -232,16 +242,14 @@ router.get('/slot/:id/members', catchAll(async (req, res) => {
 // });
 
 /**
- * Compute the permissions of the current user for the specified slot.
- *
- * @param req HTTP Request
- * @param slot Model
+ * Compute the permissions of the current user for the specified group.
  */
 function getPermissions(req: express.Request, owner: string) {
-  const roles = [ 'ADM:RUNCHECK', auth.formatRole('GRP', owner, 'LEADER') ];
-  const manage = auth.hasAnyRole(req, roles);
+  const ownerRole = auth.formatRole('GRP', owner, 'LEADER');
+  const manageRoles = [ ownerRole ].concat(adminRoles);
+  const manage = auth.hasAnyRole(req, manageRoles);
   if (debug.enabled) {
-    debug('PERM: MANAGE: %s (%s)', manage, roles.join(' | '));
+    debug('PERM: MANAGE: %s (%s)', manage, manageRoles.join(' | '));
   }
   return {
     manage: manage,
