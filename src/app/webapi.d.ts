@@ -77,16 +77,6 @@ declare namespace webapi {
     safetyLevel?: string;
   }
 
-  export interface GroupMemberTableRow {
-    id: string;
-    name: string;
-    area: string;
-    deviceType: string;
-    careLevel: string;
-    drr: string;
-    arr: string;
-  }
-  
   export interface DevicePerms {
     canAssign?: boolean;
   }

@@ -5,7 +5,7 @@
 let group: webapi.Group | undefined;
 
 $(() => {
-  type GroupMemberTableRow = webapi.GroupMemberTableRow & { selected?: boolean };
+  type GroupMemberTableRow = webapi.Slot & { selected?: boolean };
 
   /**
    * Defines the full view model for this page.
