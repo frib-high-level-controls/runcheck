@@ -60,18 +60,16 @@ block content
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled='disabled') Assign
           .panel-body.hidden#checklist-panel
   .container
-    #removeSlotModal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: deleteSlotModal')
+    .modal.fade#removeSlotModal(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: deleteSlotModal')
       .modal-dialog
         .modal-content
           .modal-header
             h4#delete_message
           .modal-body
             #message2
-            form.form-horizontal.clearfix
-              form-group
-                .col-sm-offset-2.col-sm-10.pull-right
-                  button.btn.btn-space.btn-primary(type='submit', data-bind='click: deleteSlot, enable: canSubmit') Confirm
-                  button.btn(type='submit', data-bind='click: close, enable: canClose') Close
+          .modal-footer
+            button.btn.btn-primary(type='button', data-bind='click: deleteSlot, enable: canSubmit') Remove
+            button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
 
   //-.panel.panel-default(style="margin-top: 10px")
     .panel-heading
