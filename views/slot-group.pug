@@ -67,9 +67,9 @@ block content
             h4#delete_message
           .modal-body
             #message2
-          .modal-footer
-            button.btn.btn-primary(type='button', data-bind='click: deleteSlot, enable: canSubmit') Remove
-            button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
+            form
+              button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canSubmit') Remove
+              button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
 
   //-.panel.panel-default(style="margin-top: 10px")
     .panel-heading
