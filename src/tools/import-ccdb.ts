@@ -89,7 +89,7 @@ function mysql_createConnection(options: any) {
 
   function query(sqlString: string, values: string[]) {
     return new Promise((resolve, reject) => {
-      let cb = (err: mysql.IError, results?: any, fields?: mysql.IFieldInfo[]) => {
+      let cb = (err: mysql.MysqlError | null, results?: any, fields?: mysql.FieldInfo[]) => {
         if (err) {
           reject(err);
           return;
