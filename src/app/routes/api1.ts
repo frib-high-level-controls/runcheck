@@ -7,11 +7,11 @@ import * as express from 'express';
 import * as models from '../shared/models';
 
 import {
-    catchAll,
-    ensureAccepts,
-    HttpStatus,
-    RequestError,
-  } from '../shared/handlers';
+  catchAll,
+  ensureAccepts,
+  HttpStatus,
+  RequestError,
+} from '../shared/handlers';
 
 import { Checklist } from '../models/checklist';
 import { Group } from '../models/group';
