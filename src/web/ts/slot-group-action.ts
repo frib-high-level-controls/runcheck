@@ -124,7 +124,7 @@ $(() => {
       } else {
         $('#delete_message').text(`Are you sure you want to remove this slot?`);
       }
-      $('#removeSlotModal').modal('show');
+      $('#removeSlotModal').modal({backdrop: 'static', keyboard: false, show: true});
     }
 
     public close() {

@@ -191,7 +191,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.reset();
       this.groupOwner(groupOwner);
       this.safetyLevel(safetyLevel);
-      $('#newGroupModal').modal('show');
+      $('#newGroupModal').modal({backdrop: 'static', keyboard: false, show: true});
     }
 
     public hide() {
@@ -412,7 +412,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         this.groupOptions.push(option);
         this.groupOptionsObject.push({name: option, id: group.id});
       }
-      $('#existingGroupModal').modal('show');
+      $('#existingGroupModal').modal({backdrop: 'static', keyboard: false, show: true});
     }
 
     public hide() {
