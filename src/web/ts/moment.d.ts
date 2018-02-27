@@ -2,6 +2,7 @@
 // to fix problem compiling for ES5 without modules support.
 // See https://github.com/moment/moment/issues/3763
 // The last line of this file has been removed.
+/* tslint:disable */
 declare function moment(): moment.Moment;
 declare function moment(date: number): moment.Moment;
 declare function moment(date: number[]): moment.Moment;
