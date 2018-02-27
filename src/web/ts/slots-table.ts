@@ -481,7 +481,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: 'Name',
       data: <any> null,
       render: (row: SlotTableRow): string => {
-        return `<a href="${basePath}/slots/${row.name}">${row.name}</a>`;
+        return `<a class="monospace" href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -532,7 +532,10 @@ $(WebUtil.wrapCatchAll0(async () => {
         if (!row.installDeviceName) {
           return '-';
         }
-        return `<a href="${basePath}/devices/${row.installDeviceName}" target="_blank">${row.installDeviceName}</a>`;
+        return `
+          <a class="monospace" href="${basePath}/devices/${row.installDeviceName}" target="_blank">
+            ${row.installDeviceName}
+          </a>`;
       },
       searching: true,
     }, {

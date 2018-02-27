@@ -4,9 +4,10 @@ table.table
       th Name
       if embedded
         th
-          a(href=basePath + '/devices/'+device.name, target='_blank')= device.name
+          a.monospace(href=basePath + '/devices/'+device.name, target='_blank')= device.name
       else
-        th= device.name
+        th
+          span.monospace= device.name
   tbody
     tr
       th Description

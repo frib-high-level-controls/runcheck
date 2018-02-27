@@ -14,7 +14,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.DeviceTableRow): string => {
-        return `<a href="${basePath}/devices/${row.name}">${row.name}</a>`;
+        return `<a class="monospace" href="${basePath}/devices/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -45,7 +45,10 @@ $(() => {
         if (!row.installSlotName) {
           return '-';
         }
-        return `<a href="${basePath}/slots/${row.installSlotName}" target="_blank">${row.installSlotName}</a>`;
+        return `
+          <a class="monospace" href="${basePath}/slots/${row.installSlotName}" target="_blank">
+            ${row.installSlotName}
+          </a>`;
       },
       searching: true,
     }, {

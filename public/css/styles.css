@@ -61,3 +61,12 @@ body {
 .btn-space {
   margin-right: 5px;
 }
+
+/*
+  Slot names have a strange letter spacing on Windows 7 (see issue CCDB-12)
+  Use a monospace font for slot and device names. The value below is the
+  bootstrap (v3) default for monospace fonts (same as <pre> and <code> tags).
+*/
+.monospace {
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
