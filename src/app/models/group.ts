@@ -50,10 +50,6 @@ const groupSchema = new Schema({
     type: String,
     required: true,
   },
-  // memberIds: {
-  //   type: [ObjectId],
-  //   required: true,
-  // },
   memberType: {
     type: String,
     required: true,
@@ -67,14 +63,7 @@ const groupSchema = new Schema({
     type: String,
     enum: SAFETY_LEVELS,
     required: false,
-  }
-  //ARRChecklist: Mixed,
-  //DRRChecklist: Mixed,
-  //createdBy: String,
-  //createdOn: {
-  //  type: Date,
-  //  default: Date.now
-  //}
+  },
 });
 
 history.addHistory(groupSchema, {

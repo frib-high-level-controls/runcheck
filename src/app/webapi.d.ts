@@ -29,16 +29,16 @@ declare namespace webapi {
     // of the request data to which this error applies.)
     location: string;
   }
- 
+
   // Application specific types defined below.
 
   export interface Update {
     at: string;
     by: string;
-    paths: { 
+    paths: Array<{
       name: string;
       value: {};
-    }[]
+    }>;
   }
 
   export interface History {
@@ -82,11 +82,11 @@ declare namespace webapi {
   }
 
   export interface GroupPerms {
-    canManage?: boolean; 
+    canManage?: boolean;
   }
 
   export interface Device extends DevicePerms, DeviceInstall {
-    id: string,
+    id: string;
     name: string;
     desc: string;
     dept: string;
@@ -110,7 +110,7 @@ declare namespace webapi {
   }
 
   export interface SlotBase { // TODO: rename to 'Slot'
-    id: string,
+    id: string;
     name: string;
     desc: string;
     area: string;
@@ -127,7 +127,7 @@ declare namespace webapi {
   }
 
   export interface Slot extends SlotPerms, SlotInstall {
-    id: string,
+    id: string;
     name: string;
     desc: string;
     area: string;
@@ -167,7 +167,7 @@ declare namespace webapi {
   }
 
   interface ChecklistPerms {
-    canEdit: boolean
+    canEdit: boolean;
   }
 
   interface ChecklistTableRow extends Checklist {

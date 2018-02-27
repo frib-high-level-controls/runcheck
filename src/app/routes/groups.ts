@@ -174,95 +174,6 @@ router.get('/groups/slot/:id/members', catchAll(async (req, res) => {
   });
 }));
 
-
-// router.post('/new', auth.ensureAuthenticated, catchAll(async (req, res) => {
-//   let group = new SlotGroup({ name: req.body.name,
-//     area: req.body.area,
-//     description: req.body.description,
-//     //createdBy: req.session.userid,
-//     //createdOn: Date.now()
-//   });
-//   group.save((err, newDoc) => {
-//     if (err) {
-//       log.error(err);
-//       return res.status(500).send(err.message);
-//     }
-//     let url = '/slotGroups/' + newDoc._id;
-//     res.set('Location', url);
-//     return res.status(201).send('You can see the new slot group at <a href="' + url + '">' + url + '</a>');
-//   });
-// }));
-
-/*
- Validation for adding slot to group, return json data:
- {
- passData:{ // slot Ids can be added
-   id:
-   name:
-   }
- conflictDataName: {
-    slot: // conflict slot name
-    conflictGroup:// conflict slot group name
-   }
- }
- */
-// router.post('/validateAdd', auth.ensureAuthenticated, function (req, res) {
-//   var passData = [];
-//   var conflictDataName = [];
-//   var count = 0;
-//   Slot.find({
-//     '_id': {$in: req.body.slotIds}
-//   }, function (err, docs) {
-//     if (err) {
-//       log.error(err);
-//       return res.status(500).send(err.message);
-//     }
-//     if(docs.ength === 0) {
-//       return res.status(404).send('slots not found.');
-//     }
-//     // divied two parts by inGroup failed
-//     var conflictData = [];
-//     docs.forEach(function (d) {
-//       if (d.inGroup) {
-//         conflictData.push(d);
-//       } else {
-//         passData.push({id: d._id,
-//           name: d.name});
-//       }
-//     });
-
-//     if(conflictData.length > 0) {
-//       conflictData.forEach(function (r) {
-//         SlotGroup.findOne({'_id': r.inGroup}, function(err, conflictGroup) {
-//           if(err){
-//             log.error(err);
-//             return res.status(500).send(err.message);
-//           }
-//           if(conflictGroup == null) {
-//             return res.status(404).send(r.inGroup + ' not found.');
-//           }
-//           conflictDataName.push({
-//             slot: r.name,
-//             conflictGroup: conflictGroup.name
-//           });
-//           count = count + 1;
-//           if (count === conflictData.length) {
-//             res.status(200).json({
-//               passData: passData,
-//               conflictDataName: conflictDataName
-//             });
-//           }
-//         });
-//       });
-//     }else {
-//       res.status(200).json({
-//         passData: passData,
-//         conflictDataName: conflictDataName
-//       });
-//     }
-//   });
-// });
-
 /**
  * Compute the permissions of the current user for the specified group.
  */
@@ -278,7 +189,8 @@ function getPermissions(req: express.Request, owner: string) {
   };
 };
 
-router.post('/groups/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+// tslint:disable:max-line-length
+router.post('/groups/slot/:id/members', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
 
   let group = await Group.findOne({ _id: id, memberType: Slot.modelName }).exec();
@@ -338,7 +250,7 @@ router.post('/groups/slot/:id/members', auth.ensureAuthenticated, ensurePackage(
   });
 }));
 
-router.delete('/groups/slot/:id/members', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.delete('/groups/slot/:id/members', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
 
   let group = await Group.findById({ _id: id, memberType: Slot.modelName }).exec();
@@ -374,7 +286,7 @@ router.delete('/groups/slot/:id/members', auth.ensureAuthenticated, ensurePackag
   });
 }));
 
-router.post('/groups/slot', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.post('/groups/slot', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let passData: {name?: string, owner?: string, desc?: string, safetyLevel?: string} = req.body.data;
   if (debug.enabled) {
     debug('Create slot group with data: %s', JSON.stringify(passData));

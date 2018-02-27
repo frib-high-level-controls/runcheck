@@ -404,7 +404,7 @@ router.get('/checklists', catchAll(async (req, res) => {
  * Create a new checklist for the specified target.
  */
 // tslint:disable-next-line:max-line-length
-router.post('/checklists', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.post('/checklists', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let username = auth.getUsername(req);
   if (!username) {
     throw new RequestError('No username on authenticated request', INTERNAL_SERVER_ERROR);
@@ -741,7 +741,7 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
  * Create a new (custom) checklist subject.
  */
 // tslint:disable-next-line:max-line-length
-router.post('/checklists/:id/subjects', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.post('/checklists/:id/subjects', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
   debug('Find Checklist with id: %s', id);
 
@@ -887,7 +887,7 @@ router.post('/checklists/:id/subjects', auth.ensureAuthenticated, ensurePackage(
  * Update a checklist subject specified by name
  */
 // tslint:disable-next-line:max-line-length
-router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id).toUpperCase();
   let name = String(req.params.name).toUpperCase();
   debug('Find Checklist with id: %s', id);
@@ -1081,7 +1081,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthenticated, ensurePac
  * Update subject status for the given checklist and subject.
  */
 // tslint:disable-next-line:max-line-length
-router.put('/checklists/:id/statuses/:name', auth.ensureAuthenticated, ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
+router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage(), ensureAccepts('json'), catchAll(async (req, res) => {
   let id = String(req.params.id);
   let name = String(req.params.name).toUpperCase();
   debug('Find Checklist with id: %s', id);
