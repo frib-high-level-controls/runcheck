@@ -77,37 +77,6 @@ block content
               button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canSubmit') Remove
               button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
 
-  //-.panel.panel-default(style="margin-top: 10px")
-    .panel-heading
-      strong Basic Infomation
-    .panel-body
-      .table-responsive
-        table.table.table-condensed
-          thead
-            tr
-              th Name
-              th Created By
-              th Created On
-              th Area
-              th Description
-          tbody
-            tr
-              td #{group.name}
-              td #{group.createdBy}
-              td #{group.createdOn}
-              td #{group.area}
-              td #{group.description}
-  //-.panel.panel-default
-    .panel-heading
-      strong Slots
-    .panel-body
-      button.btn.btn-primary#remove
-        | Remove
-      br
-      br
-      #slots.tab-pane.active
-        .table-responsive
-          table#spec-slots-table.table.table-bordered.table-hover
 block js
   //- script(type='text/javascript', src='/holderjs/holder.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')

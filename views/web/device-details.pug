@@ -22,26 +22,3 @@ table.table
       - var d = new Date(device.installSlotOn);
       th Installed
       td #{d.getUTCMonth()+1}/#{d.getUTCDate()}/#{d.getUTCFullYear()}
-      //-tr
-        th Owner
-        td= device.owner
-      //-tr
-        th Installed to device
-        - var installToDevice = device.installToDevice.id ? '<a href="/devices/' + device.installToDevice.id + '">' + device.installToDevice.serialNo + '</a>' : 'N/A'
-        td(id = 'dInstallToDevice')!= installToDevice
-      //-tr
-        th Installed to slot
-        - var installToSlot = device.installToSlot.id ? '<a href="/slots/' + device.installToSlot.id + '">' + device.installToSlot.name + '</a>' : 'N/A'
-          td(id = 'dInstallToSlot')!= installToSlot
-      //-tr
-        th Status
-        -
-          var statusMap = {
-              '0': 'Not installed',
-              '1': 'Prepare to install',
-              '1.5': 'Prepare installation checklist',
-              '2': 'approved to install',
-              '3': 'installed'
-            };
-          var status = statusMap[device.status]
-        td(id = 'dStatus', name = device.status)= status

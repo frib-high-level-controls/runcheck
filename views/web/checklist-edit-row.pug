@@ -7,8 +7,6 @@ tr.form-group.cl-subject(id=row.name)
       .form-control-static
         span.like-btn.glyphicon.glyphicon-lock.cl-subject-lock
   td.text-left
-    //- input.form-control.cl-subject-id(type='hidden', value=subject.id)
-    //- if !subject.checklistId
     if row.isCustom()
       input.form-control.cl-subject-desc(type='text', value=row.desc)
     else
