@@ -6,7 +6,6 @@ import * as express from 'express';
 import * as moment from 'moment';
 
 import * as auth from '../shared/auth';
-import * as log from '../shared/logging';
 import * as models from '../shared/models';
 
 import {

@@ -20,6 +20,7 @@ import auth = require('./shared/auth');
 import forgapi = require('./shared/forgapi');
 import forgauth = require('./shared/forg-auth');
 
+import api1 = require('./routes/api1');
 import devices = require('./routes/devices');
 import slots = require('./routes/slots');
 import groups = require('./routes/groups');
@@ -368,6 +369,7 @@ async function doStart(): Promise<express.Application> {
   app.use(slots.router);
   app.use(groups.router);
   app.use(checklists.router);
+  app.use(api1.router);
 
   // no handler found for request (404)
   app.use(handlers.notFoundHandler());
