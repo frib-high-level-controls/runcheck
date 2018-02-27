@@ -26,7 +26,7 @@ export interface Device extends IDevice, history.Document<Device> {
 };
 
 // Needed to stop cyclical dependency
-// between Slot and Device models.
+// between Slot and Device and Group models.
 export const MODEL_NAME = 'Device';
 
 const Schema = mongoose.Schema;

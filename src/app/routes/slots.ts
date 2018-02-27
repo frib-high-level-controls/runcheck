@@ -66,10 +66,12 @@ function getPermissions(req: express.Request, slot: Slot) {
   if (debug.enabled) {
     debug('PERM: ASSIGN: %s (%s)', assign, assignRoles.join(' | '));
     debug('PERM: INSTALL: %s (%s)', assign, assignRoles.join(' | '));
+    debug('PERM: GROUP: %s (%s)', assign, assignRoles.join(' | '));
   }
   return {
     assign: assign,
     install: assign, // currently permission 'install' same as 'assign'
+    group: assign, // currently permission 'group' same as 'assign'
   };
 };
 
@@ -92,6 +94,7 @@ router.get('/slots', catchAll(async (req, res) => {
         models.mapById(Checklist.find({ targetType: { $in: [ Slot.modelName, Group.modelName ] }}).exec()),
       ]);
       for (let slot of slots) {
+        let perms = getPermissions(req, slot);
         const row: webapi.SlotTableRow = {
           id: models.ObjectId(slot._id).toHexString(),
           name: slot.name,
@@ -107,6 +110,9 @@ router.get('/slots', catchAll(async (req, res) => {
           installDeviceId: slot.installDeviceId ? slot.installDeviceId.toHexString() : undefined,
           installDeviceBy: slot.installDeviceBy,
           installDeviceOn: slot.installDeviceOn ? slot.installDeviceOn.toISOString() : undefined,
+          canAssign: perms.assign,
+          canInstall: perms.assign,
+          canGroup: perms.group,
         };
         if (slot.installDeviceId) {
           const deviceId = slot.installDeviceId.toHexString();

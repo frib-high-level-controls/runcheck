@@ -8,11 +8,14 @@ block head
 block content
   .container
     #message
-    //- #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
+    #modal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true')
       .modal-dialog
         .modal-content
           .modal-header
             h3#modalLabel
+          .modal-body
+            .panel
+            select
           .modal-footer
     #slot-group-details
       h3 Slot Group
@@ -30,14 +33,25 @@ block content
               tr
                 th Area
                 td= group.owner
+              tr
+                th Safety Level
+                if group.safetyLevel
+                  td= group.safetyLevel
+                else
+                  td None
           hr
   br
   .container
     .row
       .col-md-12
         .panel.panel-default
-          .panel-heading
-            .panel-title Slots
+          .panel-heading.clearfix
+            .pull-right
+              form.form-inline.clearfix(data-bind='with: deleteSlotButton')
+                button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canDelete')
+                  | Remove
+            .pull-left
+              h4 Slots
           .panel-body
             .table-responsive
               table.table.table-condensed.table-bordered.table-hover#slot-table
@@ -51,6 +65,17 @@ block content
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spinner
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled='disabled') Assign
           .panel-body.hidden#checklist-panel
+  .container
+    .modal.fade#removeSlotModal(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: deleteSlotModal')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h4#delete_message
+          .modal-body
+            #message2
+            form
+              button.btn.btn-primary.pull-right(type='button', data-bind='click: deleteSlot, enable: canSubmit') Remove
+              button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
 
   //-.panel.panel-default(style="margin-top: 10px")
     .panel-heading
@@ -87,11 +112,12 @@ block js
   //- script(type='text/javascript', src='/holderjs/holder.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/knockout/build/output/knockout-latest.js')
+  script(type='text/javascript', src=basePath + '/js/shared/webutil.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
   script(type='text/javascript', src=basePath + '/js/checklistutil.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-update.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit-row.js')
   script(type='text/javascript', src=basePath + '/js/slot-group-action.js')
-  script(type='text/javascript', src=basePath + '/js/authutil.js')
   script(type='text/javascript') group = !{JSON.stringify(group)};

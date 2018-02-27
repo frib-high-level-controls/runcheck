@@ -14,7 +14,6 @@
     "postinstall": "cd ./public && npm install"
   },
   "dependencies": {
-    "@types/bootstrap": "^3.3.36",
     "body-parser": "^1.15.1",
     "bunyan": "1.8.1",
     "cas.js": "0.1.0",
@@ -42,6 +41,7 @@
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.3",
+    "@types/bootstrap": "^3.3.36",
     "@types/bootstrap-datepicker": "0.0.11",
     "@types/chai": "^4.0.1",
     "@types/commander": "^2.9.2",
@@ -58,7 +58,7 @@
     "@types/morgan": "^1.7.32",
     "@types/mysql": "0.0.34",
     "@types/passport": "^0.4.2",
-    "@types/passport-http": "^0.3.2",
+    "@types/passport-http": "^0.3.3",
     "@types/rc": "^0.0.1",
     "@types/request": "^2.0.3",
     "@types/select2": "^4.0.41",

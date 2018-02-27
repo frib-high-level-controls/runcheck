@@ -5,6 +5,174 @@
 let group: webapi.Group | undefined;
 
 $(() => {
+  type GroupMemberTableRow = webapi.Slot & { selected?: boolean };
+
+  /**
+   * Defines the full view model for this page.
+   */
+  class GroupMemberTableViewModel {
+    public deleteSlotButton = new DeleteSlotButtonViewModel(this);
+    public deleteSlotModal = new DeleteSlotModalViewModel(this);
+    public selectedRows = ko.observableArray<DataTables.RowMethods>();
+
+    constructor() {
+      this.selectedRows.subscribe((rows) => {
+        if (rows.length > 0) {
+          this.deleteSlotButton.checkToShowButton(rows);
+        } else {
+          this.deleteSlotButton.disable();
+        }
+      });
+    }
+    /**
+     * Add a row (in order by index) to the array of selected rows.
+     */
+    public selectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <GroupMemberTableRow> row.data();
+      data.selected = true;
+      let added = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          return;
+        }
+        if (!added && (r.index() > row.index())) {
+          rows.push(row);
+          added = true;
+        }
+        rows.push(r);
+      }
+      if (added) {
+        this.selectedRows(rows);
+      } else {
+        this.selectedRows.push(row);
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+
+    /**
+     * Remove a row (by index) from the array of selected rows.
+     */
+    public deselectRow(row: DataTables.RowMethods) {
+      // Cast required here because 'object' type is used.
+      let data = <GroupMemberTableRow> row.data();
+      data.selected = false;
+      let removed = false;
+      let rows: DataTables.RowMethods[] = [];
+      for (let r of this.selectedRows()) {
+        if (r.index() === row.index()) {
+          removed = true;
+          continue;
+        }
+        rows.push(r);
+      }
+      if (removed) {
+        this.selectedRows(rows);
+      }
+      // console.log("SELECTED ROWS: %s", this.selectedRows().length);
+    }
+  }
+
+  class DeleteSlotButtonViewModel {
+    public canDelete = ko.observable(false);
+    private parent: GroupMemberTableViewModel;
+
+    constructor(parent: GroupMemberTableViewModel) {
+      this.parent = parent;
+      this.canDelete = ko.observable(false);
+    }
+
+    public checkToShowButton(rows: DataTables.RowMethods[]) {
+      // Check here for delete authorization
+      if (group && group.canManage) {
+        this.canDelete(true);
+      }
+    }
+
+    public deleteSlot() {
+      this.parent.deleteSlotModal.show();
+    }
+
+    public disable() {
+      this.canDelete(false);
+    }
+  }
+
+  class DeleteSlotModalViewModel {
+    public canSubmit = ko.observable(false);
+    public canClose = ko.observable(true);
+    public isSubmitted = false;
+    private parent: GroupMemberTableViewModel;
+
+    constructor(parent: GroupMemberTableViewModel) {
+      this.parent = parent;
+      this.canSubmit = ko.observable(false);
+      this.canClose = ko.observable(true);
+    }
+
+    public reset() {
+      this.isSubmitted = false;
+    }
+
+    public show() {
+      this.reset();
+      this.canSubmit(true);
+      this.canClose(true);
+      if (this.parent.selectedRows().length > 1) {
+        $('#delete_message').text(`Are you sure you want to remove these ${this.parent.selectedRows().length} slots?`);
+      } else {
+        $('#delete_message').text(`Are you sure you want to remove this slot?`);
+      }
+      $('#removeSlotModal').modal({backdrop: 'static', keyboard: false, show: true});
+    }
+
+    public close() {
+      $('#removeSlotModal').modal('hide');
+      if (this.isSubmitted === true) {
+        location.reload();
+      }
+    }
+
+    public async deleteSlot() {
+      this.isSubmitted = true;
+      this.canSubmit(false);
+      for (let row of this.parent.selectedRows()) {
+        let data = <GroupMemberTableRow> row.data();
+        let pkg: webapi.Pkg<webapi.Slot>;
+        try {
+          pkg = await $.ajax({
+            url: `/groups/slot/${ group ? group.id : '' }/members`,
+            type: 'DELETE',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              data: { id: data.id },
+            }),
+          });
+        } catch (xhr) {
+          pkg = xhr.responseJSON;
+          let message = 'Unknown error removing slot';
+          if (pkg && pkg.error && pkg.error.message) {
+            message = pkg.error.message;
+          }
+          $('#message2').prepend(`
+            <div class="alert alert-danger">
+              <button class="close" data-dismiss="alert">x</button>
+              <span>${message}</span>
+            </div>
+          `).removeAttr('disabled');
+          return;
+        }
+        $('#message2').append(`
+          <div class="alert alert-success">
+            <button class="close" data-dismiss="alert">x</button>
+            Slot ${data.name} was removed successfully.
+          </div>`);
+        // $('#slot-table').DataTable().ajax.reload();
+      }
+    }
+  }
 
   function showMessage(msg: string) {
     $('#message').append(`
@@ -43,25 +211,35 @@ $(() => {
   //   }
   // }
 
+  const vm = new GroupMemberTableViewModel();
+  ko.applyBindings(vm);
+
   const slotColumns: datatablesutil.ColumnSettings[] = [
     {
+      title: '',
+      data: <any> null,
+      render: (row: GroupMemberTableRow): string => {
+        return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
+      },
+      searching: false,
+    }, {
       title: 'Name',
       data: <any> null,
-      render: (row: webapi.Slot): string => {
+      render: (row: GroupMemberTableRow): string => {
         return `<a href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
       title: 'Type',
       data: <any> null,
-      render: (row: webapi.Slot): string => {
+      render: (row: GroupMemberTableRow): string => {
         return row.deviceType || 'Unknown';
       },
       searching: true,
     }, {
       title: 'Area',
       data: <any> null, // 'area',
-      render: (row: webapi.Slot) => {
+      render: (row: GroupMemberTableRow) => {
         if ((<any> window).forgurl && row.area) {
           return `<a href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
         } else {
@@ -72,28 +250,28 @@ $(() => {
     }, {
       title: 'Level of care',
       data: <any> null,
-      render: (row: webapi.Slot): string => {
+      render: (row: GroupMemberTableRow): string => {
         return row.careLevel || 'Unknown';
       },
       searching: true,
     }, {
       title: 'DRR',
       data: <any> null,
-      render: (row: webapi.Slot): string => {
+      render: (row: GroupMemberTableRow): string => {
         return row.drr || 'Unknown';
       },
       searching: true,
     }, {
       title: 'ARR',
       data: <any> null,
-      render: (row: webapi.Slot): string => {
+      render: (row: GroupMemberTableRow): string => {
         return row.arr || 'Unknown';
       },
       searching: true,
     },
   ];
 
-  $('#slot-table').DataTable({
+  let GroupMemberTable = $('#slot-table').DataTable({
     ajax: {
       url: `${basePath}/groups/slot/${group ? group.id : ''}/members`,
       dataType: 'json',
@@ -118,78 +296,18 @@ $(() => {
   });
   DataTablesUtil.addFilterHead('#slot-table', slotColumns);
 
-// var passData;
-// $('#remove').click(function (e) {
-//   e.preventDefault();
-//   if ($('.row-selected').length == 0) {
-//     $('#message').append('<div class="alert alert-info"><button class="close" data-dismiss="alert">x</button>Please select at least one slot.</div>');
-//     return;
-//   }
-//   var selectedData = []; // no validation for removing, passData equals selectedData
-//   $('.row-selected').each(function() {
-//     var href = $(this).closest('tr').children().eq(1).children().attr('href');
-//     var name = $(this).closest('tr').children().eq(2).text();
-//     selectedData.push({
-//       id: href.split('/')[2],
-//       name: name
-//     });
-//   });
-//   passData = selectedData;
-
-//   $('#modalLabel').html('Remove Slots form current group?');
-//   var footer = '<button id="modal-submit" class="btn btn-primary" data-dismiss="modal">Confirm</button>' +
-//     '<button data-dismiss="modal" aria-hidden="true" class="btn" id="modal-cancel">Cancel</button>';
-//   $('#modal .modal-footer').html(footer);
-//   $('#modal').modal('show');
-// });
-
-// $('#modal').on('click','#modal-cancel',function (e) {
-//   e.preventDefault();
-//   reset();
-// });
-
-// $('#modal').on('click','#modal-submit',function (e) {
-//   e.preventDefault();
-//   var url = window.location.pathname + '/removeSlots';
-//   $.ajax({
-//     url: url,
-//     type: 'Post',
-//     contentType: 'application/json',
-//     data: JSON.stringify({
-//       passData: passData,
-//     })
-//   }).done(function (data) {
-//     if(data.doneMsg.length) {
-//       var s = '';
-//       for(var i = 0; i < data.doneMsg.length; i++){
-//         s =  s + data.doneMsg[i]+ '<br>';
-//       }
-//       $('#message').append('<div class="alert alert-success"><button class="close" data-dismiss="alert">x</button>' +  s +'</div>');
-//     }
-//     if(data.errMsg.length) {
-//       var es = '';
-//       for(i = 0; i < data.errMsg.length; i++){
-//         es =  es + data.errMsg[i]+ '<br>';
-//       }
-//       $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' +  es +'</div>');
-//     }
-//   }).fail(function (jqXHR) {
-//     $('#message').append('<div class="alert alert-danger"><button class="close" data-dismiss="alert">x</button>' +  jqXHR.responseText + '</div>');
-//   }).always(function() {
-//     $('#spec-slots-table').DataTable().ajax.reload();// reload table
-//     reset();
-//   });
-// });
-
-// function reset() {
-//   $('.modal-body').html( '<div class="panel"> ' +
-//     '<div class="panel-heading"></div> ' +
-//     '</div>' +
-//     '<form class="form-inline"> ' +
-//     '<label>Please select one slot group:</label> ' +
-//     '<select class="form-control"></select> ' +
-//     '</form>');
-//   passData = null;
-// }
-
+  $('#slot-table').on('click', '.row-select-box', WebUtil.wrapCatchAll1((event) => {
+    let selectbox = $(event.target);
+    if (selectbox.is(':checked')) {
+      let tr = selectbox.parents('tr').first();
+      tr.addClass('selected active');
+      let row = GroupMemberTable.row(tr.get(0));
+      vm.selectRow(row);
+    } else {
+      let tr = selectbox.parents('tr').first();
+      tr.removeClass('selected active');
+      let row = GroupMemberTable.row(tr.get(0));
+      vm.deselectRow(row);
+    }
+  }));
 });
