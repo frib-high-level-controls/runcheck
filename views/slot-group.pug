@@ -33,6 +33,12 @@ block content
               tr
                 th Area
                 td= group.owner
+              tr
+                th Safety Level
+                if group.safetyLevel
+                  td= group.safetyLevel
+                else
+                  td None
           hr
   br
   .container
