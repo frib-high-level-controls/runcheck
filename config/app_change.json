@@ -1,7 +1,0 @@
-{
-  "port": "3003",
-  "log_dir" : "../logs/",
-  "addr": "localhost",
-  "session_life": 28800000,
-  "session_sec": "secret"
-}
