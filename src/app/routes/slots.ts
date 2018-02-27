@@ -115,18 +115,17 @@ router.get('/slots', catchAll(async (req, res) => {
           canGroup: perms.group,
         };
         if (slot.installDeviceId) {
-          const deviceId = slot.installDeviceId.toHexString();
-          const device = devices.get(deviceId);
+          const device = devices.get(slot.installDeviceId.toHexString());
           if (device) {
             row.installDeviceName = device.name;
           } else {
-            log.warn('Installation device not found: %s', deviceId);
+            throw new RequestError(`Installed Device not found: ${slot.installDeviceId}`);
           }
         }
         if (slot.groupId) {
           let group = groups.get(slot.groupId.toHexString());
           if (!group) {
-            throw new RequestError(`Slot group not found: ${slot.groupId}`, INTERNAL_SERVER_ERROR);
+            throw new RequestError(`Slot Group not found: ${slot.groupId}`, INTERNAL_SERVER_ERROR);
           }
           if (group.checklistId) {
             const checklist = checklists.get(group.checklistId.toHexString());
