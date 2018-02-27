@@ -242,7 +242,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       $('#message').prepend(`
         <div class="alert alert-success">
           <button class="close" data-dismiss="alert">x</button>
-          Group ${pkg.data.name} created successfully.
+          Slot Group <a href="/groups/slot/${pkg.data.id}" target="_blank">${pkg.data.name}</a> created successfully.
         </div>`);
 
       // Add the slots to created group
