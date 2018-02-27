@@ -142,7 +142,7 @@ $(() => {
         let pkg: webapi.Pkg<webapi.Slot>;
         try {
           pkg = await $.ajax({
-            url: `/groups/slot/${ group ? group.id : '' }/members`,
+            url: `${basePath}/groups/slot/${ group ? group.id : '' }/members`,
             type: 'DELETE',
             dataType: 'json',
             contentType: 'application/json',

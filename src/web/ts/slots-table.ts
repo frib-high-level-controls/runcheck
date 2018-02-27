@@ -204,7 +204,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.canSubmit(false);
       try {
         pkg = await $.ajax({
-          url: '/groups/slot',
+          url: `${basePath}/groups/slot`,
           type: 'POST',
           dataType: 'json',
           contentType: 'application/json',
@@ -252,7 +252,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         let slotpkg: webapi.Pkg<webapi.Slot>;
         try {
           slotpkg = await $.ajax({
-            url: `/groups/slot/${pkg.data.id}/members`,
+            url: `${basePath}/groups/slot/${pkg.data.id}/members`,
             type: 'POST',
             dataType: 'json',
             contentType: 'application/json',
@@ -322,7 +322,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         if (canadd === true) {
           try {
             this.pkg = await $.ajax({
-              url: '/groups/slot',
+              url: `${basePath}/groups/slot`,
               type: 'GET',
               dataType: 'json',
               data: {
@@ -436,7 +436,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         let pkg: webapi.Pkg<webapi.Slot>;
         try {
           pkg = await $.ajax({
-            url: `/groups/slot/${selectedGroupId}/members`,
+            url: `${basePath}/groups/slot/${selectedGroupId}/members`,
             type: 'POST',
             dataType: 'json',
             contentType: 'application/json',
