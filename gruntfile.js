@@ -105,6 +105,13 @@ module.exports = function(grunt) {
   grunt.registerTask("default", [
     'ts:app',
     'ts:web',
+    'ts:tools',
+    'shell:pugcompile',
+  ]);
+
+  grunt.registerTask('app', [
+    'ts:app',
+    'ts:web',
     'shell:pugcompile',
   ]);
 
