@@ -50,9 +50,9 @@ $(() => {
       searching: true,
     }, {
       title: 'Checklist',
-      //order: true,
+      // order: true,
       type: 'numeric',
-      //autoWidth: false,
+      // autoWidth: false,
       width: '105px',
       data: (row: webapi.DeviceTableRow): string => {
         if (row.checklistApproved) {
@@ -95,6 +95,4 @@ $(() => {
     ],
   });
   DataTablesUtil.addFilterHead('#devices-table', deviceColumns);
-  //Table.filterEvent();
-  //Table.selectEvent();
 });

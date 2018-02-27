@@ -1,4 +1,7 @@
-
+/**
+ * Commend to import data from CCDB database (mysql) and load to MongoDB
+ */
+/* tslint:disable:max-line-length */
 import stream = require('stream');
 import readline = require('readline');
 

@@ -552,81 +552,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         return  '<div>N/A</div>';
       },
     },
-    // {
-    //   title: 'Location or coordinates',
-    //   defaultContent: 'unknown',
-    //   data: 'location',
-    //   searching: true
-    // },
-    // {
-    //   title: 'Device',
-    //   data: 'device',
-    //   render: function (data) {
-    //     if (!data || !data.id) {
-    //       return 'Not installed';
-    //     }
-    //     return '<a href="' + '/devices/' + data.id + '" target="_blank" data-toggle="tooltip" title="go to the slot serialized device"><i class="fa fa-link fa-2x"></i></a>';
-    //   },
-    //   //order: false
-    // },
   ];
-
-//   var statusMap = {0: 'Device not installed',
-//     1: 'Device installed',
-//     2: 'DO OK',
-//     2.5: 'Slot DRR checklist',
-//     3: 'AM approved',
-//     4:'DRR approved'
-//   };
-
-//   var approvelStatusColumn = {
-//     title: 'Approved status',
-//     data: 'status',
-//     render: function (data) {
-//       return  statusMap[data];
-//     },
-//     searching: true
-//   };
-
-//   var machineModeColumn = {
-//     title: 'Associated machine mode(s)',
-//     defaultContent: 'None',
-//     data: 'machineMode',
-//     searching: true
-//   };
-
-//   var checkedProgressColumn = {
-//     title: 'Device checklist',
-//     order: true,
-//     type: 'numeric',
-//     autoWidth: false,
-//     width: '105px',
-//     data: function (source) {
-//       return Table.progressBar( source.ReadinessCheckedValue, source.ReadinessTotalValue);
-//     }
-//   };
-
-//   var DRRProgressColumn = {
-//     title: 'DRR checklist',
-//     order: true,
-//     type: 'numeric',
-//     autoWidth: false,
-//     width: '105px',
-//     data: function (source) {
-//       return Table.progressBar( source.DRRCheckedValue, source.DRRTotalValue);
-//     }
-//   };
-
-//   var ARRProgressColumn = {
-//     title: 'ARR checklist',
-//     order: true,
-//     type: 'numeric',
-//     autoWidth: false,
-//     width: '105px',
-//     data: function (source) {
-//       return Table.progressBar( source.ARRCheckedValue, source.ARRTotalValue);
-//     }
-//   };
 
 
   let SlotTable = $('#slots-table').DataTable({
@@ -673,35 +599,4 @@ $(WebUtil.wrapCatchAll0(async () => {
       vm.deselectRow(row);
     }
   }));
-
-  // $('#spec-slots-table').DataTable({
-  //   ajax: {
-  //     url: window.location.pathname +'/slots',
-  //     dataSrc: ''
-  //   },
-  //   initComplete: function () {
-  //     Holder.run({
-  //       images: '.user img'
-  //     });
-  //   },
-  //   autoWidth: true,
-  //   processing: true,
-  //   pageLength: 10,
-  //   lengthMenu: [
-  //     [10, 50, 100, -1],
-  //     [10, 50, 100, 'All']
-  //   ],
-  //   oLanguage: {
-  //     loadingRecords: 'Please wait - loading data from the server ...'
-  //   },
-  //   deferRender: true,
-  //   columns: slotColumns,
-  //   order: [
-  //     [2, 'asc']
-  //   ]
-  // });
-  // Table.addFilterFoot('#spec-slots-table', slotColumns);
-
-  // Table.filterEvent();
-  // Table.selectEvent();
 }));

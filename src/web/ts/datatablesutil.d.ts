@@ -1,10 +1,13 @@
 /**
  * Type definitions for DataTablesUtil global
  */
-declare module datatablesutil {
-    
+
+// TODO: this namespace should be refactored to class
+// tslint:disable:no-namespace
+declare namespace datatablesutil {
+
   export interface ColumnSettings extends DataTables.ColumnSettings {
-    searching?: boolean
+    searching?: boolean;
     placeholder?: string;
   }
 

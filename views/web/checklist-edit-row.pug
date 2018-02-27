@@ -10,9 +10,9 @@ tr.form-group.cl-subject(id=row.name)
     //- input.form-control.cl-subject-id(type='hidden', value=subject.id)
     //- if !subject.checklistId
     if row.isCustom()
-      input.form-control.cl-subject-desc(type='text' value=row.desc)
+      input.form-control.cl-subject-desc(type='text', value=row.desc)
     else
-      input.form-control.cl-subject-desc(type='text' value=row.desc, disabled)
+      input.form-control.cl-subject-desc(type='text', value=row.desc, disabled)
   td.text-center
     if row.mandatory
       input.form-control.cl-subject-required(type='checkbox', value='true', checked, disabled)

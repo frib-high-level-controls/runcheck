@@ -3,8 +3,6 @@
  */
 /*global moment:false, changeTemplate:false*/
 
-/// <reference path="../../../node_modules/moment/moment.d.ts"/>
-
 abstract class HistoryUtil {
 
   public static renderHistory(updates: any, selector?: string) {
@@ -14,7 +12,7 @@ abstract class HistoryUtil {
       updates.forEach(function (u: any) {
       $(selector).prepend(changeTemplate({
           h: u,
-          //moment: moment,
+          // moment: moment,
         }));
       });
     }
@@ -31,7 +29,7 @@ abstract class HistoryUtil {
         if (changeIds.indexOf(u._id) === -1) {
           $(selector).prepend(changeTemplate({
             h: u,
-            //moment: moment,
+            // moment: moment,
           }));
         }
       });

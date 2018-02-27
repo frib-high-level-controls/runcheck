@@ -24,7 +24,7 @@ block content
         select.form-control(data-bind='options: valueOptions, value: value')
         input.form-control(type='text', data-bind='enable: requireComment, textInput: comment')
       .form-group
-        button.btn.btn-primary(type='button' data-bind='enable: canUpdate, click: update') Update
+        button.btn.btn-primary(type='button', data-bind='enable: canUpdate, click: update') Update
     // Modal dialog for confirm update status
     .modal.fade#updateStatusModal(role='dialog', tabindex=-1, data-bind='with: updateStatusModal')
       .modal-dialog
@@ -49,8 +49,8 @@ block content
                   td
                     span.fa(data-bind='css: { "fa-circle-o": status() === "NONE", "fa-spinner": status() === "WAIT", "fa-spin": status() === "WAIT", "fa-check-circle": status() === "DONE", "fa-exclamation-circle": status() === "FAIL", "text-success": status() === "DONE", "text-danger": status() === "FAIL" }, attr: { title: message }')
           .modal-footer
-            button.btn.btn-primary(type='button' data-bind='click: update, enable: canUpdate') Update
-            button.btn.btn-default(type='button' data-bind='click: close, enable: canClose') Close
+            button.btn.btn-primary(type='button', data-bind='click: update, enable: canUpdate') Update
+            button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
     br
     .tab-pane.active#checklists
       //- .table-responsive
