@@ -485,15 +485,13 @@ $(WebUtil.wrapCatchAll0(async () => {
       },
       searching: true,
     }, {
-      title: 'Type',
-      data: <any> null,
-      render: (row: SlotTableRow): string => {
-        return row.deviceType || 'Unknown';
-      },
-      searching: true,
-    },
-    // var ownerColumn = Table.personColumn('Owner', 'owner');
-    {
+    //   title: 'Type',
+    //   data: <any> null,
+    //   render: (row: SlotTableRow): string => {
+    //     return row.deviceType || 'Unknown';
+    //   },
+    //   searching: true,
+    // }, {
       title: 'Area',
       data: <any> null, // 'area',
       render: (row: SlotTableRow) => {
@@ -538,6 +536,22 @@ $(WebUtil.wrapCatchAll0(async () => {
           </a>`;
       },
       searching: true,
+    }, {
+      title: 'Group',
+      data: <any> null,
+      render: (row: SlotTableRow): string => {
+        let html: string;
+        if (row.groupId) {
+          html = `<a href="${basePath}/groups/slot/${row.groupId}" target="_blank">Yes</a>`;
+        } else {
+          html = 'No';
+        }
+        if (row.canGroup) {
+          html += `&nbsp;<span class="fa fa-pencil"/>`;
+        }
+        return html;
+      },
+      searching: false,
     }, {
       title: 'Checklist',
       // order: true,
