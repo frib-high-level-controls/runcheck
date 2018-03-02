@@ -359,9 +359,7 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.get('/', (req, res) => {
-    res.render('index', {
-      basePath: '.',
-    });
+    res.render('index');
   });
 
   app.use('/status', status.router);

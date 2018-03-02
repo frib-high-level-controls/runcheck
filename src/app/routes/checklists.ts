@@ -215,7 +215,6 @@ router.get('/checklists', catchAll(async (req, res) => {
     'text/html': () => {
       res.render('checklists', {
         targetType: targetType,
-        basePath: '..',
       });
     },
     'application/json': async () => {

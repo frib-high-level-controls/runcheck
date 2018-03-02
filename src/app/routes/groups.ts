@@ -59,9 +59,7 @@ export const router = express.Router();
 router.get('/groups/slot', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slot-groups', {
-        basePath: '../..',
-      });
+      res.render('slot-groups');
     },
     'application/json': async () => {
       const rows: webapi.GroupTableRow[] = [];
@@ -138,7 +136,6 @@ router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
     'text/html': () => {
       res.render('slot-group', {
         group: apiGroup,
-        basePath: '../..',
       });
     },
     'application/json': () => {

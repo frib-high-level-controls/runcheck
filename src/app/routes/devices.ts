@@ -69,9 +69,7 @@ export const router = express.Router();
 router.get('/devices', catchAll(async (req, res) => {
   return format(res, {
     'text/html': () => {
-      res.render('devices', {
-        basePath: '..',
-      });
+      res.render('devices');
     },
     'application/json': async () => {
       let conds: { deviceType?: string } = {};
@@ -167,7 +165,6 @@ router.get('/devices/:name_or_id', catchAll(async (req, res) => {
       res.render('device', {
         device: apiDevice,
         moment: moment,
-        basePath: '..',
       });
     },
     'application/json': () => {

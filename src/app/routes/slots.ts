@@ -80,9 +80,7 @@ export const router = express.Router();
 router.get('/slots', catchAll(async (req, res) => {
   format(res, {
     'text/html': () => {
-      res.render('slots', {
-        basePath: '..',
-      });
+      res.render('slots');
     },
     'application/json': async () => {
       const rows: webapi.SlotTableRow[] = [];
@@ -196,7 +194,6 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
       res.render('slot', {
         slot: apiSlot,
         moment: moment,
-        basePath: '..',
       });
     },
     'application/json': () => {
