@@ -226,7 +226,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: GroupMemberTableRow): string => {
-        return `<a class="monospace" href="${basePath}/slots/${row.name}">${row.name}</a>`;
+        return `<a class="text-monospace text-nowrap" href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {

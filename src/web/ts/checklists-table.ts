@@ -403,11 +403,17 @@ $(WebUtil.wrapCatchAll0(async () => {
       render: (row: ChecklistTableRow): string => {
         switch (row.targetType.toUpperCase()) {
         case 'SLOT':
-          return `<a href="${basePath}/slots/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a class="text-monospace text-nowrap" href="${basePath}/slots/${row.targetId}" target="_blank">
+                    ${row.targetName}
+                  </a>`;
         case 'DEVICE':
-          return `<a href="${basePath}/devices/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a class="text-monospace text-nowrap" href="${basePath}/devices/${row.targetId}" target="_blank">
+                    ${row.targetName}
+                  </a>`;
         case 'GROUP':
-          return `<a href="${basePath}/groups/slot/${row.targetId}" target="_blank">${row.targetName}</a>`;
+          return `<a href="${basePath}/groups/slot/${row.targetId}" target="_blank">
+                    ${row.targetName}
+                  </a>`;
         default:
           return String(row.targetName || row.targetId);
         }

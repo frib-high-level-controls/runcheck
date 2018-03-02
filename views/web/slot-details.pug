@@ -4,10 +4,10 @@ table.table
       th Name
       if embedded
         th
-          a.monospace(href=basePath + '/slots/'+slot.name, target='_blank')= slot.name
+          a.text-monospace(href=basePath + '/slots/'+slot.name, target='_blank')= slot.name
       else
         th
-          span.monospace= slot.name
+          span.text-monospace= slot.name
   tbody
     tr
       th Description

@@ -481,7 +481,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: 'Name',
       data: <any> null,
       render: (row: SlotTableRow): string => {
-        return `<a class="monospace" href="${basePath}/slots/${row.name}">${row.name}</a>`;
+        return `<a class="text-monospace text-nowrap" href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -531,7 +531,7 @@ $(WebUtil.wrapCatchAll0(async () => {
           return '-';
         }
         return `
-          <a class="monospace" href="${basePath}/devices/${row.installDeviceName}" target="_blank">
+          <a class="text-monospace text-nowrap" href="${basePath}/devices/${row.installDeviceName}" target="_blank">
             ${row.installDeviceName}
           </a>`;
       },

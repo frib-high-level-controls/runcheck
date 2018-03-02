@@ -67,6 +67,10 @@ body {
   Use a monospace font for slot and device names. The value below is the
   bootstrap (v3) default for monospace fonts (same as <pre> and <code> tags).
 */
-.monospace {
+.text-monospace {
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+.text-nowrap {
+  white-space: nowrap;
 }

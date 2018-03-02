@@ -14,7 +14,7 @@ $(() => {
       title: 'Name',
       data: <any> null,
       render: (row: webapi.DeviceTableRow): string => {
-        return `<a class="monospace" href="${basePath}/devices/${row.name}">${row.name}</a>`;
+        return `<a class="text-monospace text-nowrap" href="${basePath}/devices/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
@@ -46,7 +46,7 @@ $(() => {
           return '-';
         }
         return `
-          <a class="monospace" href="${basePath}/slots/${row.installSlotName}" target="_blank">
+          <a class="text-monospace text-nowrap" href="${basePath}/slots/${row.installSlotName}" target="_blank">
             ${row.installSlotName}
           </a>`;
       },
