@@ -84,6 +84,7 @@ declare namespace webapi {
   }
 
   export interface GroupPerms {
+    canAssign?: boolean
     canManage?: boolean;
   }
 

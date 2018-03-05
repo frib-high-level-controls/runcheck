@@ -130,6 +130,7 @@ router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
     safetyLevel: group.safetyLevel,
     checklistId: group.checklistId ? group.checklistId.toHexString() : undefined,
     canManage: perms.manage,
+    canAssign: perms.assign,
   };
 
   return format(res, {
@@ -179,10 +180,12 @@ function getPermissions(req: express.Request, owner: string) {
   const manageRoles = [ ownerRole ].concat(adminRoles);
   const manage = auth.hasAnyRole(req, manageRoles);
   if (debug.enabled) {
+    debug('PERM: ASSIGN: %s (%s)', manage, manageRoles.join(' | '));
     debug('PERM: MANAGE: %s (%s)', manage, manageRoles.join(' | '));
   }
   return {
     manage: manage,
+    assign: manage, // currently 'assign' permission same as 'manage'
   };
 };
 

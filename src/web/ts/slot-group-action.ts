@@ -2,10 +2,10 @@
  * Support user interaction on Slot Group details view.
  */
 
-let group: webapi.Group | undefined;
-
 $(() => {
   type GroupMemberTableRow = webapi.Slot & { selected?: boolean };
+
+  let group: webapi.Group = (<any> window).group;
 
   /**
    * Defines the full view model for this page.
@@ -189,27 +189,68 @@ $(() => {
     return;
   }
 
-    // const DEPT_LEADER_ROLE = 'GRP:' + device.dept + '#LEADER';
+  // register event handlers
 
-    // const perms = {
-    //   assign: false,
-    // };
+  $('#checklist-assign').click(WebUtil.wrapCatchAll1(async (evt) => {
+    evt.preventDefault();
+    $('#checklist-assign').addClass('hidden');
+    $('#checklist-spin').removeClass('hidden');
 
-    // if (AuthUtil.hasAnyRole(['SYS:RUNCHECK', DEPT_LEADER_ROLE])) {
-    //   perms.assign = true;
-    // }
-  if (group.checklistId) {
-    // TODO: Show 'unassign' button if permitted.
+    let pkg: webapi.Pkg<webapi.ChecklistDetails>;
+    try {
+      pkg = await $.get({
+        url: `${basePath}/checklists`,
+        contentType: 'application/json',
+        data: JSON.stringify({
+          data: {
+            targetId: group.id,
+            targetType: 'GROUP',
+          },
+        }),
+        method: 'POST',
+        dataType: 'json',
+      });
+    } catch (xhr) {
+      pkg = xhr.responseJSON;
+      let message = 'Unknown error assigning checklist';
+      if (pkg && pkg.error && pkg.error.message) {
+        message = pkg.error.message;
+      }
+      $('#checklist-spin').addClass('hidden');
+      $('#checklist-assign').removeClass('hidden');
+      $('#checklist-panel').prepend(`
+        <div class="alert alert-danger">
+          <button class="close" data-dismiss="alert">x</button>
+          <span>${message}</span>
+        </div>
+      `).removeClass('hidden');
+      return;
+    }
+
+    $('#checklist-spin').addClass('hidden');
     $('#checklist-panel').removeClass('hidden');
+    ChecklistUtil.render('#checklist-panel', pkg.data);
+  }));
+
+  if (group.checklistId) {
+    // if (slot.canAssign) {
+    //   $('#checklist-unassign').removeClass('hidden').removeAttr('disabled');
+    // } else {
+    //   $('#checklist-unassign').removeClass('hidden').attr('disabled', 'disabled');
+    // }
     ChecklistUtil.render('#checklist-panel', group.checklistId);
+  } else {
+    $('#checklist-panel').html(`
+      <div>
+        <span>No checklist assigned</span>
+      </div>
+    `).removeClass('hidden');
+    if (group.canAssign) {
+      $('#checklist-assign').removeClass('hidden').removeAttr('disabled');
+    } else {
+      $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
+    }
   }
-  // else {
-  //   if (perms.assign) {
-  //     $('#device-assign-checklist').removeClass('hidden').removeAttr('disabled');
-  //   } else {
-  //     $('#device-assign-checklist').removeClass('hidden').attr('disabled', 'disabled');
-  //   }
-  // }
 
   const vm = new GroupMemberTableViewModel();
   ko.applyBindings(vm);
