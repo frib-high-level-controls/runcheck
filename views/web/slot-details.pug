@@ -24,8 +24,14 @@ table.table
         th Level of Care
         td= slot.careLevel
       tr
-        th Level of Safety
-        td= slot.safetyLevel
+        th Safety Designation
+        case slot.safetyLevel
+          when 'NONE': td None
+          when 'CONTROL': td Control
+          when 'CREDITED': td Credited Control
+          when 'CONTROL_ESH': td Control with ESH Impact
+          when 'CREDITED_ESH': td Credited Control with ESH Impact
+          default: td= slot.safetyLevel
       tr
         th DRR
         td= slot.drr

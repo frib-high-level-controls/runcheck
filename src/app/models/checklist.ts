@@ -7,7 +7,17 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
-export type ChecklistType =  'DEVICE-DEFAULT' | 'SLOT-DEFAULT' | 'SLOT-CREDITED' | 'SLOT-ESHIMPACT';
+export enum ChecklistValue {
+  N = 'N',
+  Y = 'Y',
+  YC = 'YC',
+};
+
+export enum ChecklistType {
+  DEVICE_DEFAULT = 'DEVICE_DEFAULT',
+  SLOT_DEFAULT = 'SLOT_DEFAULT',
+  SLOT_SAFETY = 'SLOT_SAFETY',
+};
 
 export interface IChecklistSubject {
   checklistId?: ObjectId;
@@ -69,16 +79,24 @@ const Schema = mongoose.Schema;
 
 const ObjectId = Schema.Types.ObjectId;
 
-export const CHECKLIST_VALUES = ['N', 'Y', 'YC'];
+export const CHECKLIST_VALUES: ChecklistValue[] = [
+  ChecklistValue.N,
+  ChecklistValue.Y,
+  ChecklistValue.YC,
+];
 
-export const CHECKLIST_TYPES = ['DEVICE-DEFAULT', 'SLOT-DEFAULT', 'SLOT-CREDITED', 'SLOT-ESHIMPACT'];
+export const CHECKLIST_TYPES: ChecklistType[] = [
+  ChecklistType.DEVICE_DEFAULT,
+  ChecklistType.SLOT_DEFAULT,
+  ChecklistType.SLOT_SAFETY,
+];
 
 export function isChecklistValueValid(value?: string): boolean {
-  return value ? CHECKLIST_VALUES.includes(value) : false;
+  return CHECKLIST_VALUES.reduce((p, v) => (p || (v === value)), false);
 };
 
 export function isChecklistValueApproved(value?: string, withComment?: boolean): boolean {
-  return (value === 'YC') || (!withComment && (value === 'Y'));
+  return (value === ChecklistValue.YC) || (!withComment && (value === ChecklistValue.Y));
 };
 
 /**
@@ -127,7 +145,7 @@ export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSub
       }
     }
   }
-  let approved = (finalsChecked === finalsTotal);
+  let approved = (finalsChecked > 0) && (finalsChecked === finalsTotal);
 
   if (apply) {
     checklist.approved = approved;

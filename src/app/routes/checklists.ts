@@ -34,7 +34,6 @@ import {
 
 import {
   Checklist,
-  CHECKLIST_VALUES,
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
@@ -45,6 +44,7 @@ import {
   IChecklistSubject,
   isChecklistApproved,
   isChecklistValueApproved,
+  isChecklistValueValid,
 } from '../models/checklist';
 
 type ObjectId = mongoose.Types.ObjectId;
@@ -126,14 +126,14 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>)
  */
 function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
   switch (safetyLevel) {
-  case 'NORMAL':
-  case 'CONTROL':
+  case SafetyLevel.NONE:
+  case SafetyLevel.CONTROL:
+  case SafetyLevel.CREDITED:
   default:
-    return 'SLOT-DEFAULT';
-  case 'CREDITED':
-    return 'SLOT-CREDITED';
-  case 'ESHIMPACT':
-    return 'SLOT-ESHIMPACT';
+    return ChecklistType.SLOT_DEFAULT;
+  case SafetyLevel.CONTROL_ESH:
+  case SafetyLevel.CREDITED_ESH:
+    return ChecklistType.SLOT_SAFETY;
   }
 }
 
@@ -141,7 +141,7 @@ function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
  * Get the checklist type for a device
  */
 function getDeviceChecklistType(): ChecklistType {
-  return 'DEVICE-DEFAULT';
+  return ChecklistType.DEVICE_DEFAULT;
 }
 
 function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
@@ -483,9 +483,7 @@ router.post('/checklists', auth.ensureAuthc(), ensurePackage(), ensureAccepts('j
     checklistId = group.checklistId;
     switch (group.memberType) {
     case Slot.modelName:
-      // TODO: Need to get safety level for slot
-      // checklistType = getSlotChecklistType(group.safetyLevel);
-      checklistType = getSlotChecklistType();
+      checklistType = getSlotChecklistType(group.safetyLevel);
       break;
     case Device.modelName:
       checklistType = getDeviceChecklistType();
@@ -1226,7 +1224,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
   if (!value) {
     throw new RequestError(`Checklist status value required`, BAD_REQUEST);
   }
-  if (!CHECKLIST_VALUES.includes(value)) {
+  if (!isChecklistValueValid(value)) {
     throw new RequestError(`Checklist status value invalid: ${value}`, BAD_REQUEST);
   }
   // If a basic subject is approved with comment than primary subject requires a comment.
