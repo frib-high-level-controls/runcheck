@@ -104,30 +104,30 @@ describe('Test Checklist routes', () => {
   describe('Assign checklist', () => {
     let table = [
       // User unauthenticated
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: '', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 302 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: '', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 302 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: '', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: '', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
-      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: '', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: '', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 302 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: '', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 302 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: '', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: '', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: '', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 302 },
       // User unauthorized
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEAM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 403 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEAM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 403 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEDM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEDM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
-      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEDM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEAM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 403 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEAM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEDM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEDM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEDM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 403 },
       // Assign OK
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 3 }, status: 201 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 3 }, status: 201 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
-      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
-      { target: '/groups/slot/FE_SLOT_GROUP02',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 3 }, status: 201 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 3 }, status: 201 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT_SAFETY',    approved: false, checked: 0, total: 5 }, status: 201 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
+      { target: '/groups/slot/FE_SLOT_GROUP02',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 4 }, status: 201 },
       // Already assigned
-      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 409 },
-      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE-DEFAULT', approved: false, checked: 0, total: 0 }, status: 409 },
-      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
-      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT-DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 409 },
+      { target: '/devices/T99999-DEVB-0009-0099-S00002', targetType: 'DEVICE', user: 'FEDM', cl: { checklistType: 'DEVICE_DEFAULT', approved: false, checked: 0, total: 0 }, status: 409 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             targetType: 'SLOT',   user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          targetType: 'GROUP',  user: 'FEAM', cl: { checklistType: 'SLOT_DEFAULT',   approved: false, checked: 0, total: 0 }, status: 409 },
     ];
     for (let row of table) {
       it(`User ${row.user || '\'Anonymous\''} assign checklist to ${row.target}`, async () => {
@@ -191,7 +191,7 @@ describe('Test Checklist routes', () => {
       { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'FEDM', data: { desc: 'ME2', assignees: [ 'USR:MESME' ] },  cl: { approved: false, checked: 0, total: 4 }, status: 201 },
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 'EE2', assignees: [ 'USR:EESME' ] },  cl: { approved: false, checked: 0, total: 5 }, status: 201 },
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', data: { desc: 'ALT', assignees: [ 'USR:ALTSME' ] }, cl: { approved: false, checked: 0, total: 6 }, status: 201 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', data: { desc: 'ME2', assignees: [ 'USR:MESME' ] },  cl: { approved: false, checked: 0, total: 5 }, status: 201 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', data: { desc: 'ME2', assignees: [ 'USR:MESME' ] },  cl: { approved: false, checked: 0, total: 6 }, status: 201 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM', data: { desc: 'ALT', assignees: [ 'USR:ALTSME' ] }, cl: { approved: false, checked: 0, total: 5 }, status: 201 },
     ];
     for (let row of table) {
@@ -283,8 +283,8 @@ describe('Test Checklist routes', () => {
       { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'FEDM', subject: 'EE', data: { required: true },                            cl: { approved: false, checked: 0, total: 4 }, status: 200 },
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', subject: 'EE', data: { required: false },                           cl: { approved: false, checked: 0, total: 5 }, status: 200 },
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM', subject: 'ME', data: { required: true, assignees: ['USR:ALTSME'] }, cl: { approved: false, checked: 0, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', subject: 'EE', data: { required: false },                           cl: { approved: false, checked: 0, total: 4 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', subject: 'EE', data: { required: true },                            cl: { approved: false, checked: 0, total: 5 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', subject: 'EE', data: { required: false },                           cl: { approved: false, checked: 0, total: 5 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM', subject: 'EE', data: { required: true },                            cl: { approved: false, checked: 0, total: 6 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM', subject: 'EE', data: { required: false },                           cl: { approved: false, checked: 0, total: 4 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM', subject: 'ME', data: { required: true, assignees: ['USR:ALTSME'] }, cl: { approved: false, checked: 0, total: 4 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM', subject: 'DO', data: { required: true, assignees: ['USR:FEDM'] },   cl: { approved: false, checked: 0, total: 4 }, status: 200 },
@@ -389,11 +389,14 @@ describe('Test Checklist routes', () => {
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'ALTSME', subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 3, total: 5 }, status: 200 },
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM',   subject: 'AM',  data: { value: 'Y' },                         cl: { approved: false, checked: 3, total: 5 }, status: 400 }, // YC required!
       { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM',   subject: 'AM',  data: { value: 'YC', comment: 'AM COMMENT' }, cl: { approved: true,  checked: 4, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 1, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'N' },                         cl: { approved: false, checked: 0, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 1, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME',  subject: 'EE',  data: { value: 'Y' },                         cl: { approved: false, checked: 2, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',   subject: 'AM',  data: { value: 'Y' },                         cl: { approved: true,  checked: 3, total: 5 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 1, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'N' },                         cl: { approved: false, checked: 0, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'MESME',  subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 1, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME',  subject: 'EE',  data: { value: 'Y' },                         cl: { approved: false, checked: 2, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'LSM',    subject: 'SM',  data: { value: 'Y' },                         cl: { approved: false, checked: 3, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',   subject: 'AM',  data: { value: 'Y' },                         cl: { approved: true,  checked: 4, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'LSM',    subject: 'SM',  data: { value: 'N' },                         cl: { approved: false, checked: 3, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'LSM',    subject: 'SM',  data: { value: 'Y' },                         cl: { approved: true,  checked: 4, total: 6 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEDM',   subject: 'DO',  data: { value: 'YC', comment: 'DO COMMENT' }, cl: { approved: false, checked: 1, total: 4 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'ALTSME', subject: 'ALT', data: { value: 'Y' },                         cl: { approved: false, checked: 2, total: 4 }, status: 200 },
       { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'ALTSME', subject: 'ME',  data: { value: 'Y' },                         cl: { approved: false, checked: 3, total: 4 }, status: 200 },
@@ -411,12 +414,12 @@ describe('Test Checklist routes', () => {
       { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'EESME', subject: 'EE', data: { value: 'N' },                          cl: { approved: false, checked: 1, total: 4 }, status: 200 },
       { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'FEDM',  subject: 'DO', data: { value: 'YC', comment: 'DO COMMENT2' }, cl: { approved: true,  checked: 2, total: 4 }, status: 200 }, // Lock
       { target: '/devices/T99999-DEVB-0009-0099-S00002', user: 'EESME', subject: 'EE', data: { value: 'Y' },                          cl: { approved: true,  checked: 2, total: 4 }, status: 400 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'N' },                          cl: { approved: true,  checked: 3, total: 5 }, status: 400 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'Y' },                          cl: { approved: true,  checked: 3, total: 5 }, status: 400 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',  subject: 'AM', data: { value: 'N' },                          cl: { approved: false, checked: 2, total: 5 }, status: 200 }, // Unlock
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'N' },                          cl: { approved: false, checked: 1, total: 5 }, status: 200 },
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',  subject: 'AM', data: { value: 'Y' },                          cl: { approved: true,  checked: 2, total: 5 }, status: 200 }, // Lock
-      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'Y' },                          cl: { approved: true,  checked: 2, total: 5 }, status: 400 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'N' },                          cl: { approved: true,  checked: 4, total: 6 }, status: 400 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'Y' },                          cl: { approved: true,  checked: 4, total: 6 }, status: 400 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',  subject: 'AM', data: { value: 'N' },                          cl: { approved: false, checked: 3, total: 6 }, status: 200 }, // Unlock
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'N' },                          cl: { approved: false, checked: 2, total: 6 }, status: 200 },
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'FEAM',  subject: 'AM', data: { value: 'Y' },                          cl: { approved: true,  checked: 3, total: 6 }, status: 200 }, // Lock
+      { target: '/slots/FE_TEST:DEVB_D0002',             user: 'EESME', subject: 'EE', data: { value: 'Y' },                          cl: { approved: true,  checked: 3, total: 6 }, status: 400 },
       { target: '/groups/slot/FE_SLOT_GROUP02',          user: 'MESME', subject: 'ME', data: { value: 'N' },                          cl: { approved: true,  checked: 3, total: 4 }, status: 400 },
       { target: '/groups/slot/FE_SLOT_GROUP02',          user: 'MESME', subject: 'ME', data: { value: 'Y' },                          cl: { approved: true,  checked: 3, total: 4 }, status: 400 },
       { target: '/groups/slot/FE_SLOT_GROUP02',          user: 'FEAM',  subject: 'AM', data: { value: 'N' },                          cl: { approved: false, checked: 2, total: 4 }, status: 200 }, // Unlock
