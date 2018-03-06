@@ -34,11 +34,14 @@ block content
                 th Area
                 td= group.owner
               tr
-                th Safety Level
-                if group.safetyLevel
-                  td= group.safetyLevel
-                else
-                  td None
+                th Safety Designation
+                case group.safetyLevel
+                  when 'NONE': td None
+                  when 'CONTROL': td Control
+                  when 'CREDITED': td Credited Control
+                  when 'CONTROL_ESH': td Control with ESH Impact
+                  when 'CREDITED_ESH': td Credited Control with ESH Impact
+                  default: td= group.safetyLevel
           hr
   br
   .container

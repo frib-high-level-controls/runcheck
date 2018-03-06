@@ -147,6 +147,23 @@ $(WebUtil.wrapCatchAll0(async () => {
     public groupOwner = ko.observable<string>();
     public safetyLevel = ko.observable<string>();
 
+    public safetyDesig = ko.computed(() => {
+      switch (this.safetyLevel()) {
+      case 'NONE':
+        return 'None';
+      case 'CONTROL':
+        return 'Control';
+      case 'CREDITED':
+        return 'Credited Control';
+      case 'CONTROL_ESH':
+        return 'Control with ESH Impact';
+      case 'CREDITED_ESH':
+        return 'Credited Control with ESH Impact';
+      default:
+        return this.safetyLevel();
+      }
+    });
+
     private parent: SlotsTableViewModel;
 
     constructor(parent: SlotsTableViewModel) {

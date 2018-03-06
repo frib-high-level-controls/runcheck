@@ -11,9 +11,19 @@ import * as history from '../shared/history';
 
 type ObjectId = mongoose.Types.ObjectId;
 
-export type CareLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export enum CareLevel {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+};
 
-export type SafetyLevel = 'NORMAL' | 'CONTROL' | 'CREDITED' | 'ESHIMPACT';
+export enum SafetyLevel {
+  NONE = 'NONE',
+  CONTROL = 'CONTROL',
+  CREDITED = 'CREDITED',
+  CONTROL_ESH = 'CONTROL_ESH',
+  CREDITED_ESH = 'CREDITED_ESH',
+};
 
 export interface ISlot {
   name: string;
@@ -39,9 +49,19 @@ export interface Slot extends ISlot, history.Document<Slot> {
 // between Slot and Device and Group models.
 export const MODEL_NAME = 'Slot';
 
-export const CARE_LEVELS: CareLevel[] = [ 'LOW', 'MEDIUM', 'HIGH' ];
+export const CARE_LEVELS: CareLevel[] = [
+  CareLevel.LOW,
+  CareLevel.MEDIUM,
+  CareLevel.HIGH,
+];
 
-export const SAFETY_LEVELS: SafetyLevel[] = [ 'NORMAL', 'CONTROL', 'CREDITED', 'ESHIMPACT' ];
+export const SAFETY_LEVELS: SafetyLevel[] = [
+  SafetyLevel.NONE,
+  SafetyLevel.CONTROL,
+  SafetyLevel.CREDITED,
+  SafetyLevel.CONTROL_ESH,
+  SafetyLevel.CREDITED_ESH,
+];
 
 const Schema = mongoose.Schema;
 

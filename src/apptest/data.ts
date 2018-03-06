@@ -10,7 +10,9 @@ import {
 } from '../app/models/device';
 
 import {
+  CareLevel,
   ISlot,
+  SafetyLevel,
   Slot,
 } from '../app/models/slot';
 
@@ -21,42 +23,40 @@ import {
 
 import {
   ChecklistSubject,
+  ChecklistType,
   IChecklistSubject,
 } from '../app/models/checklist';
 
 import * as forgapi from './shared/mock-forgapi';
 
+const DEVICE_DEFAULT = ChecklistType.DEVICE_DEFAULT;
+const SLOT_DEFAULT = ChecklistType.SLOT_DEFAULT;
+const SLOT_SAFETY =  ChecklistType.SLOT_SAFETY;
 
 export const USERS: forgapi.User[] = [
   { uid: 'FEAM',
-    lastname: '',
-    firstname: '',
     fullname: 'FE Area Manager',
     roles: [ 'USR:FEAM', 'GRP:ADB:FRONT_END', 'GRP:ADB:FRONT_END#LEADER' ],
   }, {
     uid: 'FEDM',
-    lastname: '',
-    firstname: '',
     fullname: 'FE Dept Manager',
     roles: [ 'USR:FEDM', 'GRP:ISF:LAB.DIV.FE', 'GRP:ISF:LAB.DIV.FE#LEADER' ],
   }, {
     uid: 'EESME',
-    lastname: '',
-    firstname: '',
     fullname: 'EE Subject Matter Expert',
     roles: [ 'USR:EESME', 'GRP:ISF:LAB.DIV.EE', 'GRP:ISF:LAB.DIV.EE#LEADER' ],
   }, {
     uid: 'MESME',
-    lastname: '',
-    firstname: '',
     fullname: 'ME Subject Matter Expert',
     roles: [ 'USR:MESME', 'GRP:ISF:LAB.DIV.ME', 'GRP:ISF:LAB.DIV.ME#LEADER' ],
   }, {
     uid: 'ALTSME',
-    lastname: '',
-    firstname: '',
     fullname: 'Alternative Subject Matter Expert',
     roles: [ 'USR:ALTSME', 'GRP:ISF:LAB.DIV.GRP' ],
+  }, {
+    uid: 'LSM',
+    fullname: 'Laboratory Safety Manager',
+    roles: [ 'USR:LSM' ],
   },
 ];
 
@@ -82,8 +82,8 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: 'MEDIUM',
-    safetyLevel: 'NORMAL',
+    careLevel: CareLevel.MEDIUM,
+    safetyLevel: SafetyLevel.NONE,
   }, {
     name: 'FE_TEST:DEVB_D0002',
     desc: 'Test Slot #2',
@@ -91,8 +91,8 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVB',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: 'MEDIUM',
-    safetyLevel: 'CONTROL',
+    careLevel: CareLevel.MEDIUM,
+    safetyLevel: SafetyLevel.CONTROL_ESH,
   }, {
     name: 'FE_TEST:DEVA_D0003',
     desc: 'Test Slot #3',
@@ -100,8 +100,8 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: 'MEDIUM',
-    safetyLevel: 'NORMAL',
+    careLevel: CareLevel.MEDIUM,
+    safetyLevel: SafetyLevel.NONE,
   }, {
     name: 'FE_TEST:DEVA_D0004',
     desc: 'Test Slot #4',
@@ -109,8 +109,8 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: 'MEDIUM',
-    safetyLevel: 'NORMAL',
+    careLevel: CareLevel.MEDIUM,
+    safetyLevel: SafetyLevel.NONE,
     groupId: new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'),
   }, {
     name: 'FE_TEST:DEVA_D0002',
@@ -119,8 +119,8 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: 'MEDIUM',
-    safetyLevel: 'CONTROL',
+    careLevel: CareLevel.MEDIUM,
+    safetyLevel: SafetyLevel.CONTROL_ESH,
   },
 ];
 
@@ -130,57 +130,77 @@ export const GROUPS: IGroup[] = [
     desc: 'Front End Slot Group #1',
     owner: 'ADB:FRONT_END',
     memberType: Slot.modelName,
-    safetyLevel: 'NORMAL',
+    safetyLevel: SafetyLevel.NONE,
   }, {
     name: 'FE_SLOT_GROUP02',
     desc: 'Front End Slot Group #2',
     owner: 'ADB:FRONT_END',
     memberType: Slot.modelName,
-    safetyLevel: 'NORMAL',
+    safetyLevel: SafetyLevel.NONE,
   }, {
     name: 'FE_TEST:GROUP_1',
     desc: 'Test Group #1',
     owner: 'ADB:FRONT_END',
     memberType: Slot.modelName,
-    safetyLevel: 'NORMAL',
+    safetyLevel: SafetyLevel.NONE,
   }, {
     name: 'FE_TEST:GROUP_2',
     desc: 'Test Group #2',
     owner: 'ADB:FRONT_END',
     memberType: Slot.modelName,
-    safetyLevel: 'NORMAL',
+    safetyLevel: SafetyLevel.NONE,
   },
 ];
 
 const CL_SUBJECTS: IChecklistSubject[] = [
   {
-    name: 'EE', desc: 'EE', checklistType: 'DEVICE-DEFAULT', order: 0,
+    name: 'EE', desc: 'EE', checklistType: DEVICE_DEFAULT, order: 0,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:EESME' ],
   }, {
-    name: 'ME', desc: 'ME', checklistType: 'DEVICE-DEFAULT', order: 1,
+    name: 'ME', desc: 'ME', checklistType: DEVICE_DEFAULT, order: 1,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:MESME' ],
   }, {
-    name: 'DO', desc: 'DO', checklistType: 'DEVICE-DEFAULT', order: 2,
+    name: 'DO', desc: 'DO', checklistType: DEVICE_DEFAULT, order: 2,
     primary: true, final: true, mandatory: true, required: true,
     assignees: [ 'VAR:DEPT_LEADER' ],
   }, {
-    name: 'DO', desc: 'DO', checklistType: 'SLOT-DEFAULT', order: 0,
+    name: 'DO', desc: 'DO', checklistType: SLOT_DEFAULT, order: 0,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'VAR:DEPT_LEADER' ],
   }, {
-    name: 'EE', desc: 'EE', checklistType: 'SLOT-DEFAULT', order: 1,
+    name: 'EE', desc: 'EE', checklistType: SLOT_DEFAULT, order: 1,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:EESME' ],
   }, {
-    name: 'ME', desc: 'ME', checklistType: 'SLOT-DEFAULT', order: 2,
+    name: 'ME', desc: 'ME', checklistType: SLOT_DEFAULT, order: 2,
     primary: false, final: false, mandatory: false, required: true,
     assignees: [ 'USR:MESME' ],
   }, {
-    name: 'AM', desc: 'AM', checklistType: 'SLOT-DEFAULT', order: 3,
+    name: 'AM', desc: 'AM', checklistType: SLOT_DEFAULT, order: 3,
     primary: true, final: true, mandatory: true, required: true,
     assignees: [ 'VAR:AREA_LEADER' ],
+  },  {
+    name: 'DO', desc: 'DO', checklistType: SLOT_SAFETY, order: 0,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'VAR:DEPT_LEADER' ],
+  }, {
+    name: 'EE', desc: 'EE', checklistType: SLOT_SAFETY, order: 1,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:EESME' ],
+  }, {
+    name: 'ME', desc: 'ME', checklistType: SLOT_SAFETY, order: 2,
+    primary: false, final: false, mandatory: false, required: true,
+    assignees: [ 'USR:MESME' ],
+  }, {
+    name: 'AM', desc: 'AM', checklistType: SLOT_SAFETY, order: 3,
+    primary: true, final: true, mandatory: true, required: true,
+    assignees: [ 'VAR:AREA_LEADER' ],
+  }, {
+    name: 'SM', desc: 'SM', checklistType: SLOT_SAFETY, order: 4,
+    primary: false, final: true, mandatory: true, required: true,
+    assignees: [ 'USR:LSM' ],
   },
 ];
 

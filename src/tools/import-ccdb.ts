@@ -11,6 +11,7 @@ import mysql = require('mysql');
 import rc = require('rc');
 
 import {
+  SafetyLevel,
   Slot,
 } from '../app/models/slot';
 
@@ -33,6 +34,7 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
+  ChecklistType,
   IChecklist,
   IChecklistConfig,
   IChecklistStatus,
@@ -607,7 +609,7 @@ async function main() {
       // Temporary value to pass validation
       owner: 'UNKNOWN',
       memberType: Slot.modelName,
-      safetyLevel: 'NORMAL',
+      safetyLevel: SafetyLevel.NONE,
     });
 
     try {
@@ -819,7 +821,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: device._id,
       targetType: Device.modelName,
-      checklistType: 'DEVICE-DEFAULT',
+      checklistType: ChecklistType.DEVICE_DEFAULT,
       approved: false,
       checked: 0,
       total: 0,
@@ -869,7 +871,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: slot._id,
       targetType: Slot.modelName,
-      checklistType: 'SLOT-DEFAULT',
+      checklistType: ChecklistType.SLOT_DEFAULT,
       approved: false,
       checked: 0,
       total: 0,
@@ -919,7 +921,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: group._id,
       targetType: Group.modelName,
-      checklistType: 'SLOT-DEFAULT',
+      checklistType: ChecklistType.SLOT_DEFAULT,
       approved: false,
       checked: 0,
       total: 0,
