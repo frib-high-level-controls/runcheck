@@ -306,7 +306,7 @@ $(WebUtil.wrapCatchAll0(async () => {
           }
         }
       }
-      this.data.approved = (finalChecked === finalTotal);
+      this.data.approved = (finalChecked > 0) && (finalChecked === finalTotal);
       this.data.checked = checked;
       this.data.total = total;
       this.row.invalidate();
