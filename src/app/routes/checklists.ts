@@ -224,35 +224,34 @@ router.get('/checklists', catchAll(async (req, res) => {
       switch (targetType ? targetType.toUpperCase() : undefined) {
       case 'SLOT': {
         debug('Find Slots with assigned checklist (that are not group members)');
-        let slots = await Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
+        let [ slots, groups ] = await Promise.all([
+          Slot.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec(),
+          Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec(),
+        ]);
+        targets = [];
         for (let slot of slots) {
-          if (slot.checklistId) {
+          if (slot.checklistId) { // needed for type checking only, query ensures it exists!
+            targets.push(slot);
             checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
           }
         }
-        targets = slots;
+        for (let group of groups) {
+          if (group.checklistId) { // needed for type checking only, query ensures it exists!
+            targets.push(group);
+            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
+          }
+        }
         break;
       }
       case 'DEVICE': {
         debug('Find Devices with assigned checklist');
         let devices = await Device.find({ checklistId: { $exists: true }, groupId: { $exists: false }}).exec();
         for (let device of devices) {
-          if (device.checklistId) {
+          if (device.checklistId) { // needed for type checking only, query ensures it exists!
             checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
           }
         }
         targets = devices;
-        break;
-      }
-      case 'SLOTGROUP': {
-        debug('Find Groups of Slots with assigned checklist');
-        let groups = await Group.find({ checklistId: { $exists: true }, memberType: Slot.modelName }).exec();
-        for (let group of groups) {
-          if (group.checklistId) {
-            checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
-          }
-        }
-        targets = groups;
         break;
       }
       default: {
@@ -264,19 +263,19 @@ router.get('/checklists', catchAll(async (req, res) => {
         ]);
         targets = [];
         for (let slot of slots) {
-          if (slot.checklistId) {
+          if (slot.checklistId) { // needed for type checking only, query ensures it exists!
             targets.push(slot);
             checklistVarRoles.set(slot.checklistId.toHexString(), [ getVarRoles(slot) ]);
           }
         }
         for (let device of devices) {
-          if (device.checklistId) {
+          if (device.checklistId) { // needed for type checking only, query ensures it exists!
             targets.push(device);
             checklistVarRoles.set(device.checklistId.toHexString(), [ getVarRoles(device) ]);
           }
         }
         for (let group of groups) {
-          if (group.checklistId) {
+          if (group.checklistId) { // needed for type checking only, query ensures it exists!
             targets.push(group);
             checklistVarRoles.set(group.checklistId.toHexString(), [ getVarRoles(group) ]);
           }

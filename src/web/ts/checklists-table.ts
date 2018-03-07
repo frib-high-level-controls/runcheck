@@ -426,6 +426,13 @@ $(WebUtil.wrapCatchAll0(async () => {
         return String(row.targetDesc || '');
       },
       searching: true,
+    }, {
+      title: 'Type',
+      data: <any> null,
+      render: (row: ChecklistTableRow): string => {
+        return row.targetType;
+      },
+      searching: false,
     },
   ];
 
