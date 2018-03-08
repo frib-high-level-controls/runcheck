@@ -281,10 +281,10 @@ $(() => {
       title: 'Area',
       data: <any> null, // 'area',
       render: (row: GroupMemberTableRow) => {
-        if ((<any> window).forgurl && row.area) {
-          return `<a href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
+        if (forgurl && row.area) {
+          return `<a class="text-monospace" href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
         } else {
-          return row.area || 'Unknown';
+          return `<span class="text-monospace">${row.area || 'Unknown'}</span>`;
         }
       },
       searching: true,

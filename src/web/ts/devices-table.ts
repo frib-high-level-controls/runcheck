@@ -35,7 +35,11 @@ $(() => {
       title: 'Department',
       data: <any> null,
       render: (row: webapi.DeviceTableRow): string => {
-        return String(row.dept);
+        if (forgurl && row.dept) {
+          return `<a class="text-monospace" href="${forgurl}/groups/${row.dept}" target="_blank">${row.dept}</a>`;
+        } else {
+          return `<span class="text-monospace">${row.dept || 'Unknown'}</span>`;
+        }
       },
       searching: true,
     }, {

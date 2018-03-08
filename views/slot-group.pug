@@ -93,3 +93,5 @@ block js
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit-row.js')
   script(type='text/javascript', src=basePath + '/js/slot-group-action.js')
   script(type='text/javascript') group = !{JSON.stringify(group)};
+  if forgurl
+    script(type='text/javascript') var forgurl = '#{forgurl}'

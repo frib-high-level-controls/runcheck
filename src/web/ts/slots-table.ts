@@ -513,9 +513,9 @@ $(WebUtil.wrapCatchAll0(async () => {
       data: <any> null, // 'area',
       render: (row: SlotTableRow) => {
         if (forgurl && row.area) {
-          return `<a href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
+          return `<a class="text-monospace" href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
         } else {
-          return row.area || 'Unknown';
+          return `<span class="text-monospace">${row.area || 'Unknown'}</span>`;
         }
       },
       searching: true,

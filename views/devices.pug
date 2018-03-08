@@ -18,3 +18,5 @@ block js
   script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
   script(type='text/javascript', src=basePath + '/js/devices-table.js')
+  if forgurl
+    script(type='text/javascript') var forgurl = '#{forgurl}'
