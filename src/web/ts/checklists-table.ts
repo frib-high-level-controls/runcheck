@@ -273,11 +273,16 @@ $(WebUtil.wrapCatchAll0(async () => {
       }
 
       // Update the local checklist status data
+      let found = false;
       for (let idx = 0; idx < this.data.statuses.length; idx += 1) {
         if (this.data.statuses[idx].subjectName === pkg.data.subjectName) {
           this.data.statuses[idx] = pkg.data;
+          found = true;
           break;
         }
+      }
+      if (!found) {
+        this.data.statuses.push(pkg.data);
       }
 
       // Update the local checklist summary data
