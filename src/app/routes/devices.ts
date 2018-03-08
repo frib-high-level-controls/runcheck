@@ -28,10 +28,13 @@ import {
   RequestError,
 } from '../shared/handlers';
 
+interface RouterOptions {
+  adminRoles?: string[];
+}
 
 const debug = dbg('runcheck:devices');
 
-let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
   return Array.from(adminRoles);
@@ -40,6 +43,19 @@ export function getAdminRoles(): string[] {
 export function setAdminRoles(roles: string[]) {
   adminRoles = Array.from(roles);
 }
+
+
+const router = express.Router();
+
+export function getRouter(opts?: RouterOptions): express.Router {
+  if (opts) {
+    if (opts.adminRoles) {
+      setAdminRoles(opts.adminRoles);
+    }
+  }
+  return router;
+};
+
 
 /**
  * Compute the permissions of the current user for the specified device.
@@ -60,8 +76,6 @@ function getPermissions(req: express.Request, device: Device) {
 };
 
 
-
-export const router = express.Router();
 
 /**
  * Get the list view of devices (HTML) or list of devices (JSON).

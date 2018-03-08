@@ -36,13 +36,16 @@ import {
   Checklist,
 } from '../models/checklist';
 
+interface RouterOptions {
+  adminRoles?: string[];
+}
 
 const debug = dbg('runcheck:slots');
 
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
-let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
   return Array.from(adminRoles);
@@ -51,6 +54,19 @@ export function getAdminRoles(): string[] {
 export function setAdminRoles(roles: string[]) {
   adminRoles = Array.from(roles);
 }
+
+
+const router = express.Router();
+
+export function getRouter(opts?: RouterOptions): express.Router {
+  if (opts) {
+    if (opts.adminRoles) {
+      setAdminRoles(opts.adminRoles);
+    }
+  }
+  return router;
+};
+
 
 /**
  * Compute the permissions of the current user for the specified slot.
@@ -75,7 +91,6 @@ function getPermissions(req: express.Request, slot: Slot) {
 };
 
 
-export const router = express.Router();
 
 router.get('/slots', catchAll(async (req, res) => {
   format(res, {

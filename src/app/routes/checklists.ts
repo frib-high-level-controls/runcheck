@@ -59,6 +59,9 @@ interface Target {
   checklistId?: ObjectId;
 };
 
+interface RouterOptions {
+  adminRoles?: string[];
+}
 
 const debug = dbg('runcheck:checklists');
 
@@ -70,7 +73,7 @@ const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
   return Array.from(adminRoles);
@@ -79,6 +82,19 @@ export function getAdminRoles(): string[] {
 export function setAdminRoles(roles: string[]) {
   adminRoles = Array.from(roles);
 }
+
+
+const router = express.Router();
+
+export function getRouter(opts?: RouterOptions): express.Router {
+  if (opts) {
+    if (opts.adminRoles) {
+      setAdminRoles(opts.adminRoles);
+    }
+  }
+  return router;
+};
+
 
 /**
  * Map the specified array of objects by checklist type property
@@ -201,8 +217,6 @@ function subVarRoles(roles: string[], varRoles: Array<[string, string]>): string
   return subRoles;
 };
 
-
-export const router = express.Router();
 
 /**
  * Get list of checklists for either SLOT, DEVICE, SLOTGROUP or everything.

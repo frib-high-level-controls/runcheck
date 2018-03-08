@@ -37,6 +37,10 @@ import {
   Checklist,
 } from '../models/checklist';
 
+interface RouterOptions {
+  adminRoles?: string[];
+}
+
 const debug = dbg('runcheck:groups');
 
 const CONFLICT = HttpStatus.CONFLICT;
@@ -44,7 +48,7 @@ const FORBIDDEN = HttpStatus.FORBIDDEN;
 const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 
-let adminRoles: string[] = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
+let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
   return Array.from(adminRoles);
@@ -54,7 +58,17 @@ export function setAdminRoles(roles: string[]) {
   adminRoles = Array.from(roles);
 }
 
-export const router = express.Router();
+const router = express.Router();
+
+export function getRouter(opts?: RouterOptions): express.Router {
+  if (opts) {
+    if (opts.adminRoles) {
+      setAdminRoles(opts.adminRoles);
+    }
+  }
+  return router;
+};
+
 
 router.get('/groups/slot', catchAll(async (req, res) => {
   format(res, {

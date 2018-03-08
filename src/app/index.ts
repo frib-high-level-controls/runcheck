@@ -66,6 +66,9 @@ interface Config {
   };
 };
 
+// application roles (consider moving to configuration file)
+const ADMIN_ROLES = [ 'ADM:RUNCHECK' ];
+
 // application states (same as tasks.State, but avoids the dependency)
 export type State = 'STARTING' | 'STARTED' | 'STOPPING' | 'STOPPED';
 
@@ -363,11 +366,11 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.use('/status', status.router);
-  app.use(devices.router);
-  app.use(slots.router);
-  app.use(groups.router);
-  app.use(checklists.router);
-  app.use(api1.router);
+  app.use(devices.getRouter({ adminRoles: ADMIN_ROLES }));
+  app.use(slots.getRouter({ adminRoles: ADMIN_ROLES}));
+  app.use(groups.getRouter({ adminRoles: ADMIN_ROLES }));
+  app.use(checklists.getRouter({ adminRoles: ADMIN_ROLES }));
+  app.use(api1.getRouter());
 
   // no handler found for request (404)
   app.use(handlers.notFoundHandler());

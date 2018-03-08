@@ -27,7 +27,12 @@ interface ReportStatus {
 
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
-export const router = express.Router();
+const router = express.Router();
+
+export function getRouter(opts?: {}): express.Router {
+  return router;
+};
+
 
 router.get('/api/v1/report/status', ensureAccepts('json'), catchAll(async (req, res) => {
   let statuses = new Map<string, ReportStatus>();
