@@ -523,7 +523,12 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: 'Level of care',
       data: <any> null,
       render: (row: SlotTableRow): string => {
-        return row.careLevel || 'Unknown';
+        switch (row.careLevel) {
+          case 'LOW': return 'Low';
+          case 'MEDIUM': return 'Medium';
+          case 'HIGH': return 'High';
+          default: return row.careLevel || 'Unknown';
+        }
       },
       searching: true,
     }, {

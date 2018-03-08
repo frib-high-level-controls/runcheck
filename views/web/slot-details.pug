@@ -22,7 +22,11 @@ table.table
     if !embedded
       tr
         th Level of Care
-        td= slot.careLevel
+        case slot.careLevel
+          when 'LOW': td Low
+          when 'MEDIUM': td Medium
+          when 'HIGH': td High
+          default: td= slot.careLevel
       tr
         th Safety Designation
         case slot.safetyLevel
