@@ -47,6 +47,11 @@ $(() => {
       dataSrc: 'data',
     },
     dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
+    buttons: [
+      'copy',
+      'csv',
+      'excel',
+    ],
     autoWidth: false,
     processing: true,
     pageLength: 25,

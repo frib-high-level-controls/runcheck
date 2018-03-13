@@ -39,6 +39,7 @@
     "@types/bootstrap-datepicker": "^0.0.12",
     "@types/chai": "^4.0.1",
     "@types/datatables.net": "^1.10.6",
+    "@types/datatables.net-buttons": "^1.4.0",
     "@types/debug": "^0.0.30",
     "@types/express": "^4.0.35",
     "@types/express-session": "^1.15.0",

@@ -2,20 +2,26 @@ extends layout.pug
 
 block head
   link(rel='stylesheet', href=basePath + '/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables.net-buttons-bs/css/buttons.bootstrap.min.css')
   title Devices :: CCDB
 
 
 block content
   .container
     br
-    .tab-pane.active#devices
-      .table-responsive
+    .row#devices
+      .col-lg-12
         table.table.table-condensed.table-bordered.table-hover#devices-table
 
 
 block js
   script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/dataTables.buttons.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/buttons.flash.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/buttons.html5.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons-bs/js/buttons.bootstrap.js')
+  script(type='text/javascript', src=basePath + '/node_modules/jszip/dist/jszip.min.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
   script(type='text/javascript', src=basePath + '/js/devices-table.js')
   if forgurl

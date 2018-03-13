@@ -2,6 +2,7 @@ extends layout.pug
 
 block head
   link(rel='stylesheet', href=basePath + '/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables.net-buttons-bs/css/buttons.bootstrap.min.css')
   title Slots :: CCDB
 
 
@@ -49,23 +50,28 @@ block content
               button.btn.btn-primary.pull-right(type='button', data-bind='click: addToExistingGroup, enable: canSubmit') Add
               button.btn.btn-default(type='button', data-bind='click: close, enable: canClose') Close
     .row
-      .col-lg-8.col-md-8.col-sm-8
-      .col-lg-2.col-md-2.col-sm-2
-        form.form-inline.clearfix(data-bind='with: newGroupButton')
-          button.btn.btn-primary.pull-right(type='button', data-bind='click: createNewGroup, enable: canCreate')
-            | New Slot Group
-      .col-lg-2.col-md-2.col-sm-2
-        form.form-inline.clearfix(data-bind='with: existingGroupButton')
-          button.btn.btn-primary.pull-right(type='button', data-bind='click: addToExistingGroup, enable: canAdd')
-            | Add to Slot Group
-    .tab-pane.active#slots
-      .table-responsive
+      .col-lg-12
+        .btn-toolbar(role='toolbar')
+          .btn-group(role='group', data-bind='with: newGroupButton')
+            button.btn.btn-primary.pull-right(type='button', data-bind='click: createNewGroup, enable: canCreate')
+              | New Slot Group
+          .btn-group(role='group', data-bind='with: existingGroupButton')
+            button.btn.btn-primary.pull-right(type='button', data-bind='click: addToExistingGroup, enable: canAdd')
+              | Add to Slot Group
+    br
+    .row#slots
+      .col-lg-12
         table.table.table-condensed.table-bordered.table-hover#slots-table
 
 
 block js
   script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/dataTables.buttons.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/buttons.flash.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons/js/buttons.html5.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-buttons-bs/js/buttons.bootstrap.js')
+  script(type='text/javascript', src=basePath + '/node_modules/jszip/dist/jszip.min.js')
   script(type='text/javascript', src=basePath + '/node_modules/knockout/build/output/knockout-latest.js')
   script(type='text/javascript', src=basePath + '/js/shared/webutil.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')

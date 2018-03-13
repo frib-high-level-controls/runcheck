@@ -603,6 +603,11 @@ $(WebUtil.wrapCatchAll0(async () => {
       dataSrc: 'data',
     },
     dom: '<"row"<"col-sm-8"l><"col-sm-4"B>>rtip',
+    buttons: [
+      'copy',
+      'csv',
+      'excel',
+    ],
     // initComplete: function () {
     //   Holder.run({
     //       images: '.user img'
