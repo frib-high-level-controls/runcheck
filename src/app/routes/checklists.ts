@@ -149,6 +149,7 @@ function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
     return ChecklistType.SLOT_DEFAULT;
   case SafetyLevel.CONTROL_ESH:
   case SafetyLevel.CREDITED_ESH:
+  case SafetyLevel.CREDITED_PPS:
     return ChecklistType.SLOT_SAFETY;
   }
 }

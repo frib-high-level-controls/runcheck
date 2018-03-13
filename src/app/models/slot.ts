@@ -23,6 +23,7 @@ export enum SafetyLevel {
   CREDITED = 'CREDITED',
   CONTROL_ESH = 'CONTROL_ESH',
   CREDITED_ESH = 'CREDITED_ESH',
+  CREDITED_PPS = 'CREDITED_PPS',
 };
 
 export interface ISlot {
@@ -61,6 +62,7 @@ export const SAFETY_LEVELS: SafetyLevel[] = [
   SafetyLevel.CREDITED,
   SafetyLevel.CONTROL_ESH,
   SafetyLevel.CREDITED_ESH,
+  SafetyLevel.CREDITED_PPS,
 ];
 
 const Schema = mongoose.Schema;

@@ -159,6 +159,8 @@ $(WebUtil.wrapCatchAll0(async () => {
         return 'Control with ESH Impact';
       case 'CREDITED_ESH':
         return 'Credited Control with ESH Impact';
+      case 'CREDITED_PPS':
+        return 'Credited Control Personnel Protection System';
       default:
         return this.safetyLevel();
       }
