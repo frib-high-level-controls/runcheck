@@ -458,7 +458,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         }
         return '-';
       },
-      orderable: false,
+      orderable: true,
       searchable: false,
     });
   }
