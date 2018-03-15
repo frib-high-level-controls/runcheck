@@ -5,7 +5,6 @@
   "scripts": {
     "start": "./bin/app",
     "grunt": "./node_modules/.bin/grunt",
-    "bower": "./node_modules/.bin/bower",
     "mocha": "./node_modules/.bin/mocha",
     "nyc": "./node_modules/.bin/nyc",
     "nyc-mocha": "./node_modules/.bin/nyc ./node_modules/.bin/mocha",
