@@ -1,7 +1,7 @@
 extends layout.pug
 
 block head
-  link(rel='stylesheet', href=basePath + '/node_modules/datatables-bootstrap/css/dataTables.bootstrap.min.css')
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables.net-bs/css/dataTables.bootstrap.css')
   title #{group.name} :: CCDB
 
 
@@ -82,8 +82,8 @@ block content
 
 block js
   //- script(type='text/javascript', src='/holderjs/holder.min.js')
-  script(type='text/javascript', src=basePath + '/node_modules/datatables/media/js/jquery.dataTables.min.js')
-  script(type='text/javascript', src=basePath + '/node_modules/datatables-bootstrap/js/dataTables.bootstrap.min.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net/js/jquery.dataTables.js')
+  script(type='text/javascript', src=basePath + '/node_modules/datatables.net-bs/js/dataTables.bootstrap.js')
   script(type='text/javascript', src=basePath + '/node_modules/knockout/build/output/knockout-latest.js')
   script(type='text/javascript', src=basePath + '/js/shared/webutil.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
