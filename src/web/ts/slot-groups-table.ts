@@ -65,7 +65,7 @@ $(() => {
     deferRender: true,
     columns: slotGroupColumns,
     order: [
-      [2, 'asc'],
+      [0, 'asc'],
     ],
   });
   DataTablesUtil.addFilterHead('#slot-groups-table', slotGroupColumns);

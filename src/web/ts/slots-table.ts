@@ -626,7 +626,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     deferRender: true,
     columns: slotColumns,
     order: [
-      [2, 'asc'],
+      [1, 'asc'],
     ],
   });
   DataTablesUtil.addFilterHead('#slots-table', slotColumns);

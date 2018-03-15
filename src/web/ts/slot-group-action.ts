@@ -337,7 +337,7 @@ $(() => {
     deferRender: true,
     columns: slotColumns,
     order: [
-      [0, 'asc'],
+      [1, 'asc'],
     ],
   });
   DataTablesUtil.addFilterHead('#slot-table', slotColumns);

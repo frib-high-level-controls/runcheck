@@ -527,7 +527,7 @@ $(WebUtil.wrapCatchAll0(async () => {
     deferRender: true,
     columns: checklistTableColumns,
     order: [
-      [0, 'asc'],
+      [1, 'asc'],
     ],
   });
 
