@@ -140,7 +140,7 @@ function mapByChecklistId<T extends { checklistId?: ObjectId }>(p: Promise<T[]>)
 /**
  * Get the checklist type for a slot (or slot group)
  */
-function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
+export function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
   switch (safetyLevel) {
   case SafetyLevel.NONE:
   case SafetyLevel.CONTROL:
@@ -157,7 +157,7 @@ function getSlotChecklistType(safetyLevel?: SafetyLevel): ChecklistType {
 /**
  * Get the checklist type for a device
  */
-function getDeviceChecklistType(): ChecklistType {
+export function getDeviceChecklistType(): ChecklistType {
   return ChecklistType.DEVICE_DEFAULT;
 }
 

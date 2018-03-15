@@ -11,7 +11,7 @@ import mysql = require('mysql');
 import rc = require('rc');
 
 import {
-  SafetyLevel,
+  SAFETY_LEVELS,
   Slot,
 } from '../app/models/slot';
 
@@ -34,13 +34,16 @@ import {
   ChecklistConfig,
   ChecklistStatus,
   ChecklistSubject,
-  ChecklistType,
   IChecklist,
   IChecklistConfig,
   IChecklistStatus,
   isChecklistApproved,
 } from '../app/models/checklist';
 
+import {
+  getDeviceChecklistType,
+  getSlotChecklistType,
+} from '../app/routes/checklists';
 
 interface Config {
   configs?: string[];
@@ -64,6 +67,7 @@ interface Config {
   ascdepts?: {[key: string]: {} };
   processes?: {[key: string]: {} };
   subjects?: Array<{[key: string]: {}}>;
+  safetyLevels?: {[key: string]: {} };
 };
 
 
@@ -484,6 +488,21 @@ async function main() {
     slot.desc = row.description;
     slot.deviceType = row.type;
 
+    // Use an alternate safety level from configuration
+    if (cfg.safetyLevels && cfg.safetyLevels[row.name]) {
+      let rawSafetyLevel = cfg.safetyLevels[row.name];
+      let altSafetyLevel = SAFETY_LEVELS.reduce((prev, value) => {
+        return (rawSafetyLevel === value) ? value : prev;
+      }, undefined);
+      if (!altSafetyLevel) {
+        error('Specified Safety Level is Invalid: %s', rawSafetyLevel);
+        connection.end();
+        return;
+      }
+      slot.safetyLevel = altSafetyLevel;
+      info('Alternate Safety Level specified: %s', slot.safetyLevel);
+    }
+
     let props = {};
     try {
       props = await connection.query(
@@ -609,7 +628,6 @@ async function main() {
       // Temporary value to pass validation
       owner: 'UNKNOWN',
       memberType: Slot.modelName,
-      safetyLevel: SafetyLevel.NONE,
     });
 
     try {
@@ -655,9 +673,21 @@ async function main() {
     }
 
     // Set the group owner with the slot area
-    group.owner = slot.area;
+    if (group.owner === 'UNKNOWN') {
+      group.owner = slot.area;
+    }
 
-    slot.groupId = group._id;
+    if (group.safetyLevel === undefined) {
+      group.safetyLevel = slot.safetyLevel;
+    }
+
+    if (group.owner !== slot.area) {
+      warn(`Warning: Group '${group.name}' owner does not match slot ${slot.name}: ${group.owner} !== ${slot.area}. Cannot add to group!`);
+    } else if (group.safetyLevel !== slot.safetyLevel) {
+      warn(`Warning: Group '${group.name}' safety level does not match slot ${slot.name}: ${group.safetyLevel} !== ${slot.safetyLevel}. Cannot add to group!`);
+    } else {
+      slot.groupId = group._id;
+    }
   }
 
 
@@ -821,7 +851,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: device._id,
       targetType: Device.modelName,
-      checklistType: ChecklistType.DEVICE_DEFAULT,
+      checklistType: getDeviceChecklistType(),
       approved: false,
       checked: 0,
       total: 0,
@@ -871,7 +901,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: slot._id,
       targetType: Slot.modelName,
-      checklistType: ChecklistType.SLOT_DEFAULT,
+      checklistType: getSlotChecklistType(slot.safetyLevel),
       approved: false,
       checked: 0,
       total: 0,
@@ -921,7 +951,7 @@ async function main() {
     let doc: IChecklist = {
       targetId: group._id,
       targetType: Group.modelName,
-      checklistType: ChecklistType.SLOT_DEFAULT,
+      checklistType: getSlotChecklistType(group.safetyLevel),
       approved: false,
       checked: 0,
       total: 0,
