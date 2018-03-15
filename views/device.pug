@@ -30,44 +30,7 @@ block content
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled) Assign
               //- button.btn.btn-primary.hidden#checklist-unassign(type='button', disabled) Unassign
           .panel-body.hidden#checklist-panel
-  //-- var notInstalled = _.get(device, 'installToDevice.id') === null && _.get(device, 'installToSlot.id') === null;
-  //- .panel.panel-default(id = 'prepare-panel', class=notInstalled? '' : 'hidden')
-    .panel-heading
-      .btn-group
-        button.btn.btn-space.btn-primary.dropdown-toggle(type='button', data-toggle='dropdown', aria-haspopup='true', aria-expanded='false')#preInstall
-          | Prepare install
-          = ' '
-          span.caret
-        ul.dropdown-menu
-          li
-            a.prepare-install device
-          li
-            a.prepare-install slot
-      strong(id = 'prepare-title')
-    .panel-body
-      form.form-inline.slot.hidden
-        .form-group
-          label Slot:
-          = ' '
-          .input-group
-            input.form-control(type='text')
-        = ' '
-        button.btn.btn-space.btn-primary(type='submit', value='slot') Confirm
-        button.btn.btn-space(type='reset') Cancel
-      form.form-inline.device.hidden
-        .form-group
-          label Device:
-          = ' '
-          .input-group
-            input.form-control(type='text')
-        = ' '
-        button.btn.btn-space.btn-primary(type='submit', value='device') Confirm
-        button.btn.btn-space(type='reset') Cancel
-//-  .well
-    #irrChecklist
-//- block history
-  each h in device.__updates.reverse()
-    +change(h, moment)
+
 block js
   //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
   //- script(type='text/javascript', src='/javascripts/typeahead.js')
