@@ -271,6 +271,11 @@ class ChecklistUpdateFormTableRow extends ChecklistRequestStatus {
       }
     }
 
+    // Comments from CCDB (v1) could contain newlines characters.
+    // These are replaced by a single space for use
+    // in a standard (<input type="text"/>) textbox.
+    status.comment = status.comment.trim().replace(/\r?\n|\r/, ' ');
+
     this.status = status;
     this.value = status.value;
     this.comment = status.comment;
@@ -380,12 +385,12 @@ class ChecklistUpdateFormViewModel {
             continue;
           }
 
-          row.value = String(e.find('.cl-subject-status-value').val());
-          row.comment = String(e.find('.cl-subject-status-comment').val());
+          row.value = String(e.find('.cl-subject-status-value').val()).trim();
+          row.comment = String(e.find('.cl-subject-status-comment').val()).trim();
 
           // if (row.status) {
-          //   console.log('%s ?== %s', row.status.value, row.value);
-          //   console.log('%s ?== %s', row.status.comment, row.comment);
+          //   console.log('Subject: "%s": Status: %s ?== %s', subject.name, row.status.value, row.value);
+          //   console.log('Subject: "%s": Comment: "%s" ?== "%s"', subject.name, row.status.comment, row.comment);
           // }
 
           if (row.status) {
