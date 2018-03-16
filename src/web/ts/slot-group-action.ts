@@ -263,6 +263,14 @@ $(() => {
         return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
       },
       searching: false,
+    },  {
+      title: 'Order',
+      data: <any> null,
+      render: (row: GroupMemberTableRow): string => {
+        let m = row.name.match(/([DN]\d+)/);
+        return m ? m[1] : '';
+      },
+      searching: true,
     }, {
       title: 'Name',
       data: <any> null,
@@ -337,7 +345,7 @@ $(() => {
     deferRender: true,
     columns: slotColumns,
     order: [
-      [1, 'asc'],
+      [2, 'asc'],
     ],
   });
   DataTablesUtil.addFilterHead('#slot-table', slotColumns);
