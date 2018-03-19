@@ -181,16 +181,19 @@ const checklistSchema = new Schema({
   approved: {
     type: Boolean,
     default: false,
+    required: true,
   },
   checked: {
     type: Number,
     default: 0,
     min: 0,
+    required: true,
   },
   total: {
     type: Number,
     default: 0,
     min: 0,
+    required: true,
   },
 });
 
@@ -235,6 +238,7 @@ const checklistSubjectSchema = new Schema({
   order: {
     type: Number,
     default: 0,
+    require: true,
   },
   assignees: {
     type: [String],
@@ -360,6 +364,9 @@ const checklistStatusSchema = new Schema({
   comment: {
     type: String,
     default: '',
+    // required: true, // Requires non-empty string!
+    // Use the following less strict replacement.
+    validate: (v: any) => (typeof v === 'string'),
   },
   inputAt: {
     type: Date,

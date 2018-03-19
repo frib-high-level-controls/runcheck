@@ -97,6 +97,9 @@ const slotSchema = new Schema({
   desc: {
     type: String,
     default: '',
+    // required: true, // Requires non-empty string!
+    // Use the following less strict replacement.
+    validate: (v: any) => (typeof v === 'string'),
   },
   area:  {
     type: String,
