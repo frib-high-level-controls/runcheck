@@ -365,6 +365,10 @@ async function doStart(): Promise<express.Application> {
     res.render('index');
   });
 
+  app.get('/docs/userguide.html', (req, res) => {
+    res.render('docs/userguide');
+  });
+
   app.use('/status', status.router);
   app.use(devices.getRouter({ adminRoles: ADMIN_ROLES }));
   app.use(slots.getRouter({ adminRoles: ADMIN_ROLES}));

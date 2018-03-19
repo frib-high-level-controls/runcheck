@@ -25,6 +25,12 @@ header
                 a(href=basePath + '/checklists?type=DEVICE') Devices
               li
                 a(href=basePath + '/checklists?type=SLOT') Slots and Slot Groups
+          li.dropdown
+            a.dropdown-toggle(href='#', data-toggle='dropdown') Help
+              b.caret
+            ul.dropdown-menu
+              li
+                a(href=basePath + '/docs/userguide.html' target='_blank') User Guide
           //-if (locals.session && locals.session.userid && locals.session.roles && locals.session.roles.admin)
             li
               a(href='/admin/', target='_blank') Admin
