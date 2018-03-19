@@ -8,6 +8,9 @@ $(() => {
       return path;
     }
     let splitLocation = location.pathname.split('/');
+    if (splitLocation[splitLocation.length - 1] !== '') {
+      splitLocation.pop();
+    }
     for (let s of splitPath) {
       switch (s) {
       case '.':
