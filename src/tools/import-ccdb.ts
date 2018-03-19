@@ -1102,7 +1102,7 @@ async function main() {
           checklistId: cl._id,
           subjectName: subjectName,
           value: statusValue,
-          comment: row.comment,
+          comment: row.comment ? String(row.comment) : '',
           inputAt: row.modified_at,
           inputBy: row.modified_by ? row.modified_by.toUpperCase() : 'SYS:IMPORTCCDB',
         };
