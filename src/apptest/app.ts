@@ -111,10 +111,10 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.use('/status', status.router);
-  app.use(devices.router);
-  app.use(slots.router);
-  app.use(groups.router);
-  app.use(checklists.router);
+  app.use(devices.getRouter());
+  app.use(slots.getRouter());
+  app.use(groups.getRouter());
+  app.use(checklists.getRouter());
 
   // no handler found for request
   app.use(handlers.notFoundHandler());
