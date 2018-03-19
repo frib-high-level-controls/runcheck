@@ -1087,6 +1087,17 @@ async function main() {
           config.required = false;
         }
       } else {
+        if (statusValue === 'Y' && row.comment) {
+          info('Checklist Status Y has comment so replace with YC');
+          statusValue = 'YC';
+        }
+        if (statusValue === 'N' && row.comment) {
+          warn('Warning: Checklist Status N has comment');
+        }
+        if (statusValue === 'YC' && !row.comment) {
+          warn('Warning: Checklist Status YC missing comment');
+        }
+
         let doc: IChecklistStatus = {
           checklistId: cl._id,
           subjectName: subjectName,
