@@ -2,6 +2,10 @@ extends ../layout.pug
 
 block head
   title User Guide :: CCDB
+  style(type='text/css')
+    | .screenshot {
+    |   border: 1px solid;
+    | }
 
 block content
   .container
@@ -11,6 +15,106 @@ block content
         h1 <center>Central Configuration Database User Guide</center>
       .panel-body
         :marked
-          ## Section 1
+          ## Introduction
+          The Central Configuration Database (CCDB) application is a software tool that assists in
+          managing the configuration of the accelerator facility by tracking installation and approvals.
 
-          User Construction
+          ### Terminology
+          * **Device** A physical entity with a specific type and identified by a serial number.
+          * **Slot** A logical entity with a speific type that represents a location or instance that is identified by a name defined by the FRIB naming standard.
+          * **Slot Group** A colleciton of Slots that are managed as a single unit. Slots within a Slot Group must belong to the same Area and have the same Safety Designation.
+
+          ### References
+          * [FRIB Naming System](https://controls.frib.msu.edu/names/)
+          * [Central Configuration Database (CCDB) Requirements](https://portal.frib.msu.edu/dcc/DCC Released Documents/T10500-CM-000228-R002.pdf)
+
+          ## Overview
+
+          The navigation bar provides quick access to components of the application.
+
+          **CCDB** &mdash; The application main page with a quick link to this User Guide
+          <img class="img-responsive screenshot" src="./userguide/overview.png"/>
+
+          **Devices** &mdash; Table of Devices with support for filtering by name, description, type, etc.
+          <img class="img-responsive screenshot" src="./userguide/devices.png"/>
+
+          **Slots** &mdash; Table of Slots with support for filtering by name, area, DRR, ARR, etc.
+          <img class="img-responsive screenshot" src="./userguide/slots.png"/>
+
+          **Slot Groups** &mdash; Table of Slot Groups with support for filtering by name, description, etc.
+          <img class="img-responsive screenshot" src="./userguide/slotgroups.png"/>
+
+          **Checklists** &mdash; Table of Checklists for either *Devices* or *Slot and Slot Groups*
+          <img class="img-responsive screenshot" src="./userguide/checklists.png"/>
+
+          The Device, Slot and Slot Group details can be found from the respective table view by selecting a link from the **Name** column.
+
+
+          ## Install a Device
+
+          Navigate to the Slot details. Select the **Install** button.
+          <img class="img-responsive screenshot" src="./userguide/install_device_1.png"/>
+
+          Select a Device from the **Device** menu and enter an alternate installation **Date** if required.
+          Select **Save** to complete the installation.
+          <img class="img-responsive screenshot" src="./userguide/install_device_2.png"/>
+
+
+          ## Assign a Checklist
+
+          Navigate to the Device, Slot or Slot Group details. Select the **Assign** button on the Checklist panel.
+          <img class="img-responsive screenshot" src="./userguide/assign_checklist_1.png"/>
+
+          A new Checklist will be created within the panel.
+          <img class="img-responsive screenshot" src="./userguide/assign_checklist_2.png"/>
+
+          ## Update Checklist Subject Status (Single)
+
+          Navigate to the Device, Slot or Slot Group details. Select the new **Status** from the menu for the subject,
+          and enter a comment if required. Select **Save** to complete.
+          <img class="img-responsive screenshot" src="./userguide/update_checklist_status_1.png"/>
+
+          ## Update Checklist Subject Status (Multiple)
+
+          Navivate to the Checklists table. Select the Checklists to modify, using the column filters as needed.
+          Checklist subjects that can be modified are indicated&nbsp;<span style="white-space:nowrap;">[<span class="fa fa-pencil"/>]</span>.
+          Select a **Subject** and new **Status** from the menus and enter a comment if required. Select **Update** to continue.
+          <img class="img-responsive screenshot" src="./userguide/update_checklist_status_multi_1.png"/>
+
+          A confirmation dialog will list the pending changes. Select **Update** to complete.
+          <img class="img-responsive screenshot" src="./userguide/update_checklist_status_multi_2.png"/>
+
+
+          ## Edit Checklist
+
+          Navigate to the Device, Slot or Slot Group details. Select the **Edit** button.
+          <img class="img-responsive screenshot" src="./userguide/edit_checklist_1.png"/>
+
+          Subjects can be disabled by unchecking the **Required** checkbox. Subject Assignees can be specified by editing the **Assignees** field.
+          This field requires a comma seperated list of users (ie *USR:MAXWELLD*) or groups (ie *GRP:ADB:AREA.FRIB.FRONTEND*).
+          In addition, custom Subjects can be added to the checklist by selecting the PLUS (+) button, and likewise removed using the MINUS (-) button.
+          <img class="img-responsive screenshot" src="./userguide/edit_checklist_2.png"/>
+
+          ## Create a Slot Group
+
+          Navigate to the Slot table. Select the Slots to be members of a new Slot Group. Select the **New Slot Group** button to continue.
+          <img class="img-responsive screenshot" src="./userguide/new_slot_group_1.png"/>
+
+          A dialog will prompt for the **Name** and optional **Description** of the new Slot Group. Select **Create** to complete.
+          <img class="img-responsive screenshot" src="./userguide/new_slot_group_2.png"/>
+
+          ## Add Slot to a Slot Group
+
+          Navigate to the Slot table. Select the Slots to be members of an existing Slot Group. Select the **Add to Slot Group** button to continue.
+          <img class="img-responsive screenshot" src="./userguide/add_slot_to_group_1.png"/>
+
+          A dialog will prompt to select an existing **Slot Group** from the menu. Select **Add** to complete.
+          <img class="img-responsive screenshot" src="./userguide/add_slot_to_group_2.png"/>
+
+          ## Remove Slot from a Slot Group
+
+          Navigate to the Slot Group details. Select the Slots to be removed from the Slot Group. Select the **Remove** button to continue.
+          <img class="img-responsive screenshot" src="./userguide/rm_slot_from_group_1.png"/>
+
+          A dialog will prompt for confirmation. Select the **Remove** button to complete.
+          <img class="img-responsive screenshot" src="./userguide/rm_slot_from_group_2.png"/>
