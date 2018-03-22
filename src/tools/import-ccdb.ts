@@ -427,9 +427,9 @@ async function main() {
     try {
       await device.validate();
     } catch (err) {
-      console.error(err);
-      console.error(props);
-      console.error(device);
+      error(err);
+      error(props);
+      error(device);
       connection.end();
       return;
     }
@@ -682,9 +682,9 @@ async function main() {
     }
 
     if (group.owner !== slot.area) {
-      warn(`Warning: Group '${group.name}' owner does not match slot ${slot.name}: ${group.owner} !== ${slot.area}. Cannot add to group!`);
+      warn(`WARN: Group '${group.name}' owner does not match slot ${slot.name}: ${group.owner} !== ${slot.area}. Cannot add to group!`);
     } else if (group.safetyLevel !== slot.safetyLevel) {
-      warn(`Warning: Group '${group.name}' safety level does not match slot ${slot.name}: ${group.safetyLevel} !== ${slot.safetyLevel}. Cannot add to group!`);
+      warn(`WARN: Group '${group.name}' safety level does not match slot ${slot.name}: ${group.safetyLevel} !== ${slot.safetyLevel}. Cannot add to group!`);
     } else {
       slot.groupId = group._id;
     }
@@ -1092,10 +1092,10 @@ async function main() {
           statusValue = 'YC';
         }
         if (statusValue === 'N' && row.comment) {
-          warn('Warning: Checklist Status N has comment');
+          warn('WARN: Checklist Status N has comment');
         }
         if (statusValue === 'YC' && !row.comment) {
-          warn('Warning: Checklist Status YC missing comment');
+          warn('WARN: Checklist Status YC missing comment');
         }
 
         let doc: IChecklistStatus = {
@@ -1142,7 +1142,7 @@ async function main() {
       subjects.push(subject);
     }
   } else {
-    console.warn('No default checklist subjects specified!');
+    console.warn('WARN: No default checklist subjects specified!');
   }
 
   // Compute checklist summary
@@ -1251,48 +1251,15 @@ async function main() {
 
   info('Connected to Runcheck database');
 
-  info('Clear Runcheck database');
-  // await mongoose.connection.db.dropDatabase();
   try {
-    await Slot.collection.drop();
+    await mongoose.connection.db.dropDatabase();
   } catch (err) {
-    console.warn(`WARN: Slot: ${err.message}`);
+    error(err);
+    mongoose_disconnect();
+    return;
   }
-  try {
-    await Device.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: Device: ${err.message}`);
-  }
-  try {
-    await Group.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: Group: ${err.message}`);
-  }
-  try {
-    await Install.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: Install: ${err.message}`);
-  }
-  try {
-    await Checklist.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: Checklist: ${err.message}`);
-  }
-  try {
-    await ChecklistConfig.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: ChecklistConfig: ${err.message}`);
-  }
-  try {
-    await ChecklistStatus.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: ChecklistStatus: ${err.message}`);
-  }
-  try {
-    await ChecklistSubject.collection.drop();
-  } catch (err) {
-    console.warn(`WARN: ChecklistSubject: ${err.message}`);
-  }
+
+  info('Cleared Runcheck database');
 
   for (let name in devices) {
     if (devices.hasOwnProperty(name)) {
@@ -1300,7 +1267,7 @@ async function main() {
       try {
         await devices[name].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1313,7 +1280,7 @@ async function main() {
       try {
         await slots[name].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1328,10 +1295,10 @@ async function main() {
         if (group) {
           await group.saveWithHistory('SYS:IMPORTCCDB');
         } else {
-          warn('Group not found with name: %s', name);
+          warn('WARN: Group not found with name: %s', name);
         }
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1346,10 +1313,10 @@ async function main() {
         if (install) {
           await install.save();
         } else {
-          warn('Install not found with id: %s', id);
+          warn('WARN: Install not found with id: %s', id);
         }
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1362,7 +1329,7 @@ async function main() {
       try {
         await checklists[id].save();
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1375,7 +1342,7 @@ async function main() {
       try {
         await configs[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1388,7 +1355,7 @@ async function main() {
       try {
         await statuses[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
@@ -1401,7 +1368,7 @@ async function main() {
       try {
         await subjects[id].saveWithHistory('SYS:IMPORTCCDB');
       } catch (err) {
-        console.error(err);
+        error(err);
         mongoose_disconnect();
         return;
       }
