@@ -80,3 +80,6 @@ npm-debug.log
 
 # Ignore test coverage results
 /.nyc_output
+
+# Rendered documentation
+/public/docs/userguide.html

@@ -24,6 +24,9 @@ module.exports = function(grunt) {
       pugcompile: {
         command: './node_modules/.bin/pug ./views/web/*.pug -D -P -c --name-after-file -o ./public/js/templates',
       },
+      pugrender: {
+        command: './node_modules/.bin/pug ./views/docs/*.pug -O \'{ "basePath":".." }\' -D -P --name-after-file -o ./public/docs',
+      },
     },
     ts: {
       app: {
@@ -90,6 +93,7 @@ module.exports = function(grunt) {
             test: [ './test' ],
             tools: [ './tools' ],
             public: [ './public/js' ],
+            docs: [ './public/docs/*.html' ]
         }
     });
 
@@ -107,12 +111,14 @@ module.exports = function(grunt) {
     'ts:web',
     'ts:tools',
     'shell:pugcompile',
+    'shell:pugrender',
   ]);
 
   grunt.registerTask('app', [
     'ts:app',
     'ts:web',
     'shell:pugcompile',
+    'shell:pugrender',
   ]);
 
   grunt.registerTask('lint', [
