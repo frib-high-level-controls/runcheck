@@ -51,14 +51,13 @@ export function start(): Promise<express.Application> {
 }
 
 async function doStart(): Promise<express.Application> {
+  app = express();
 
   const forgClient = forgapi.MockClient.getInstance();
 
   const authProvider = new forgauth.DevForgBasicProvider(forgClient, { realm: 'TEST' });
 
   auth.setProvider(authProvider);
-
-  app = express();
 
   // status monitor start
   await status.monitor.start();
