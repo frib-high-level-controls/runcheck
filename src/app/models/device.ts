@@ -84,60 +84,6 @@ const deviceSchema = new Schema({
     type: Date,
     required: false,
   },
-  // owner: {
-  //   type: String,
-  //   required: true,
-  // },
-  // managed: {
-  //   type: Boolean,
-  //   default: true,
-  // },
-  // area: {
-  //   type: String,
-  //   required: true
-  // },
-  // irrApproval: {
-  //   status: {
-  //     type: String,
-  //     default: '',
-  //   },
-  //   comment: {
-  //     type: String,
-  //     default: '',
-  //   },
-  // },
-  // checkedValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0,
-  // },
-  // totalValue: {
-  //   type: Number,
-  //   default: 0,
-  //   min: 0,
-  // },
-  // installToDevice: {
-  //   serialNo: {
-  //     type: String,
-  //     default: null,
-  //   },
-  //   id: {
-  //     type: String,
-  //     default: null,
-  //   },
-  // },
-  // /**
-  //  * 0: not installed
-  //  * 1: prepare to install
-  //  * 1.5: prepare installation checklist
-  //  * 2: approved to install
-  //  * 3: installed
-  //  */
-  // status: {
-  //   type: Number,
-  //   default: 0,
-  //   enum: [0, 1, 1.5, 2, 3],
-  // },
 });
 
 deviceSchema.plugin(history.addHistory, {
