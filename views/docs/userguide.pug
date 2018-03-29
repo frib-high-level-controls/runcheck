@@ -2,20 +2,42 @@ extends ../layout.pug
 
 block head
   title User Guide :: CCDB
+  //- Special styling to ensure that the in-page links are visible below the navigation bar.
+  //- See details: https://stackoverflow.com/questions/10732690/offsetting-an-html-anchor-to-adjust-for-fixed-header
   style(type='text/css')
+    | body {
+    |   padding-top: 60px;
+    | }
+    | h2 {
+    |   position:relative;
+    | }
+    | h2 span {
+    |   position: absolute; top:-60px;
+    | }
     | .screenshot {
     |   border: 1px solid;
     | }
 
 block content
   .container
-    br
     .panel.panel-primary
       .panel-heading
         h1 <center>Central Configuration Database User Guide</center>
       .panel-body
         :marked
-          ## Introduction
+          ## Contents
+          * [Introduction](#intro)
+          * [Overview](#overview)
+          * [Install a Device](#install-device)
+          * [Assign a Checklist](#assign-checklist)
+          * [Update Checklist Status (Single)](#update-checklist-single)
+          * [Update Checklist Status (Multiple)](#update-checklist-multi)
+          * [Edit Checklist](#edit-checklist)
+          * [Create a Slot Group](#create-slot-group)
+          * [Add Slot to a Slot Group](#add-slot-group)
+          * [Remove Slot from a Slot Group](#rm-slot-group)
+
+          ## Introduction <span id="intro"/>
           The Central Configuration Database (CCDB) application is a software tool that assists in
           managing the configuration of the accelerator facility by tracking installations and approvals.
 
@@ -28,7 +50,7 @@ block content
           * [FRIB Naming System](https://controls.frib.msu.edu/names/)
           * [Central Configuration Database (CCDB) Requirements](https://portal.frib.msu.edu/dcc/DCC Released Documents/T10500-CM-000228-R002.pdf)
 
-          ## Overview
+          ## Overview <span id="overview"/>
 
           The navigation bar provides quick access to sections of the application.
 
@@ -50,7 +72,7 @@ block content
           The Device, Slot and Slot Group details can be found from the respective table view by selecting a link from the **Name** column.
 
 
-          ## Install a Device
+          ## Install a Device <span id="install-device"/>
 
           Navigate to the Slot details. Select the **Install** button.
           <img class="img-responsive screenshot" src="./userguide/install_device_1.png"/>
@@ -60,7 +82,7 @@ block content
           <img class="img-responsive screenshot" src="./userguide/install_device_2.png"/>
 
 
-          ## Assign a Checklist
+          ## Assign a Checklist <span id="assign-checklist"/>
 
           Navigate to the Device, Slot or Slot Group details. Select the **Assign** button on the Checklist panel.
           <img class="img-responsive screenshot" src="./userguide/assign_checklist_1.png"/>
@@ -68,13 +90,13 @@ block content
           A new Checklist will be created within the panel.
           <img class="img-responsive screenshot" src="./userguide/assign_checklist_2.png"/>
 
-          ## Update Checklist Subject Status (Single)
+          ## Update Checklist Status (Single) <span id="update-checklist-single"/>
 
           Navigate to the Device, Slot or Slot Group details. Select the new **Status** from the menu for the subject,
           and enter a comment if required. Select the **Save** button to complete.
           <img class="img-responsive screenshot" src="./userguide/update_checklist_status_1.png"/>
 
-          ## Update Checklist Subject Status (Multiple)
+          ## Update Checklist Status (Multiple) <span id="update-checklist-multi"/>
 
           Navigate to the Checklists table. Select the Checklists to modify, using the column filters as needed.
           Checklist subjects that can be modified are indicated&nbsp;<span style="white-space:nowrap;">[<span class="fa fa-pencil"/>]</span>.
@@ -85,7 +107,7 @@ block content
           <img class="img-responsive screenshot" src="./userguide/update_checklist_status_multi_2.png"/>
 
 
-          ## Edit Checklist
+          ## Edit Checklist <span id="edit-checklist"/>
 
           Navigate to the Device, Slot or Slot Group details. Select the **Edit** button.
           <img class="img-responsive screenshot" src="./userguide/edit_checklist_1.png"/>
@@ -96,7 +118,7 @@ block content
           Select the **Save** button to complete.
           <img class="img-responsive screenshot" src="./userguide/edit_checklist_2.png"/>
 
-          ## Create a Slot Group
+          ## Create a Slot Group <span id="create-slot-group"/>
 
           Navigate to the Slot table. Select the Slots to be members of a new Slot Group. Select the **New Slot Group** button to continue.
           <img class="img-responsive screenshot" src="./userguide/new_slot_group_1.png"/>
@@ -104,7 +126,7 @@ block content
           A dialog will prompt for the **Name** and optional **Description** of the new Slot Group. Select the **Create** button to complete.
           <img class="img-responsive screenshot" src="./userguide/new_slot_group_2.png"/>
 
-          ## Add Slot to a Slot Group
+          ## Add Slot to a Slot Group <span id="add-slot-group"/>
 
           Navigate to the Slot table. Select the Slots to be members of an existing Slot Group. Select the **Add to Slot Group** button to continue.
           <img class="img-responsive screenshot" src="./userguide/add_slot_to_group_1.png"/>
@@ -112,7 +134,7 @@ block content
           A dialog will prompt to select an existing **Slot Group** from the menu. Select the **Add** button to complete.
           <img class="img-responsive screenshot" src="./userguide/add_slot_to_group_2.png"/>
 
-          ## Remove Slot from a Slot Group
+          ## Remove Slot from a Slot Group <span id="rm-slot-group"/>
 
           Navigate to the Slot Group details. Select the Slots to be removed from the Slot Group. Select the **Remove** button to continue.
           <img class="img-responsive screenshot" src="./userguide/rm_slot_from_group_1.png"/>
