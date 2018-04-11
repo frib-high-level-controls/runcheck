@@ -59,6 +59,7 @@ async function doStart(): Promise<express.Application> {
 
   auth.setProvider(authProvider);
 
+
   // status monitor start
   await status.monitor.start();
 

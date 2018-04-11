@@ -1,8 +1,7 @@
 module.exports = function(grunt) {
-    'use strict';
+  'use strict';
 
   grunt.initConfig({
-    pkg: grunt.file.readJSON('package.json'),
     eslint: {
       target: ['gruntfile.js', 'lib/**/*.js', 'routes/**/*.js', 'public/javascripts/*.js', 'test/**/*.js']
     },
@@ -31,82 +30,82 @@ module.exports = function(grunt) {
     ts: {
       app: {
         tsconfig: {
-           tsconfig: './src/app',
-           passThrough: true,
+          tsconfig: './src/app',
+          passThrough: true,
         },
         // The additional flags specified below seems like it should be equivalent
         // to using the outDir option, but when the outDir option is used then the
         // Typescript compiler fails for find the source files (grunt-ts v5.5.1).
         //outDir: './app',
         options: {
-            additionalFlags: '--outDir ./app'
+          additionalFlags: '--outDir ./app'
         },
       },
       apptest: {
         tsconfig: {
-           tsconfig: './src/apptest',
-           passThrough: true,
+          tsconfig: './src/apptest',
+          passThrough: true,
         },
         options: {
-            additionalFlags: '--outDir ./test'
+          additionalFlags: '--outDir ./test'
         },
       },
       tools: {
         tsconfig: {
-            tsconfig: './src/tools',
-            passThrough: true,
+          tsconfig: './src/tools',
+          passThrough: true,
         },
         // The additional flags specified below seems like it should be equivalent
         // to using the outDir option, but when the outDir option is used then the
         // Typescript compiler fails for find the source files (grunt-ts v5.5.1).
         //outDir: './app',
         options: {
-            additionalFlags: '--outDir ./tools'
+          additionalFlags: '--outDir ./tools'
         },
       },
       web: {
         tsconfig: {
-           tsconfig: './src/web/ts',
-           passThrough: true,
+          tsconfig: './src/web/ts',
+          passThrough: true,
         },
         options: {
-            additionalFlags: '--outDir ./public/js'
+          additionalFlags: '--outDir ./public/js'
         },
       },
     },
-        tslint: {
-            options: {
-                configuration: "tslint.json",
-                // If set to true, tslint errors will be reported, but not fail the task 
-                // If set to false, tslint errors will be reported, and the task will fail 
-                force: false,
-                fix: false
-            },
-            files: {
-                src: [
-                    "src/**/*.ts"
-                ]
-            }
+    tslint: {
+      options: {
+        configuration: "tslint.json",
+          // If set to true, tslint errors will be reported, but not fail the task 
+          // If set to false, tslint errors will be reported, and the task will fail 
+          force: false,
+          fix: false
         },
-        clean: {
-            app: [ './app' ],
-            test: [ './test' ],
-            tools: [ './tools' ],
-            public: [ './public/js' ],
-            docs: [ './public/docs/*.html' ]
-        }
+        files: {
+          src: [
+            'src/**/*.ts'
+          ],
+        },
+      },
+      clean: {
+        app: [ './app' ],
+        test: [ './test' ],
+        tools: [ './tools' ],
+        public: [ './public/js' ],
+        docs: [ './public/docs/*.html' ]
+      }
     });
 
-  grunt.loadNpmTasks("grunt-shell");
-  grunt.loadNpmTasks("grunt-ts");
-  grunt.loadNpmTasks("grunt-tslint");
-  grunt.loadNpmTasks("grunt-contrib-clean");
+    grunt.loadNpmTasks('grunt-shell');
+    grunt.loadNpmTasks('grunt-ts');
+    grunt.loadNpmTasks('grunt-tslint');
+    grunt.loadNpmTasks('grunt-contrib-clean');
 
   grunt.registerTask('template', ['shell:template']);
   grunt.registerTask('test', ['mochaTest']);
   grunt.registerTask('puglint', ['shell:puglint']);
 
-  grunt.registerTask("default", [
+  grunt.registerTask('default', [
     'ts:app',
     'ts:web',
     'ts:tools',

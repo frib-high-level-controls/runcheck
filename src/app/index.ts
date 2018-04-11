@@ -43,6 +43,7 @@ interface Config {
   app: {
     port: {};
     addr: {};
+    trust_proxy: {};
     session_life: {};
     session_secret: {};
   };
@@ -59,7 +60,7 @@ interface Config {
     service_url?: {};
     append_path?: {};
     version?: {};
-  };
+};
   forgapi: {
     url?: {};
     agentOptions?: {};
@@ -185,6 +186,7 @@ async function doStart(): Promise<express.Application> {
     app: {
       port: '3000',
       addr: 'localhost',
+      trust_proxy: false,
       session_life: 28800000,
       session_secret: 'secret',
     },
@@ -216,6 +218,9 @@ async function doStart(): Promise<express.Application> {
 
   app.set('port', String(cfg.app.port));
   app.set('addr', String(cfg.app.addr));
+
+  // Proxy configuration (https://expressjs.com/en/guide/behind-proxies.html)
+  app.set('trust proxy', cfg.app.trust_proxy || false);
 
   // Status monitor start
   await status.monitor.start();
@@ -295,31 +300,7 @@ async function doStart(): Promise<express.Application> {
   app.set('view engine', 'pug');
   app.set('view cache', (env === 'production') ? true : false);
 
-  // favicon configuration
-  app.use(favicon(path.resolve(__dirname, '..', 'public', 'favicon.ico')));
-
-  // morgan configuration
-  morgan.token('remote-user', function (req) {
-    if (req.session && req.session.userid) {
-      return req.session.userid;
-    } else {
-      return 'unknown';
-    }
-  });
-
-  if (env === 'production') {
-    app.use(morgan('short'));
-  } else {
-    app.use(morgan('dev'));
-  }
-
-  // body-parser configuration
-  app.use(bodyparser.json());
-  app.use(bodyparser.urlencoded({
-    extended: false,
-  }));
-
-  // session configuration
+  // Session configuration
   app.use(session({
     store: new session.MemoryStore(),
     resave: false,
@@ -330,15 +311,35 @@ async function doStart(): Promise<express.Application> {
     },
   }));
 
-  // app.use(auth.sessionLocals);
+  // Authentication handlers
+  app.use(auth.getProvider().initialize());
+
+  // Request logging configuration (must follow authc middleware)
+  morgan.token('remote-user', function (req) {
+    let username = auth.getUsername(req);
+    return username || 'anonymous';
+  });
+
+  if (env === 'production') {
+    app.use(morgan('short'));
+  } else {
+    app.use(morgan('dev'));
+  }
+
+  // favicon configuration
+  app.use(favicon(path.resolve(__dirname, '..', 'public', 'favicon.ico')));
+
+  // static file configuration
   app.use(express.static(path.resolve(__dirname, '..', 'public')));
-  app.use(express.static(path.resolve(__dirname, '..', 'bower_components')));
 
   // Redirect requests ending in '/' and set response locals 'basePath'
   app.use(handlers.basePathHandler());
 
-  // Authentication handlers
-  app.use(auth.getProvider().initialize());
+  // body-parser configuration
+  app.use(bodyparser.json());
+  app.use(bodyparser.urlencoded({
+    extended: false,
+  }));
 
   app.get('/login', auth.getProvider().authenticate({ rememberParams: [ 'bounce' ]}), (req, res) => {
     if (req.query.bounce) {
