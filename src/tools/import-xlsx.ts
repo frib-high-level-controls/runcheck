@@ -781,6 +781,7 @@ function hasResultError(...importResults: ImportResult[][]): boolean {
   return false;
 };
 
+// tslint:disable:max-line-length
 function printResults(slotResults: SlotImportResult[], deviceResults: DeviceImportResult[], installResults: InstallImportResult[]) {
 
   for (let result of slotResults) {
