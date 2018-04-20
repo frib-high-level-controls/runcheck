@@ -96,7 +96,7 @@ const DRR_REGEX = /^DRR[\d?]?[\d?]?(-[\w?]+)?$/;
 const ARR_REGEX = /^ARR[\d?]?[\d?]?(-[\w?]+)?$/;
 const DEVICE_TYPE_REGEX = /^\S+$/;
 const DEVICE_NAME_REGEX = /^\w{6}-\w{3}-\w{4}-\w{4}-\w{6}$/;
-const DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 let forgClient: forgapi.IClient;
 
@@ -168,7 +168,7 @@ async function main() {
   }
 
   const data = await readFile(String(cfg._[0]));
-  const workbook = XLSX.read(data, {type: 'buffer'});
+  const workbook = XLSX.read(data, {type: 'buffer', dateNF: 'yyyy-mm-dd'});
 
   // FORG API configuration
   if (!cfg.forgapi.url) {
@@ -718,21 +718,17 @@ async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportRes
       result.install.deviceName = deviceName;
     }
 
-    info(date);
+    // Date parsing adapted from similar in routes/slots.ts
     if (!date) {
       result.errors.push('Install date is not specified');
+    } else if (!date.match(DATE_REGEX)) {
+      result.errors.push(`Install date, '${date}', is invalid (1)`);
     } else {
-      let m = date.match(DATE_REGEX);
-      if (!m) {
-        result.errors.push(`Install date, '${date}', is not valid`);
+      let installOn = new Date(date);
+      if (!Number.isFinite(installOn.getTime())) {
+        result.errors.push(`Install date, '${date}', is invalid (2)`);
       } else {
-        // See other implementation: routes/slots.ts
-        let installOn = new Date(`${m[0][3]}-${m[0][1]}-${m[0][2]}`);
-        if (!Number.isFinite(installOn.getTime())) {
-          result.errors.push(`Install date, '${date}', is not valid`);
-        } else {
-          result.install.installOn = installOn;
-        }
+        result.install.installOn = installOn;
       }
     }
 
