@@ -95,8 +95,8 @@ const info = console.info;
 const warn = console.warn;
 const error = console.error;
 
-const groupCache = new Map<string, forgapi.Group>();
-
+const approvedAreas = new Array<string>();
+const approvedDepts = new Array<string>();
 const approvedNames = new Array<RegExp>();
 
 const SLOT_NAME_REGEX = /^[^\W_]+_[^\W_]+(:[^\W_]+_[^\W_]+)?$/;
@@ -194,6 +194,17 @@ async function main() {
     agentOptions: cfg.forgapi.agentOptions || {},
   });
 
+  const loadGroups = forgClient.findGroups().then((forgGroups) => {
+    for (let group of forgGroups) {
+      if (group.type === 'DEPT') {
+        approvedDepts.push(group.uid);
+      }
+      if (group.type === 'AREA') {
+        approvedAreas.push(group.uid);
+      }
+    }
+  });
+
   // PNS API configuration
   if (!cfg.pnsapi.url) {
     error(`Error: PNS base URL not configured`);
@@ -206,13 +217,17 @@ async function main() {
     url: String(cfg.pnsapi.url),
     agentOptions: cfg.pnsapi.agentOptions || {},
   });
-  const pnsNames = await pnsClient.findNames();
-  for (let name of pnsNames) {
-    if (name.code) {
-      let code = name.code.replace('n', '\\d');
-      approvedNames.push(new RegExp(`^${code}$`));
+
+  const loadNames = pnsClient.findNames().then((pnsNames) => {
+    for (let name of pnsNames) {
+      if (name.code) {
+        let code = name.code.replace('n', '\\d');
+        approvedNames.push(new RegExp(`^${code}$`));
+      }
     }
-  }
+  });
+
+  await Promise.all([loadGroups, loadNames]);
 
   let slotSheetName: string | undefined;
   let deviceSheetName: string | undefined;
@@ -519,21 +534,10 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
 
     if (!area) {
       result.errors.push('Slot area is not specified');
+    } else if (!approvedAreas.includes(area)) {
+      result.errors.push(`Slot area, '${area}', is not found`);
     } else {
-      let group: forgapi.Group | null | undefined = groupCache.get(area);
-      if (!group) {
-        try {
-          group = await forgClient.findGroup(area);
-        } catch (err) {
-          group = null; // TODO: FIX!
-        }
-      }
-      if (!group) {
-        result.errors.push(`Slot area, '${area}', is not found`);
-      } else {
-        groupCache.set(area, group);
-        result.slot.area = area;
-      }
+      result.slot.area = area;
     }
 
     if (!deviceType) {
@@ -665,21 +669,10 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
 
     if (!dept) {
       result.errors.push('Device department is not specified');
+    } else if (!approvedDepts.includes(dept)) {
+      result.errors.push(`Device department, '${dept}', is not found`);
     } else {
-      let group: forgapi.Group | null | undefined = groupCache.get(dept);
-      if (!group) {
-        try {
-          group = await forgClient.findGroup(dept);
-        } catch (err) {
-          group = null;
-        }
-      }
-      if (!group) {
-        result.errors.push(`Device department, '${dept}', is not found`);
-      } else {
-        groupCache.set(dept, group);
-        result.device.dept = dept;
-      }
+      result.device.dept = dept;
     }
 
     if (!deviceType) {
