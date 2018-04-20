@@ -10,6 +10,8 @@ import * as auth from '../app/shared/auth';
 import * as forgapi from '../app/shared/forgapi';
 import * as models from '../app/shared/models';
 
+import * as pnsapi from '../app/lib/pnsapi';
+
 import {
   CARE_LEVELS,
   CareLevel,
@@ -42,6 +44,10 @@ interface Config {
     options: {};
   };
   forgapi: {
+    url?: {};
+    agentOptions?: {};
+  };
+  pnsapi: {
     url?: {};
     agentOptions?: {};
   };
@@ -89,7 +95,9 @@ const info = console.info;
 const warn = console.warn;
 const error = console.error;
 
-const groupCache = new Map<String, forgapi.Group>();
+const groupCache = new Map<string, forgapi.Group>();
+
+const approvedNames = new Array<RegExp>();
 
 const SLOT_NAME_REGEX = /^[^\W_]+_[^\W_]+(:[^\W_]+_[^\W_]+)?$/;
 const DRR_REGEX = /^DRR[\d?]?[\d?]?(-[\w?]+)?$/;
@@ -115,6 +123,9 @@ async function main() {
       },
     },
     forgapi: {
+      // no defaults
+    },
+    pnsapi: {
       // no defaults
     },
   };
@@ -182,6 +193,26 @@ async function main() {
     url: String(cfg.forgapi.url),
     agentOptions: cfg.forgapi.agentOptions || {},
   });
+
+  // PNS API configuration
+  if (!cfg.pnsapi.url) {
+    error(`Error: PNS base URL not configured`);
+    process.exitCode = 1;
+    return;
+  }
+  info('PNS API base URL: %s', cfg.pnsapi.url);
+
+  const pnsClient = new pnsapi.Client({
+    url: String(cfg.pnsapi.url),
+    agentOptions: cfg.pnsapi.agentOptions || {},
+  });
+  const pnsNames = await pnsClient.findNames();
+  for (let name of pnsNames) {
+    if (name.code) {
+      let code = name.code.replace('n', '\\d');
+      approvedNames.push(new RegExp(`^${code}$`));
+    }
+  }
 
   let slotSheetName: string | undefined;
   let deviceSheetName: string | undefined;
@@ -507,10 +538,18 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
 
     if (!deviceType) {
       result.errors.push('Slot device type is not specified');
-    } else if (!deviceType.match(DEVICE_TYPE_REGEX)) {
-      result.errors.push(`Slot device type, '${deviceType}', is not valid`);
     } else {
-      result.slot.deviceType = deviceType;
+      let found = false;
+      for (let approvedName of approvedNames) {
+        if (approvedName.test(deviceType)) {
+          found = true;
+        }
+      }
+      if (!found) {
+        result.errors.push(`Slot device type, '${deviceType}', is not approved`);
+      } else {
+        result.slot.deviceType = deviceType;
+      }
     }
 
     if (!careLevel) {
