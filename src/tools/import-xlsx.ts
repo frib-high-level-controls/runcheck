@@ -221,7 +221,7 @@ async function main() {
   const loadNames = pnsClient.findNames().then((pnsNames) => {
     for (let name of pnsNames) {
       if (name.code) {
-        let code = name.code.replace('n', '\\d');
+        let code = name.code.replace('n', '\\d?');
         approvedNames.push(new RegExp(`^${code}$`));
       }
     }
