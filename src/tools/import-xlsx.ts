@@ -102,7 +102,7 @@ const approvedNames = new Array<RegExp>();
 const SLOT_NAME_REGEX = /^[^\W_]+_[^\W_]+(:[^\W_]+_[^\W_]+)?$/;
 const DRR_REGEX = /^DRR[\d?]?[\d?]?(-[\w?]+)?$/;
 const ARR_REGEX = /^ARR[\d?]?[\d?]?(-[\w?]+)?$/;
-const DEVICE_TYPE_REGEX = /^\S+$/;
+const DEVICE_TYPE_REGEX = /^\w+$/;
 const DEVICE_NAME_REGEX = /^\w{6}-\w{3}-\w{4}-\w{4}-\w{6}$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -542,6 +542,8 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
 
     if (!deviceType) {
       result.errors.push('Slot device type is not specified');
+    } else if (!deviceType.match(DEVICE_TYPE_REGEX)) {
+      result.errors.push(`Slot type, '${deviceType}', is not valid`);
     } else {
       let found = false;
       for (let approvedName of approvedNames) {
@@ -550,10 +552,9 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
         }
       }
       if (!found) {
-        result.errors.push(`Slot device type, '${deviceType}', is not approved`);
-      } else {
-        result.slot.deviceType = deviceType;
+        warn(`Slot device type, '${deviceType}', is not approved`);
       }
+      result.slot.deviceType = deviceType;
     }
 
     if (!careLevel) {
@@ -680,6 +681,15 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
     } else if (!deviceType.match(DEVICE_TYPE_REGEX)) {
       result.errors.push(`Device type, '${deviceType}', is not valid`);
     } else {
+      let found = false;
+      for (let approvedName of approvedNames) {
+        if (approvedName.test(deviceType)) {
+          found = true;
+        }
+      }
+      if (!found) {
+        warn(`Device device type, '${deviceType}', is not approved`);
+      }
       result.device.deviceType = deviceType;
     }
 
