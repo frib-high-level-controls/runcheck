@@ -61,6 +61,7 @@ enum WorksheetName {
   SLOTS = 'SLOTS',
   DEVICES = 'DEVICES',
   INSTALL = 'INSTALLATIONS',
+  UNINSTALL = 'UNINSTALLATIONS',
 };
 
 enum SlotColumn {
@@ -85,6 +86,11 @@ enum InstallColumn {
   SLOT = 'SLOT',
   DEVICE = 'DEVICE',
   DATE = 'DATE',
+};
+
+enum UninstallColumn {
+  SLOT = 'SLOT',
+  DEVICE = 'DEVICE',
 };
 
 const debug = dbg('import-xlsx');
@@ -232,6 +238,7 @@ async function main() {
   let slotSheetName: string | undefined;
   let deviceSheetName: string | undefined;
   let installSheetName: string | undefined;
+  let uninstallSheetName: string | undefined;
 
   for (let sheetName of workbook.SheetNames) {
     switch (sheetName.toUpperCase()) {
@@ -243,6 +250,9 @@ async function main() {
       break;
     case WorksheetName.INSTALL:
       installSheetName = sheetName;
+      break;
+    case WorksheetName.UNINSTALL:
+      uninstallSheetName = sheetName;
       break;
     default:
       warn(`Sheet '${sheetName}' is unexpected, ignoring`);
@@ -283,8 +293,19 @@ async function main() {
     info('Workbook does not have any installation definitions');
   }
 
-  if (hasResultError(slotResults, deviceResults, installResults)) {
-    printResults(slotResults, deviceResults, installResults);
+  let uninstallResults: UninstallImportResult[] = [];
+  if (uninstallSheetName) {
+    uninstallResults = await readUninstalls(workbook.Sheets[uninstallSheetName]);
+  } else {
+    info(`Workbook does not have uninstallation sheet`);
+  }
+
+  if (uninstallResults.length === 0) {
+    info('Workbook does not have any uninstallation definitions');
+  }
+
+  if (hasResultError(slotResults, deviceResults, installResults, uninstallResults)) {
+    printResults(slotResults, deviceResults, installResults, uninstallResults);
     process.exitCode = 1;
     return;
   }
@@ -303,9 +324,9 @@ async function main() {
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
   try {
-    let slots = await models.mapByPath('name', Slot.find().exec());
+    const slots = await models.mapByPath('name', Slot.find().exec());
 
-    let modifiedSlots = new Map<string, Slot>();
+    const modifiedSlots = new Map<string, Slot>();
     for (let result of slotResults) {
       let slot = slots.get(result.slot.name);
       if (slot) {
@@ -323,9 +344,9 @@ async function main() {
       modifiedSlots.set(slot.id, slot);
     }
 
-    let devices = await models.mapByPath('name', Device.find().exec());
+    const devices = await models.mapByPath('name', Device.find().exec());
 
-    let modifiedDevices = new Map<string, Device>();
+    const modifiedDevices = new Map<string, Device>();
     for (let result of deviceResults) {
       let device = devices.get(result.device.name);
       if (device) {
@@ -343,7 +364,55 @@ async function main() {
       modifiedDevices.set(device.id, device);
     }
 
-    let modifiedInstalls: Install[] = [];
+    const installs = await Install.find().exec();
+
+    const modifiedUninstalls = new Array<{ slot: Slot, device: Device, install: Install}>();
+    for (const result of uninstallResults) {
+      const slot = slots.get(result.uninstall.slotName);
+      if (!slot) {
+        result.errors.push(`Slot for uninstall, '${result.uninstall.slotName}', not found`);
+        continue;
+      }
+      if (!slot.installDeviceId) {
+        result.errors.push(`Slot '${result.uninstall.slotName}' is not installed`);
+        continue;
+      }
+      const device = devices.get(result.uninstall.deviceName);
+      if (!device) {
+        result.errors.push(`Device for uninstall, '${result.uninstall.deviceName}', not found`);
+        continue;
+      }
+      if (!device.installSlotId) {
+        result.errors.push(`Device '${result.uninstall.deviceName}' is not installed`);
+        continue;
+      }
+
+      if (!slot.installDeviceId.equals(device._id) || !device.installSlotId.equals(slot._id)) {
+        result.errors.push(`Device, '${device.name}', not installed in Slot, '${slot.name}'`);
+        continue;
+      }
+
+      let install: Install | undefined;
+      for (const i of installs) {
+        if (i.slotId.equals(slot._id) && i.deviceId.equals(device._id)) {
+          install = i;
+          break;
+        }
+      }
+      if (!install) {
+        result.errors.push(`Installation not found for Slot: ${slot.name}, and Device: ${device.name}`);
+        continue;
+      }
+      install.state = 'UNINSTALLING';
+
+      modifiedUninstalls.push({
+        slot: slot,
+        device: device,
+        install: install,
+      });
+    }
+
+    const modifiedInstalls: Array<{ slot: Slot, device: Device, install: Install }> = [];
     for (let result of installResults) {
       let slot = slots.get(result.install.slotName);
       if (!slot) {
@@ -351,66 +420,110 @@ async function main() {
         continue;
       }
       if (slot.installDeviceId) {
-        result.errors.push(`Slot '${result.install.slotName}' is already installed`);
-        continue;
+        let uninstalled = false;
+        for (const m of modifiedUninstalls) {
+          if (m.slot === slot) {
+            uninstalled = true;
+            break;
+          }
+        }
+        if (!uninstalled) {
+          result.errors.push(`Slot '${result.install.slotName}' is already installed`);
+          continue;
+        }
       }
-      let device = devices.get(result.install.deviceName);
+      const device = devices.get(result.install.deviceName);
       if (!device) {
         result.errors.push(`Device for install, '${result.install.deviceName}', not found`);
         continue;
       }
       if (device.installSlotId) {
-        result.errors.push(`Device '${result.install.deviceName}' is already installed`);
+        let uninstalled = false;
+        for (const m of modifiedUninstalls) {
+          if (m.device === device) {
+            uninstalled = true;
+            break;
+          }
+        }
+        if (!uninstalled) {
+          result.errors.push(`Device '${result.install.deviceName}' is already installed`);
+          continue;
+        }
+      }
+      if (slot.deviceType !== device.deviceType) {
+        result.errors.push(`Slot, '${slot.name}', and Device, '${device.name}', are not the same type`);
         continue;
       }
-      let doc: IInstall = {
+      const doc: IInstall = {
         slotId: slot._id,
         deviceId: device._id,
         installOn: result.install.installOn,
         installBy: installBy,
         state: 'INSTALLING',
       };
-      let install = new Install(doc);
+      const install = new Install(doc);
       try {
         await install.validate();
       } catch (err) {
         result.errors.push(String(err));
         continue;
       }
-      // update the slot and device for the installation
-      slot.installDeviceId = install.deviceId;
-      slot.installDeviceOn = install.installOn;
-      slot.installDeviceBy = install.installBy;
-      if (!modifiedSlots.has(slot.id)) {
-        modifiedSlots.set(slot.id, slot);
-      }
-      device.installSlotId = install.slotId;
-      device.installSlotOn = install.installOn;
-      device.installSlotBy = install.installBy;
-      if (!modifiedDevices.has(device.id)) {
-        modifiedDevices.set(device.id, device);
-      }
-      modifiedInstalls.push(install);
+
+      modifiedInstalls.push({
+        slot: slot,
+        device: device,
+        install: install,
+      });
     }
 
-    if (hasResultError(slotResults, deviceResults, installResults)) {
-      printResults(slotResults, deviceResults, installResults);
+    if (hasResultError(slotResults, deviceResults, installResults, uninstallResults)) {
+      printResults(slotResults, deviceResults, installResults, uninstallResults);
       process.exitCode = 1;
       return;
     }
 
     if (cfg.dryrun !== false && cfg.dryrun !== 'false') {
-      printResults(slotResults, deviceResults, installResults);
+      printResults(slotResults, deviceResults, installResults, uninstallResults);
       info('DRYRUN DONE');
       process.exitCode = 1;
       return;
     }
 
-    { // start installations
-      let prms: Array<Promise<Install>> = [];
-      for (let install of modifiedInstalls) {
-        info(`Start installation: ${JSON.stringify(install, null, 4)}`);
-        prms.push(install.save());
+    { // start uninstallations
+      const prms: Array<Promise<Install>> = [];
+      for (let m of modifiedUninstalls) {
+        info(`Start uninstallation: ${JSON.stringify(m.install, null, 4)}`);
+        prms.push(m.install.save());
+      }
+      await Promise.all(prms);
+    }
+
+    { // update the slot and device for the uninstallation
+      const prms: Array<Promise<Slot | Device>> = [];
+      for (let m of modifiedUninstalls) {
+        // Assigning 'undefined' to the property properly
+        // marks it as modified. However, using the
+        // 'delete' operator causes this to fail!
+        m.slot.installDeviceBy = undefined;
+        m.slot.installDeviceOn = undefined;
+        m.slot.installDeviceId = undefined;
+        info(`Update slot: ${JSON.stringify(m.slot, null, 4)}`);
+        prms.push(m.slot.saveWithHistory(auth.formatRole('USR', installBy)));
+
+        m.device.installSlotBy = undefined;
+        m.device.installSlotOn = undefined;
+        m.device.installSlotId = undefined;
+        info(`Update device: ${JSON.stringify(m.device, null, 4)}`);
+        prms.push(m.device.saveWithHistory(auth.formatRole('USR', installBy)));
+      }
+      await Promise.all(prms);
+    }
+
+    {
+      const prms: Array<Promise<Install>> = [];
+      for (let m of modifiedUninstalls) {
+        info(`Finish uninstallation: ${m.install.id}`);
+        prms.push(m.install.remove());
       }
       await Promise.all(prms);
     }
@@ -428,12 +541,39 @@ async function main() {
       await Promise.all(prms);
     }
 
+    { // start installations
+      let prms: Array<Promise<Install>> = [];
+      for (let m of modifiedInstalls) {
+        info(`Start installation: ${JSON.stringify(m.install, null, 4)}`);
+        prms.push(m.install.save());
+      }
+      await Promise.all(prms);
+    }
+
+    { // update the slot and device for the installation
+      let prms: Array<Promise<Slot | Device>> = [];
+      for (let m of modifiedInstalls) {
+        m.slot.installDeviceId = m.install.deviceId;
+        m.slot.installDeviceOn = m.install.installOn;
+        m.slot.installDeviceBy = m.install.installBy;
+        info(`Update slot: ${JSON.stringify(m.slot, null, 4)}`);
+        prms.push(m.slot.saveWithHistory(auth.formatRole('USR', installBy)));
+
+        m.device.installSlotId = m.install.slotId;
+        m.device.installSlotOn = m.install.installOn;
+        m.device.installSlotBy = m.install.installBy;
+        info(`Update device: ${JSON.stringify(m.device, null, 4)}`);
+        prms.push(m.device.saveWithHistory(auth.formatRole('USR', installBy)));
+      }
+      await Promise.all(prms);
+    }
+
     { // finish installations
       let prms: Array<Promise<Install>> = [];
-      for (let install of modifiedInstalls) {
-        install.state = 'INSTALLED';
-        info(`Finish installation: ${install.id}`);
-        prms.push(install.save());
+      for (let m of modifiedInstalls) {
+        m.install.state = 'INSTALLED';
+        info(`Finish installation: ${m.install.id}`);
+        prms.push(m.install.save());
       }
       await Promise.all(prms);
     }
@@ -443,6 +583,10 @@ async function main() {
 };
 
 interface ImportResult {
+  slot?: {};
+  device?: {};
+  install?: {};
+  uninstall?: {};
   errors: string[];
 }
 
@@ -780,6 +924,68 @@ async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportRes
   return results;
 };
 
+interface UninstallImportResult extends ImportResult {
+  uninstall: {
+    slotName: string;
+    deviceName: string;
+  };
+};
+
+async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImportResult[]> {
+  let results: UninstallImportResult[] = [];
+
+  let data = XLSX.utils.sheet_to_json(worksheet);
+
+  for (let irow of data) {
+    // cast to interface with index signature
+    let row = <{ [k: string]: {} | undefined}> irow;
+
+    let slotName: string | undefined;
+    let deviceName: string | undefined;
+
+    for (let prop in row) {
+      if (row.hasOwnProperty(prop)) {
+        switch (prop.toUpperCase()) {
+        case UninstallColumn.SLOT:
+          slotName = String(row[prop]).trim().toUpperCase();
+          break;
+        case UninstallColumn.DEVICE:
+          deviceName = String(row[prop]).trim().toUpperCase();
+          break;
+        default:
+          warn(`Uninstall property, '${prop}', is unexpected, ignoring!`);
+          break;
+        }
+      }
+    }
+
+    let result: UninstallImportResult = {
+      uninstall: {
+        slotName: '',
+        deviceName: '',
+      },
+      errors: [],
+    };
+
+    if (!slotName) {
+      result.errors.push('Uninstall slot name is not specified');
+    } else {
+      result.uninstall.slotName = slotName;
+    }
+
+    if (!deviceName) {
+      result.errors.push('Uninstall device name is not specified');
+    } else {
+      result.uninstall.deviceName = deviceName;
+    }
+
+    results.push(result);
+  }
+
+  return results;
+};
+
+
 function hasResultError(...importResults: ImportResult[][]): boolean {
   for (let results of importResults) {
     for (let result of results) {
@@ -791,27 +997,24 @@ function hasResultError(...importResults: ImportResult[][]): boolean {
   return false;
 };
 
-// tslint:disable:max-line-length
-function printResults(slotResults: SlotImportResult[], deviceResults: DeviceImportResult[], installResults: InstallImportResult[]) {
-
-  for (let result of slotResults) {
-    info(`Import slot: ${JSON.stringify(result.slot)}`);
-    for (let msg of result.errors) {
-      error(`Error: ${msg}`);
-    }
-  }
-
-  for (let result of deviceResults) {
-    info(`Import device: ${JSON.stringify(result.device)}`);
-    for (let msg of result.errors) {
-      error(`Error: ${msg}`);
-    }
-  }
-
-  for (let result of installResults) {
-    info(`Import install: ${JSON.stringify(result.install)}`);
-    for (let msg of result.errors) {
-      error(`Error: ${msg}`);
+function printResults(...results: ImportResult[][]) {
+  for (const rs of results) {
+    for (const r of rs) {
+      if (r.slot) {
+        info(`Import slot: ${JSON.stringify(r.slot)}`);
+      }
+      if (r.device) {
+        info(`Import device: ${JSON.stringify(r.device)}`);
+      }
+      if (r.install) {
+        info(`Import install: ${JSON.stringify(r.install)}`);
+      }
+      if (r.uninstall) {
+        info(`Import uninstall: ${JSON.stringify(r.uninstall)}`);
+      }
+      for (let msg of r.errors) {
+        error(`Error: ${msg}`);
+      }
     }
   }
 };
