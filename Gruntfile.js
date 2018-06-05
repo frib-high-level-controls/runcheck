@@ -75,49 +75,62 @@ module.exports = function(grunt) {
     },
     tslint: {
       options: {
-        configuration: "tslint.json",
-          // If set to true, tslint errors will be reported, but not fail the task 
-          // If set to false, tslint errors will be reported, and the task will fail 
-          force: false,
-          fix: false
-        },
-        files: {
-          src: [
-            'src/**/*.ts'
-          ],
-        },
+        configuration: 'tslint.json',
+        // If set to true, tslint errors will be reported, but not fail the task 
+        // If set to false, tslint errors will be reported, and the task will fail 
+        force: false,
+        fix: false
       },
-      clean: {
-        app: [ './app' ],
-        test: [ './test' ],
-        tools: [ './tools' ],
-        public: [ './public/js' ],
-        docs: [ './public/docs/*.html' ]
-      }
-    });
+      files: {
+        src: [
+          'src/**/*.ts'
+        ],
+      },
+    },
+    copy: {
+      pkg: {
+        files: [{
+          expand: true,
+          src: 'package.json',
+          dest: 'app/'
+        }],
+      },
+    },
+    clean: {
+      app: [ './app' ],
+      test: [ './test' ],
+      tools: [ './tools' ],
+      public: [ './public/js' ],
+      docs: [ './public/docs/*.html' ]
+    }
+  });
 
-    grunt.loadNpmTasks('grunt-shell');
-    grunt.loadNpmTasks('grunt-ts');
-    grunt.loadNpmTasks('grunt-tslint');
-    grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-shell');
+  grunt.loadNpmTasks('grunt-ts');
+  grunt.loadNpmTasks('grunt-tslint');
+  grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-copy');
 
   grunt.registerTask('template', ['shell:template']);
   grunt.registerTask('test', ['mochaTest']);
   grunt.registerTask('puglint', ['shell:puglint']);
 
   grunt.registerTask('default', [
+    'build',
+  ]);
+
+  grunt.registerTask('build', [
     'ts:app',
+    'copy:pkg',
     'ts:web',
     'ts:tools',
     'shell:pugcompile',
     'shell:pugrender',
   ]);
 
-  grunt.registerTask('app', [
-    'ts:app',
-    'ts:web',
-    'shell:pugcompile',
-    'shell:pugrender',
+  grunt.registerTask('deploy', [
+    'clean',
+    'build',
   ]);
 
   grunt.registerTask('lint', [

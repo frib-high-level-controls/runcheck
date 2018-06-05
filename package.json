@@ -63,9 +63,10 @@
     "chai": "^4.0.2",
     "grunt": "^1.0.1",
     "grunt-contrib-clean": "^1.1.0",
+    "grunt-contrib-copy": "^1.0.0",
     "grunt-shell": "^2.1.0",
     "grunt-ts": "^5.5.1",
-    "grunt-tslint": "^4.0.1",
+    "grunt-tslint": "^5.0.2",
     "jsonschema": "^1.1.1",
     "mocha": "^5.0.0",
     "mysql": "^2.15.0",
@@ -73,7 +74,7 @@
     "pug-cli": "^1.0.0-alpha6",
     "pug-lint": "^2.3.0",
     "supertest": "^3.0.0",
-    "tslint": "^4.5.0",
+    "tslint": "^5.10.0",
     "typescript": "^2.5.3",
     "xlsx": "^0.12.9"
   }

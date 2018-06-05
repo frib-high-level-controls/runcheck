@@ -34,7 +34,7 @@ export type State = State;
 let app: express.Application;
 
 // application lifecycle
-let task = new tasks.StandardTask<express.Application>(doStart, doStop);
+const task = new tasks.StandardTask<express.Application>(doStart, doStop);
 
 // application logging
 export let info = console.log;
@@ -43,7 +43,7 @@ export let error = console.error;
 
 export function getState(): State {
   return task.getState();
-};
+}
 
 // start the test application
 export function start(): Promise<express.Application> {
@@ -128,7 +128,7 @@ async function doStart(): Promise<express.Application> {
 // stop the test application
 export function stop(): Promise<void> {
   return task.stop();
-};
+}
 
 async function doStop(): Promise<void> {
   try {
@@ -145,4 +145,4 @@ async function doStop(): Promise<void> {
   }
 
   return;
-};
+}
