@@ -118,7 +118,7 @@ mongoose.Promise = global.Promise;
 
 async function main() {
 
-  let cfg: Config = {
+  const cfg: Config = {
     mongo: {
       port: '27017',
       addr: 'localhost',
@@ -138,7 +138,7 @@ async function main() {
 
   rc('import-xlsx', cfg);
   if (cfg.configs) {
-    for (let file of cfg.configs) {
+    for (const file of cfg.configs) {
       info('Load configuration: %s', file);
     }
   }
@@ -172,7 +172,7 @@ async function main() {
     return;
   }
 
-  let updateBy = cfg.updateBy ? String(cfg.updateBy).trim().toUpperCase() : '';
+  const updateBy = cfg.updateBy ? String(cfg.updateBy).trim().toUpperCase() : '';
   if (!updateBy) {
     error(`Error: Parameter 'updateBy' is required`);
     process.exitCode = 1;
@@ -201,7 +201,7 @@ async function main() {
   });
 
   const loadGroups = forgClient.findGroups().then((forgGroups) => {
-    for (let group of forgGroups) {
+    for (const group of forgGroups) {
       if (group.type === 'DEPT') {
         approvedDepts.push(group.uid);
       }
@@ -225,9 +225,9 @@ async function main() {
   });
 
   const loadNames = pnsClient.findNames().then((pnsNames) => {
-    for (let name of pnsNames) {
+    for (const name of pnsNames) {
       if (name.code) {
-        let code = name.code.replace('n', '\\d?');
+        const code = name.code.replace('n', '\\d?');
         approvedNames.push(new RegExp(`^${code}$`));
       }
     }
@@ -240,7 +240,7 @@ async function main() {
   let installSheetName: string | undefined;
   let uninstallSheetName: string | undefined;
 
-  for (let sheetName of workbook.SheetNames) {
+  for (const sheetName of workbook.SheetNames) {
     switch (sheetName.toUpperCase()) {
     case WorksheetName.SLOTS:
       slotSheetName = sheetName;
@@ -327,7 +327,7 @@ async function main() {
     const slots = await models.mapByPath('name', Slot.find().exec());
 
     const modifiedSlots = new Map<string, Slot>();
-    for (let result of slotResults) {
+    for (const result of slotResults) {
       let slot = slots.get(result.slot.name);
       if (slot) {
         result.errors.push(`Slot with name, '${result.slot.name}', already exisits`);
@@ -347,7 +347,7 @@ async function main() {
     const devices = await models.mapByPath('name', Device.find().exec());
 
     const modifiedDevices = new Map<string, Device>();
-    for (let result of deviceResults) {
+    for (const result of deviceResults) {
       let device = devices.get(result.device.name);
       if (device) {
         result.errors.push(`Device with name, '${result.device.name}', already exisits`);
@@ -413,8 +413,8 @@ async function main() {
     }
 
     const modifiedInstalls: Array<{ slot: Slot, device: Device, install: Install }> = [];
-    for (let result of installResults) {
-      let slot = slots.get(result.install.slotName);
+    for (const result of installResults) {
+      const slot = slots.get(result.install.slotName);
       if (!slot) {
         result.errors.push(`Slot for install, '${result.install.slotName}', not found`);
         continue;
@@ -491,7 +491,7 @@ async function main() {
 
     { // start uninstallations
       const prms: Array<Promise<Install>> = [];
-      for (let m of modifiedUninstalls) {
+      for (const m of modifiedUninstalls) {
         info(`Start uninstallation: ${JSON.stringify(m.install, null, 4)}`);
         prms.push(m.install.save());
       }
@@ -500,7 +500,7 @@ async function main() {
 
     { // update the slot and device for the uninstallation
       const prms: Array<Promise<Slot | Device>> = [];
-      for (let m of modifiedUninstalls) {
+      for (const m of modifiedUninstalls) {
         // Assigning 'undefined' to the property properly
         // marks it as modified. However, using the
         // 'delete' operator causes this to fail!
@@ -521,7 +521,7 @@ async function main() {
 
     {
       const prms: Array<Promise<Install>> = [];
-      for (let m of modifiedUninstalls) {
+      for (const m of modifiedUninstalls) {
         info(`Finish uninstallation: ${m.install.id}`);
         prms.push(m.install.remove());
       }
@@ -529,12 +529,12 @@ async function main() {
     }
 
     {
-      let prms: Array<Promise<Slot | Device>> = [];
-      for (let slot of modifiedSlots.values()) {
+      const prms: Array<Promise<Slot | Device>> = [];
+      for (const slot of modifiedSlots.values()) {
         info(`Save slot: ${JSON.stringify(slot, null, 4)}`);
         prms.push(slot.saveWithHistory(auth.formatRole('USR', installBy)));
       }
-      for (let device of modifiedDevices.values()) {
+      for (const device of modifiedDevices.values()) {
         info(`Save device: ${JSON.stringify(device, null, 4)}`);
         prms.push(device.saveWithHistory(auth.formatRole('USR', installBy)));
       }
@@ -542,8 +542,8 @@ async function main() {
     }
 
     { // start installations
-      let prms: Array<Promise<Install>> = [];
-      for (let m of modifiedInstalls) {
+      const prms: Array<Promise<Install>> = [];
+      for (const m of modifiedInstalls) {
         info(`Start installation: ${JSON.stringify(m.install, null, 4)}`);
         prms.push(m.install.save());
       }
@@ -551,8 +551,8 @@ async function main() {
     }
 
     { // update the slot and device for the installation
-      let prms: Array<Promise<Slot | Device>> = [];
-      for (let m of modifiedInstalls) {
+      const prms: Array<Promise<Slot | Device>> = [];
+      for (const m of modifiedInstalls) {
         m.slot.installDeviceId = m.install.deviceId;
         m.slot.installDeviceOn = m.install.installOn;
         m.slot.installDeviceBy = m.install.installBy;
@@ -569,8 +569,8 @@ async function main() {
     }
 
     { // finish installations
-      let prms: Array<Promise<Install>> = [];
-      for (let m of modifiedInstalls) {
+      const prms: Array<Promise<Install>> = [];
+      for (const m of modifiedInstalls) {
         m.install.state = 'INSTALLED';
         info(`Finish installation: ${m.install.id}`);
         prms.push(m.install.save());
@@ -596,13 +596,13 @@ interface SlotImportResult extends ImportResult {
 
 async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]> {
 
-  let results: SlotImportResult[] = [];
+  const results: SlotImportResult[] = [];
 
-  let data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet);
 
-  for (let irow of data) {
+  for (const irow of data) {
     // cast to interface with index signature
-    let row = <{ [k: string]: {} | undefined}> irow;
+    const row = irow as {[k: string]: {} | undefined};
 
     let name: string | undefined;
     let desc: string | undefined;
@@ -613,7 +613,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
     let drr: string | undefined;
     let arr: string | undefined;
 
-    for (let prop in row) {
+    for (const prop in row) {
       if (row.hasOwnProperty(prop)) {
         switch (prop.trim().toUpperCase()) {
         case SlotColumn.NAME:
@@ -647,7 +647,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
       }
     }
 
-    let result: SlotImportResult = {
+    const result: SlotImportResult = {
       slot: {
         name: '',
         desc: '',
@@ -690,7 +690,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
       result.errors.push(`Slot type, '${deviceType}', is not valid`);
     } else {
       let found = false;
-      for (let approvedName of approvedNames) {
+      for (const approvedName of approvedNames) {
         if (approvedName.test(deviceType)) {
           found = true;
         }
@@ -705,7 +705,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
       result.errors.push('Slot care level is not specified');
     } else {
       // find the index of the specified care level
-      let idx = CARE_LEVELS.reduce((p, v, i) => (p !== -1 || v !== careLevel ? p : i), -1);
+      const idx = CARE_LEVELS.reduce((p, v, i) => (p !== -1 || v !== careLevel ? p : i), -1);
       if (idx === -1) {
         result.errors.push(`Slot care level, '${careLevel}', is not valid`);
       } else {
@@ -717,7 +717,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
       result.errors.push('Slot safety level is not specified');
     } else {
       // find the index of the specified care level
-      let idx = SAFETY_LEVELS.reduce((p, v, i) => (p !== -1 || v !== safetyLevel ? p : i), -1);
+      const idx = SAFETY_LEVELS.reduce((p, v, i) => (p !== -1 || v !== safetyLevel ? p : i), -1);
       if (idx === -1) {
         result.errors.push(`Slot safety level, '${safetyLevel}', is not valid`);
       } else {
@@ -752,20 +752,20 @@ interface DeviceImportResult extends ImportResult {
 };
 
 async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResult[]> {
-  let results: DeviceImportResult[] = [];
+  const results: DeviceImportResult[] = [];
 
-  let data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet);
 
-  for (let irow of data) {
+  for (const irow of data) {
     // cast to interface with index signature
-    let row = <{ [k: string]: {} | undefined}> irow;
+    const row = irow as {[k: string]: {} | undefined};
 
     let name: string | undefined;
     let desc: string | undefined;
     let dept: string | undefined;
     let deviceType: string | undefined;
 
-    for (let prop in row) {
+    for (const prop in row) {
       if (row.hasOwnProperty(prop)) {
         switch (prop.toUpperCase()) {
         case DeviceColumn.NAME:
@@ -787,7 +787,7 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
       }
     }
 
-    let result: DeviceImportResult = {
+    const result: DeviceImportResult = {
       device: {
         name: '',
         desc: '',
@@ -826,7 +826,7 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
       result.errors.push(`Device type, '${deviceType}', is not valid`);
     } else {
       let found = false;
-      for (let approvedName of approvedNames) {
+      for (const approvedName of approvedNames) {
         if (approvedName.test(deviceType)) {
           found = true;
         }
@@ -852,19 +852,19 @@ interface InstallImportResult extends ImportResult {
 };
 
 async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportResult[]> {
-  let results: InstallImportResult[] = [];
+  const results: InstallImportResult[] = [];
 
-  let data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet);
 
-  for (let irow of data) {
+  for (const irow of data) {
     // cast to interface with index signature
-    let row = <{ [k: string]: {} | undefined}> irow;
+    const row = irow as {[k: string]: {} | undefined};
 
     let slotName: string | undefined;
     let deviceName: string | undefined;
     let date: string | undefined;
 
-    for (let prop in row) {
+    for (const prop in row) {
       if (row.hasOwnProperty(prop)) {
         switch (prop.toUpperCase()) {
         case InstallColumn.SLOT:
@@ -883,7 +883,7 @@ async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportRes
       }
     }
 
-    let result: InstallImportResult = {
+    const result: InstallImportResult = {
       install: {
         slotName: '',
         deviceName: '',
@@ -910,7 +910,7 @@ async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportRes
     } else if (!date.match(DATE_REGEX)) {
       result.errors.push(`Install date, '${date}', is invalid (1)`);
     } else {
-      let installOn = new Date(date);
+      const installOn = new Date(date);
       if (!Number.isFinite(installOn.getTime())) {
         result.errors.push(`Install date, '${date}', is invalid (2)`);
       } else {
@@ -932,18 +932,18 @@ interface UninstallImportResult extends ImportResult {
 };
 
 async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImportResult[]> {
-  let results: UninstallImportResult[] = [];
+  const results: UninstallImportResult[] = [];
 
-  let data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet);
 
-  for (let irow of data) {
+  for (const irow of data) {
     // cast to interface with index signature
-    let row = <{ [k: string]: {} | undefined}> irow;
+    const row =  irow as {[k: string]: {} | undefined};
 
     let slotName: string | undefined;
     let deviceName: string | undefined;
 
-    for (let prop in row) {
+    for (const prop in row) {
       if (row.hasOwnProperty(prop)) {
         switch (prop.toUpperCase()) {
         case UninstallColumn.SLOT:
@@ -959,7 +959,7 @@ async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImpor
       }
     }
 
-    let result: UninstallImportResult = {
+    const result: UninstallImportResult = {
       uninstall: {
         slotName: '',
         deviceName: '',
@@ -987,8 +987,8 @@ async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImpor
 
 
 function hasResultError(...importResults: ImportResult[][]): boolean {
-  for (let results of importResults) {
-    for (let result of results) {
+  for (const results of importResults) {
+    for (const result of results) {
       if (Array.isArray(result.errors) && result.errors.length > 0) {
         return true;
       }
@@ -1012,7 +1012,7 @@ function printResults(...results: ImportResult[][]) {
       if (r.uninstall) {
         info(`Import uninstall: ${JSON.stringify(r.uninstall)}`);
       }
-      for (let msg of r.errors) {
+      for (const msg of r.errors) {
         error(`Error: ${msg}`);
       }
     }
