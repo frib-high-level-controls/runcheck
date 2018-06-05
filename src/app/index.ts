@@ -346,13 +346,13 @@ async function doStart(): Promise<express.Application> {
 
   app.get('/logout', (req, res) => {
     authProvider.logout(req);
-    if (typeof (<any> authProvider).getCasLogoutUrl !== 'function') {
+    if (typeof (authProvider as any).getCasLogoutUrl !== 'function') {
       // If the development provider is being used, then just redirect to index.
       res.redirect('/');
       return;
     }
     // TODO: Consider moving this to the provider's logout function.
-    const redirectUrl = (<any> authProvider).getCasLogoutUrl(true);
+    const redirectUrl = (authProvider as any).getCasLogoutUrl(true);
     info('Redirect to CAS logout: %s', redirectUrl);
     res.redirect(redirectUrl);
   });
