@@ -50,6 +50,22 @@ block content
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled) Assign
               button.btn.btn-primary.hidden#checklist-unassign(type='button', disabled) Unassign
           .panel-body.hidden#checklist-panel
+    .row 
+      .col-md-12
+        .panel-group#history
+          .panel.panel-default
+            .panel-heading
+              a.text-info.collapsed(role="button" data-toggle="collapse" href="#update0" aria-expanded="false") Apr 12, 2018 at 12:11:24 PM
+                .pull-right SYS:IFSSYNC
+                .panel-collapse.collapse#update0(role="tabpanel" aria-expanded="false" style="height: 0px;")
+                  ol.list-group 
+                    li.list-group-item
+                      strong uid
+                        .text-danger.bg-danger.pull-right ABENDROT
+                    li.list-group-item
+                      strong fullname
+                        .text-danger.bg-danger.pull-right Kimberly Abendroth
+
   br
   //-.panel.panel-default
     .panel-heading

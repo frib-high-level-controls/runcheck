@@ -241,4 +241,13 @@ $(() => {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
     }
   }
+
+  class HistoryViewModel {
+    constructor() {
+      alert('load');
+    }
+  }
+
+  // Activates knockout.js
+  ko.applyBindings(new HistoryViewModel());
 });
