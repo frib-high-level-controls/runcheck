@@ -6,6 +6,7 @@ import * as express from 'express';
 import * as moment from 'moment';
 
 import * as auth from '../shared/auth';
+// import * as history from '../shared/history';
 import * as models from '../shared/models';
 
 import {
@@ -165,6 +166,28 @@ router.get('/slots', catchAll(async (req, res) => {
 }));
 
 /**
+ * Get the history of a slot slot specified by name or ID
+ * and then respond with JSON.
+ */
+router.get('/slots/:name_or_id/history', catchAll( async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Slot (and history) with name or id: %s', nameOrId);
+
+  let slot: Slot | null;
+  if (models.isValidId(nameOrId)) {
+    slot = await Slot.findByIdWithHistory(nameOrId);
+  } else {
+    slot = await Slot.findOneWithHistory({ name: nameOrId.toUpperCase() });
+  }
+
+  if (!slot) {
+    throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
+  }
+
+  console.log(slot.history.updates);
+}));
+
+/**
  * Get the slot specified by name or ID
  * and then respond with either HTML or JSON.
  */
@@ -203,6 +226,7 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
     canAssign: perms.assign,
     canInstall: perms.install,
   };
+
 
   return format(res, {
     'text/html': () => {

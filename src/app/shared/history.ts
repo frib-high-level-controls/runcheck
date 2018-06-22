@@ -283,6 +283,7 @@ export function historyPlugin<T extends Document<T>>(schema: Schema, options?: H
    */
   schema.method('populateUpdates', function (this: T): Promise<void> {
     return Update.find({ _id: { $in: this.history.updateIds }}).exec().then((updates) => {
+      console.log(updates.length);
       this.history.updates = models.pickById(updates, this.history.updateIds);
     });
   });
