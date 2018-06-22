@@ -1,11 +1,16 @@
 /*
  * Shared Express request handlers.
  */
+
 import * as express from 'express';
 
 import * as HttpStatusCodes from 'http-status-codes';
-
+import {
+  IPath,
+  IUpdate,
+} from './history';
 import * as log from './logging';
+
 
 
 type Request = express.Request;
@@ -261,4 +266,31 @@ export function basePathHandler(): RequestHandler {
     res.locals.basePath = basePath;
     next();
   };
+}
+
+export function getUpdates(model: any) {
+  const updates: IUpdate[] = model.history.updates;
+  const apiUpdates: webapi.Update[] = [];
+  if (updates) {
+    updates.forEach((update) => {
+
+      let paths: IPath[] = update.paths;
+      let apiPaths: webapi.Path[] = [];
+      paths.forEach((path) => {
+        let apiPath = {
+          name: path.name,
+          value: path.value,
+        };
+        apiPaths.push(apiPath);
+      });
+
+      let apiUpdate: webapi.Update = {
+        at: update.at.toDateString(),
+        by: update.by,
+        paths: apiPaths,
+      };
+      apiUpdates.push(apiUpdate);
+    });
+  }
+  return apiUpdates;
 }

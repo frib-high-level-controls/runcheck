@@ -12,6 +12,7 @@ import * as models from '../shared/models';
 import {
   catchAll,
   format,
+  getUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -165,6 +166,7 @@ router.get('/slots', catchAll(async (req, res) => {
   });
 }));
 
+
 /**
  * Get the history of a slot slot specified by name or ID
  * and then respond with JSON.
@@ -184,33 +186,12 @@ router.get('/slots/:name_or_id/history', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
-  const updates = slot.history.updates;
-  const apiUpdates: webapi.Update[] = [];
-  if (updates) {
-    updates.forEach((update) => {
-
-      let paths = update.paths;
-      let apiPaths: webapi.Path[] = [];
-      paths.forEach((path) => {
-        let apiPath = {
-          name: path.name,
-          value: path.value,
-        };
-        apiPaths.push(apiPath);
-      });
-
-      let apiUpdate: webapi.Update = {
-        at: update.at.toDateString(),
-        by: update.by,
-        paths: apiPaths,
-      };
-      apiUpdates.push(apiUpdate);
-    });
-  }
+  const apiUpdates: webapi.Update[] = getUpdates(slot);
 
   let respkg: webapi.Pkg<webapi.Update[]> = {
     data: apiUpdates,
   };
+
   res.json(respkg);
 }));
 
