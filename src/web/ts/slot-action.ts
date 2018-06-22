@@ -243,26 +243,24 @@ $(() => {
   }
 
   class HistoryViewModel {
-    // constructor() {
-    //   WebUtil.catchAll(async () => {
-    //     let pkg: webapi.Pkg<webapi.Slot>;
-    //     try {
-    //       pkg = await $.ajax({
-    //         url: this.editURI,
-    //         contentType: 'application/json',
-    //         data: JSON.stringify({
-    //           data: newData,
-    //         }),
-    //         method: 'PUT',
-    //         dataType: 'json',
-    //       });
-    //     } catch (xhr) {
-    //       pkg = xhr.responseJSON;
-
-    //       return;
-    //     }
-    //   });
-    // }
+    constructor() {
+      WebUtil.catchAll(async () => {
+        let pkg: webapi.Pkg<webapi.Slot>;
+        try {
+          pkg = await $.ajax({
+            url: `${basePath}/slots/${slot.id}/history`,
+            contentType: 'application/json',
+            method: 'GET',
+            dataType: 'json',
+          });
+        } catch (xhr) {
+          pkg = xhr.responseJSON;
+          console.log(pkg);
+          return;
+        }
+        console.log(pkg);
+      });
+    }
   }
 
   // Activates knockout.js
