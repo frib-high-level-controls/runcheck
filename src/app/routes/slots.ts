@@ -184,7 +184,34 @@ router.get('/slots/:name_or_id/history', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
-  console.log(slot.history.updates);
+  const updates = slot.history.updates;
+  const apiUpdates: webapi.Update[] = [];
+  if (updates) {
+    updates.forEach((update) => {
+
+      let paths = update.paths;
+      let apiPaths: webapi.Path[] = [];
+      paths.forEach((path) => {
+        let apiPath = {
+          name: path.name,
+          value: path.value,
+        };
+        apiPaths.push(apiPath);
+      });
+
+      let apiUpdate: webapi.Update = {
+        at: update.at.toDateString(),
+        by: update.by,
+        paths: apiPaths,
+      };
+      apiUpdates.push(apiUpdate);
+    });
+  }
+
+  let respkg: webapi.Pkg<webapi.Update[]> = {
+    data: apiUpdates,
+  };
+  res.json(respkg);
 }));
 
 /**

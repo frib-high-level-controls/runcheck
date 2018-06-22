@@ -33,14 +33,15 @@ declare namespace webapi {
   }
 
   // Application specific types defined below.
+  export interface Path {
+    name: string;
+    value: {};
+  }
 
   export interface Update {
     at: string;
     by: string;
-    paths: Array<{
-      name: string;
-      value: {};
-    }>;
+    paths: Path[];
   }
 
   export interface History {
