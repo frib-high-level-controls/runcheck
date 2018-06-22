@@ -152,9 +152,8 @@ describe('Test slot routes', () => {
           .get(`/slots/${nameOrId}/history`)
           .set('Accept', 'application/json')
           .expect(200)
-          .expect(expectPackage({ name: row.name }));
+          .expect(expectPackage());
       });
     }
   });
-
 });
