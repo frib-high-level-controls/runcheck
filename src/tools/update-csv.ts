@@ -23,12 +23,12 @@ import {
 // Plain Old Javascript Object
 interface POJO {
   [key: string]: {} | undefined;
-};
+}
 
 // Need to use interface because of recurrsive type definition!
-interface Document extends history.Document<Document> {};
+interface HistoryDocument extends history.Document<HistoryDocument> {}
 
-type Model = history.Model<Document>;
+type HistoryModel = history.Model<HistoryDocument>;
 
 interface Config {
   configs?: string[];
@@ -45,7 +45,7 @@ interface Config {
   dryrun?: {};
   updateBy?: {};
   _?: Array<{}>;
-};
+}
 
 
 const debug = dbg('update-csv');
@@ -60,7 +60,7 @@ mongoose.Promise = global.Promise;
 
 async function main() {
 
-  let cfg: Config = {
+  const cfg: Config = {
     mongo: {
       port: '27017',
       addr: 'localhost',
@@ -74,7 +74,7 @@ async function main() {
 
   rc('update-cvs', cfg);
   if (cfg.configs) {
-    for (let file of cfg.configs) {
+    for (const file of cfg.configs) {
       info('Load configuration: %s', file);
     }
   }
@@ -101,7 +101,7 @@ async function main() {
     return;
   }
 
-  let Model: Model;
+  let Model: HistoryModel;
   switch (String(cfg._[0]).toUpperCase()) {
   case 'SLOT':
     Model = Slot;
@@ -127,7 +127,7 @@ async function main() {
     return;
   }
 
-  let updateBy = cfg.updateBy ? String(cfg.updateBy).trim().toUpperCase() : '';
+  const updateBy = cfg.updateBy ? String(cfg.updateBy).trim().toUpperCase() : '';
   if (!updateBy) {
     error(`Error: Parameter 'updateBy' is required`);
     process.exitCode = 1;
@@ -165,10 +165,10 @@ async function main() {
 
   try {
     let hasError = false;
-    let modified = new Array<Document>();
-    outer: for (let record of data) {
+    const modified = new Array<Document>();
+    outer: for (const record of data) {
       let cond: POJO | undefined;
-      for (let prop in record) {
+      for (const prop in record) {
         if (record.hasOwnProperty(prop) && prop.startsWith('cond:')) {
           if (!cond) {
             cond = {};
@@ -182,7 +182,7 @@ async function main() {
         continue;
       }
 
-      let docs = await Model.find(cond).exec();
+      const docs = await Model.find(cond).exec();
       if (docs.length === 0) {
         error('Error: No document found with conditions: %s', JSON.stringify(cond));
         hasError = true;
@@ -194,9 +194,9 @@ async function main() {
         continue;
       }
 
-      let doc = docs[0];
+      const doc = docs[0];
 
-      for (let prop in record) {
+      for (const prop in record) {
         if (record.hasOwnProperty(prop) && !prop.startsWith('cond:')) {
           if (!doc.schema.path(prop)) {
             error('Error: Document (%s) schema does not have path: %s', Model.modelName, prop);
@@ -208,7 +208,7 @@ async function main() {
       }
 
       const modifiedPaths: string[] = [];
-      for (let path of doc.modifiedPaths()) {
+      for (const path of doc.modifiedPaths()) {
         // Ignore changes to the 'history' subdocument,
         // not sure exactly why these are marked as modified!
         if (path !== 'history' && !path.startsWith('history.')) {
@@ -223,7 +223,7 @@ async function main() {
 
       info('Document (%s: %s): modified {', Model.modelName, JSON.stringify(cond));
       info('  "_id":"%s"', doc._id);
-      for (let path of modifiedPaths) {
+      for (const path of modifiedPaths) {
         info('  "%s":"%s"', path, doc.get(path));
       }
       info('}');
@@ -250,7 +250,7 @@ async function main() {
       return;
     }
 
-    for (let doc of modified) {
+    for (const doc of modified) {
       try {
         info('Saving document with history: %s', doc.id);
         await doc.saveWithHistory(auth.formatRole('USR', updateBy));
@@ -263,7 +263,7 @@ async function main() {
   } finally {
     await mongoose.disconnect();
   }
-};
+}
 
 main().catch((err) =>  {
   // ensure non-zero exit code

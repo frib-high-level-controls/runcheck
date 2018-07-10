@@ -55,14 +55,14 @@ interface Config {
   updateBy?: {};
   installBy?: {};
   _?: Array<{}>;
-};
+}
 
 enum WorksheetName {
   SLOTS = 'SLOTS',
   DEVICES = 'DEVICES',
   INSTALL = 'INSTALLATIONS',
   UNINSTALL = 'UNINSTALLATIONS',
-};
+}
 
 enum SlotColumn {
   NAME = 'FRIB SLOT NAME',
@@ -73,25 +73,25 @@ enum SlotColumn {
   DEVICE_TYPE = 'DEVICE TYPE',
   CARE_LEVEL = 'LEVEL OF CARE',
   SAFETY_LEVEL = 'SAFETY DESIGNATION',
-};
+}
 
 enum DeviceColumn {
   NAME = 'FRIB PART NUMBER',
   DESC = 'DESCRIPTION',
   DEPT = 'ASSOCIATED DEPARTMENT',
   DEVICE_TYPE = 'DEVICE TYPE',
-};
+}
 
 enum InstallColumn {
   SLOT = 'SLOT',
   DEVICE = 'DEVICE',
   DATE = 'DATE',
-};
+}
 
 enum UninstallColumn {
   SLOT = 'SLOT',
   DEVICE = 'DEVICE',
-};
+}
 
 const debug = dbg('import-xlsx');
 
@@ -580,7 +580,7 @@ async function main() {
   } finally {
     await mongoose.disconnect();
   }
-};
+}
 
 interface ImportResult {
   slot?: {};
@@ -592,7 +592,7 @@ interface ImportResult {
 
 interface SlotImportResult extends ImportResult {
   slot: ISlot;
-};
+}
 
 async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]> {
 
@@ -745,11 +745,11 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
   }
 
   return results;
-};
+}
 
 interface DeviceImportResult extends ImportResult {
   device: IDevice;
-};
+}
 
 async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResult[]> {
   const results: DeviceImportResult[] = [];
@@ -841,7 +841,7 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
   }
 
   return results;
-};
+}
 
 interface InstallImportResult extends ImportResult {
   install: {
@@ -849,7 +849,7 @@ interface InstallImportResult extends ImportResult {
     deviceName: string;
     installOn: Date;
   };
-};
+}
 
 async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportResult[]> {
   const results: InstallImportResult[] = [];
@@ -922,14 +922,14 @@ async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportRes
   }
 
   return results;
-};
+}
 
 interface UninstallImportResult extends ImportResult {
   uninstall: {
     slotName: string;
     deviceName: string;
   };
-};
+}
 
 async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImportResult[]> {
   const results: UninstallImportResult[] = [];
@@ -983,7 +983,7 @@ async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImpor
   }
 
   return results;
-};
+}
 
 
 function hasResultError(...importResults: ImportResult[][]): boolean {
@@ -995,7 +995,7 @@ function hasResultError(...importResults: ImportResult[][]): boolean {
     }
   }
   return false;
-};
+}
 
 function printResults(...results: ImportResult[][]) {
   for (const rs of results) {
@@ -1017,7 +1017,7 @@ function printResults(...results: ImportResult[][]) {
       }
     }
   }
-};
+}
 
 
 
