@@ -165,7 +165,7 @@ async function main() {
 
   try {
     let hasError = false;
-    const modified = new Array<Document>();
+    const modified = new Array<HistoryDocument>();
     outer: for (const record of data) {
       let cond: POJO | undefined;
       for (const prop in record) {
