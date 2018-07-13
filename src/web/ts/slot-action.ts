@@ -243,9 +243,11 @@ $(() => {
   }
 
   class HistoryViewModel {
+    public updates = ko.observable('');
+
     constructor() {
       WebUtil.catchAll(async () => {
-        let pkg: webapi.Pkg<webapi.Slot>;
+        let pkg: webapi.Pkg<webapi.Update[]>;
         try {
           pkg = await $.ajax({
             url: `${basePath}/slots/${slot.id}/history`,
@@ -255,11 +257,58 @@ $(() => {
           });
         } catch (xhr) {
           pkg = xhr.responseJSON;
-          console.log(pkg);
           return;
         }
-        console.log(pkg);
+        let data = pkg.data;
+        let updates = '';
+
+        // append updates
+        $.each(data, ( index, update ) => {
+          if (update) {
+            updates += this.CreateUpdateItem(index, update);
+          }
+        });
+        this.updates(updates);
       });
+    }
+
+    private CreateUpdateItem(index: number, data: webapi.Update) {
+      return `
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <a class="text-info collapsed" role="button" data-toggle="collapse" 
+          href="#update${index}" aria-expanded="false">
+          ${data.at}
+            <div class="pull-right">${data.by}</div>
+            <div class="panel-collapse collapse" id="update${index}" role="tabpanel" 
+            aria-expanded="false" style="height: 0px;">
+            ${this.CreatePathList(data.paths)}
+            </div>
+          </a> 
+        </div>
+      </div>
+    `;
+    }
+
+    private CreatePathList(paths: webapi.Path[]) {
+      let pathsHtml = '';
+
+      $.each(paths, ( index, path ) => {
+          pathsHtml += this.CreatePathItem(path);
+      });
+
+      return `
+        <ol class="list-group"> </ol>
+        ${pathsHtml}
+      `;
+    }
+
+    private CreatePathItem(path: webapi.Path) {
+      return `
+        <li class="list-group-item"><strong>${path.name}
+        <div class="text-danger bg-danger pull-right">${path.value}</div></strong>
+        </li>
+      `;
     }
   }
 
