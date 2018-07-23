@@ -241,77 +241,6 @@ $(() => {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
     }
   }
-  
-  // class HistoryViewModel {
-  //   public updates = ko.observable('');
-
-  //   constructor() {
-  //     WebUtil.catchAll(async () => {
-  //       let pkg: webapi.Pkg<webapi.Update[]>;
-  //       try {
-  //         pkg = await $.ajax({
-  //           url: `${basePath}/slots/${slot.id}/history`,
-  //           contentType: 'application/json',
-  //           method: 'GET',
-  //           dataType: 'json',
-  //         });
-  //       } catch (xhr) {
-  //         pkg = xhr.responseJSON;
-  //         return;
-  //       }
-  //       let data = pkg.data;
-  //       let updates = '';
-
-  //       // append updates
-  //       $.each(data, ( index, update ) => {
-  //         if (update) {
-  //           updates += this.CreateUpdateItem(index, update);
-  //         }
-  //       });
-  //       this.updates(updates);
-  //     });
-  //   }
-
-  //   private CreateUpdateItem(index: number, data: webapi.Update) {
-  //     console.log(data.at);
-  //     return `
-  //     <div class="panel panel-default">
-  //       <div class="panel-heading">
-  //         <a class="text-info collapsed" role="button" data-toggle="collapse" 
-  //         href="#update${index}" aria-expanded="false">
-  //         ${moment(data.at).format(`MMM D, YYYY \at h:m:s A`)}
-  //           <div class="pull-right">${data.by}</div>
-  //           <div class="panel-collapse collapse" v-bind:id="update0" role="tabpanel"
-  //           aria-expanded="false" style="height: 0px;">
-  //           ${this.CreatePathList(data.paths)}
-  //           </div>
-  //         </a> 
-  //       </div>
-  //     </div>
-  //   `;
-  //   }
-
-  //   private CreatePathList(paths: webapi.Path[]) {
-  //     let pathsHtml = '';
-
-  //     $.each(paths, ( index, path ) => {
-  //         pathsHtml += this.CreatePathItem(path);
-  //     });
-
-  //     return `
-  //       <ol class="list-group"> </ol>
-  //       ${pathsHtml}
-  //     `;
-  //   }
-
-  //   private CreatePathItem(path: webapi.Path) {
-  //     return `
-  //       <li class="list-group-item"><strong>${path.name}
-  //       <div class="text-danger bg-danger pull-right">${path.value}</div></strong>
-  //       </li>
-  //     `;
-  //   }
-  // }
 
   const PathItem = Vue.extend({
     template: `      
@@ -352,13 +281,17 @@ $(() => {
         type: Object,
         required: true,
       },
+      index: {
+        type: Number,
+        required: true,
+      },
     },
     components: {
       'path-item': PathItem,
     },
     computed: {
       updateID(): string {
-        return 'update' + 0;
+        return 'update' + this.index;
       },
       updateLink(): String {
         return '#' + this.updateID;
@@ -384,13 +317,18 @@ $(() => {
     }
 
     let data = pkg.data;
-    console.log(data[0]);
+
     const vm = new Vue({
       template: `
         <div>
           <h2>History</h2>
-          <div class="panel-group">
-            <update-item key="0" :update-data="updates[0]"></update-item>
+          <div class="panel-group" style="overflow-y:scroll; height:600px;padding-right:5px;">
+            <update-item 
+              v-for="(update, index) in updates" 
+              :key="index" 
+              :index="index" 
+              :update-data="update">
+            </update-item>
           </div>
         </div>
       `,
@@ -401,6 +339,7 @@ $(() => {
         updates: data,
       },
     });
-    vm.$mount('#demo');
+
+    vm.$mount('#history');
   });
 });
