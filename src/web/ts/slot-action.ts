@@ -343,7 +343,7 @@ $(() => {
       <div class="panel-collapse collapse" :id="updateID" role="tabpanel" 
       aria-expanded="false" style="height: 0px;">
       <ol class="list-group">
-        <path-item v-for="path in updateData.paths" :path-data=path></path-item>
+        <path-item v-for="(path, index) in updateData.paths" :path-data=path :key=index></path-item>
       </ol>
       </div>
     </div>`,
@@ -364,7 +364,7 @@ $(() => {
         return '#' + this.updateID;
       },
       updateDate(): string {
-        return moment(this.updateData.at).format('MMM D, YYYY [at] h:m:s A');
+        return moment(new Date(this.updateData.at)).format('MMM D, YYYY [at] h:m:s A');
       },
     },
   });
