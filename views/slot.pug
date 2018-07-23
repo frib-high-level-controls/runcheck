@@ -52,8 +52,7 @@ block content
           .panel-body.hidden#checklist-panel
     .row 
       .col-md-12
-        h2 History
-        .panel-group#history(data-bind="html: updates")
+        #demo
 
   br
   //-.panel.panel-default
@@ -75,9 +74,10 @@ block js
   script(type='text/javascript', src=basePath + '/js/authutil.js')
 
   //- View Model
-  script(type='text/javascript', src=basePath + '/node_modules/validator/validator.js')
+  script(type='text/javascript' src=basePath + '/node_modules/vue/dist/vue.js' )
+  script(type='text/javascript' src=basePath + '/node_modules/axios/dist/axios.js' )
   script(type='text/javascript', src=basePath + '/node_modules/knockout/build/output/knockout-latest.js')
   script(type='text/javascript', src=basePath + '/js/slot-action.js')
 
-  //- make local pug variables available to scripts
+  //- make local pug variables available to scripts 
   script var slot = !{JSON.stringify(slot)};

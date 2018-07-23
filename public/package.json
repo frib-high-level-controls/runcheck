@@ -2,6 +2,7 @@
   "name": "runcheck-web",
   "private": true,
   "dependencies": {
+    "axios": "^0.18.0",
     "bootstrap": "^3.3.7",
     "bootstrap-datepicker": "^1.7.1",
     "datatables.net": "^1.10.16",
@@ -14,6 +15,7 @@
     "knockout": "^3.4.2",
     "moment": "^2.20.1",
     "select2": "^4.0.6-rc.0",
-    "select2-bootstrap-theme": "0.1.0-beta.10"
+    "select2-bootstrap-theme": "0.1.0-beta.10",
+    "vue": "^2.5.16"
   }
 }
