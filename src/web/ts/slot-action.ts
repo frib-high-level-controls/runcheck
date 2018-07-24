@@ -356,7 +356,7 @@ $(() => {
 
   const HistoryComponent = Vue.extend({
     template: `
-      <div class="panel-group" style="overflow-y:scroll; height:600px;padding-right:5px;">
+      <div class="panel-group" :class="{scrollable: updates.length > 12}">
         <update-item 
           v-for="(update, index) in updates" 
           :key="index" 
