@@ -37,6 +37,7 @@
     "uri-js": "^3.0.2"
   },
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/body-parser": "^1.16.3",
     "@types/bootstrap": "^3.3.36",
     "@types/bootstrap-datepicker": "^0.0.12",

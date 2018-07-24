@@ -7,3 +7,4 @@
 declare let basePath: string;
 
 declare var Vue: vue.VueConstructor;
+declare var axios: Axios.AxiosStatic;
