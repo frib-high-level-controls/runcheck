@@ -302,46 +302,6 @@ $(() => {
     },
   });
 
-  // WebUtil.catchAll(async () => {
-  //   let pkg: webapi.Pkg<webapi.Update[]>;
-  //   try {
-  //     pkg = await $.ajax({
-  //       url: `${basePath}/slots/${slot.id}/history`,
-  //       contentType: 'application/json',
-  //       method: 'GET',
-  //       dataType: 'json',
-  //     });
-  //   } catch (xhr) {
-  //     pkg = xhr.responseJSON;
-  //     return;
-  //   }
-
-  //   let data = pkg.data;
-
-  //   const vm = new Vue({
-  //     template: `
-  //       <div>
-  //         <h2>History</h2>
-  //         <div class="panel-group" style="overflow-y:scroll; height:600px;padding-right:5px;">
-  //           <update-item 
-  //             v-for="(update, index) in updates" 
-  //             :key="index" 
-  //             :index="index" 
-  //             :update-data="update">
-  //           </update-item>
-  //         </div>
-  //       </div>
-  //     `,
-  //     components: {
-  //       'update-item': UpdateItem,
-  //     },
-  //     data: {
-  //       updates: data,
-  //     },
-  //   });
-
-  //   vm.$mount('#history');
-  // });
   const LoadingPanel = Vue.extend({
     template: `
       <div class="panel panel-default">
@@ -357,7 +317,9 @@ $(() => {
   const HistoryComponent = Vue.extend({
     template: `
       <div class="panel-group" :class="{scrollable: updates.length > 12}">
-        <update-item 
+        <h3 v-if="errorState">Error Loading history</h3>
+        <update-item
+          v-else 
           v-for="(update, index) in updates" 
           :key="index" 
           :index="index" 
@@ -368,6 +330,9 @@ $(() => {
     props: {
       updates: {
         type: Array as () => webapi.Update[],
+      },
+      errorState: {
+        type: Boolean,
       },
     },
     components: {
@@ -380,12 +345,14 @@ $(() => {
     template: `
       <div>
         <h2>History</h2>
-        <loading-panel v-if="Object.keys(updates).length == 0"></loading-panel>
-        <history-component v-else :updates="updates"></history-component>
+        <loading-panel v-if="loading"></loading-panel>
+        <history-component v-else :updates="updates" :errorState="errorState"></history-component>
       </div>
     `,
     data: {
       updates: Array as () => webapi.Update[],
+      loading: true,
+      errorState: false,
     },
     components: {
       'loading-panel': LoadingPanel,
@@ -394,7 +361,14 @@ $(() => {
     mounted () {
       axios
         .get(GET_URI)
-        .then((response) => (this.updates = response.data.data));
+        .then((response) => {
+          this.updates = response.data.data;
+        })
+        .catch((error) => {
+          this.errorState = true;
+        })
+        // basically a finally
+        .then(() => this.loading = false);
     },
   });
 
