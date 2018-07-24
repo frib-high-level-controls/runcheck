@@ -253,7 +253,7 @@ $(() => {
       </li>`,
     props: {
       pathData: {
-        type: Object,
+        type: Object as () => webapi.Path,
         required: true,
       },
     },
@@ -278,7 +278,7 @@ $(() => {
     </div>`,
     props: {
       updateData: {
-        type: Object,
+        type: Object as () => webapi.Update,
         required: true,
       },
       index: {
