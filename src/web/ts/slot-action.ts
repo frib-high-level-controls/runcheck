@@ -345,14 +345,30 @@ $(() => {
     template: `
       <div>
         <h2>History</h2>
-        <loading-panel v-if="loading"></loading-panel>
-        <history-component v-else :updates="updates" :errorState="errorState"></history-component>
+        <component :is="component" v-bind="childProps"></component>
       </div>
     `,
     data: {
       updates: Array as () => webapi.Update[],
       loading: true,
       errorState: false,
+    },
+    computed: {
+      component: function() {
+        if (this.loading) {
+          return 'loading-panel';
+        } else {
+          return 'history-component';
+        }
+      },
+      childProps: function() {
+        if (!this.loading) {
+          return {
+            updates: this.updates,
+            errorState: this.errorState,
+          };
+        }
+      },
     },
     components: {
       'loading-panel': LoadingPanel,
