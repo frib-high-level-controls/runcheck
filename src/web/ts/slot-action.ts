@@ -245,7 +245,7 @@ $(() => {
   const PathItem = Vue.extend({
     template: `      
       <li class="list-group-item">
-        <strong>{{pathData.name}}
+        <strong>{{pathData.name | humanize}}
           <div class="text-danger bg-danger pull-right">
             {{pathData.value}}
           </div>
@@ -255,6 +255,13 @@ $(() => {
       pathData: {
         type: Object as () => webapi.Path,
         required: true,
+      },
+    },
+    filters: {
+      humanize: function(value: string) {
+        return value
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, (str) => {return str.toUpperCase(); });
       },
     },
   });
@@ -271,9 +278,9 @@ $(() => {
       </div>
       <div class="panel-collapse collapse" :id="updateID" role="tabpanel" 
       aria-expanded="false" style="height: 0px;">
-      <ol class="list-group">
-        <path-item v-for="(path, index) in updateData.paths" :path-data=path :key=index></path-item>
-      </ol>
+        <ol class="list-group">
+          <path-item v-for="(path, index) in updateData.paths" :path-data=path :key=index></path-item>
+        </ol>
       </div>
     </div>`,
     props: {
@@ -389,5 +396,4 @@ $(() => {
   });
 
   vm.$mount('#history');
-
 });
