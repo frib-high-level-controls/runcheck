@@ -268,27 +268,29 @@ async function doStart(): Promise<express.Application> {
   // Need the FORG base URL available to views
   app.locals.forgurl = String(cfg.forgapi.url);
 
-  if (!cfg.cas.cas_url) {
-    throw new Error('CAS base URL not configured');
+  if (env === 'production' || process.env.RUNCHECK_AUTHC_DISABLED !== 'true') {
+    if (!cfg.cas.cas_url) {
+      throw new Error('CAS base URL not configured');
+    }
+    info('CAS base URL: %s', cfg.cas.cas_url);
+
+    if (!cfg.cas.service_url) {
+      throw new Error('CAS service URL not configured');
+    }
+    info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
+
+    auth.setProvider(new forgauth.ForgCasProvider(forgClient, {
+      casUrl: String(cfg.cas.cas_url),
+      casServiceUrl: String(cfg.cas.service_url),
+      casAppendPath: cfg.cas.append_path === true ? true : false,
+      casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
+    }));
+    info('CAS authentication provider enabled');
+  } else {
+    // Use this provider for local development that DISABLES authentication!
+    auth.setProvider(new forgauth.DevForgBasicProvider(forgClient, {}));
+    warn('Development authentication provider: Password verification DISABLED!');
   }
-  info('CAS base URL: %s', cfg.cas.cas_url);
-
-  if (!cfg.cas.service_url) {
-    throw new Error('CAS service URL not configured');
-  }
-  info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
-
-  const authProvider = new forgauth.ForgCasProvider(forgClient, {
-    casUrl: String(cfg.cas.cas_url),
-    casServiceUrl: String(cfg.cas.service_url),
-    casAppendPath: cfg.cas.append_path === true ? true : false,
-    casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
-  });
-
-  // Use this provider for local development that DISABLES authentication!
-  // const authProvider = new forgauth.DevForgBasicProvider(forgClient, {});
-
-  auth.setProvider(authProvider);
 
   // view engine configuration
   app.set('views', path.resolve(__dirname, '..', 'views'));
@@ -345,16 +347,15 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.get('/logout', (req, res) => {
-    authProvider.logout(req);
-    if (typeof (authProvider as any).getCasLogoutUrl !== 'function') {
-      // If the development provider is being used, then just redirect to index.
-      res.redirect('/');
+    auth.getProvider().logout(req);
+    const provider = auth.getProvider();
+    if (provider instanceof forgauth.ForgCasProvider) {
+      const redirectUrl = provider.getCasLogoutUrl(true);
+      info('Redirect to CAS logout: %s', redirectUrl);
+      res.redirect(redirectUrl);
       return;
     }
-    // TODO: Consider moving this to the provider's logout function.
-    const redirectUrl = (authProvider as any).getCasLogoutUrl(true);
-    info('Redirect to CAS logout: %s', redirectUrl);
-    res.redirect(redirectUrl);
+    res.redirect(res.locals.basePath || '/');
   });
 
   app.get('/', (req, res) => {
