@@ -51,6 +51,7 @@ interface Config {
   mongo: {
     user?: {};
     pass?: {};
+    host?: {};
     port: {};
     addr: {};
     db: {};
@@ -59,9 +60,9 @@ interface Config {
   cas: {
     cas_url?: {};
     service_url?: {};
-    append_path?: {};
+    service_base_url?: {};
     version?: {};
-};
+  };
   forgapi: {
     url?: {};
     agentOptions?: {};
@@ -107,7 +108,7 @@ async function readNameVersion(): Promise<[string | undefined, string | undefine
   let version = process.env.NODE_APP_VERSION;
   // second look for application name and verison in package.json
   if (!name || !version) {
-    const pkgPath = path.resolve(__dirname, 'package.json');
+    const pkgPath = path.resolve(__dirname, 'version.json');
     let pkg: Package | undefined;
     try {
       pkg = JSON.parse(await readFile(pkgPath, 'UTF-8'));
@@ -176,6 +177,7 @@ async function doStart(): Promise<express.Application> {
   });
 
   const env: {} | undefined = app.get('env');
+  info('Deployment environment: \'%s\'', env);
 
   const cfg: Config = {
     app: {
@@ -230,7 +232,10 @@ async function doStart(): Promise<express.Application> {
     }
     mongoUrl += '@';
   }
-  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
+  if (!cfg.mongo.host) {
+    cfg.mongo.host = `${cfg.mongo.addr}:${cfg.mongo.port}`;
+  }
+  mongoUrl +=  `${cfg.mongo.host}/${cfg.mongo.db}`;
 
   mongoose.Promise = global.Promise;
 
@@ -251,7 +256,7 @@ async function doStart(): Promise<express.Application> {
 
   status.setComponentError('MongoDB', 'Never Connected');
   // Remove password from the mongoUrl to avoid logging the password!
-  const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:******@');
+  const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:<password>@');
   info('Mongoose default connection: %s', safeMongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
@@ -274,15 +279,15 @@ async function doStart(): Promise<express.Application> {
     }
     info('CAS base URL: %s', cfg.cas.cas_url);
 
-    if (!cfg.cas.service_url) {
-      throw new Error('CAS service URL not configured');
+    if (!cfg.cas.service_base_url) {
+      throw new Error('CAS service base URL not configured');
     }
-    info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
+    info('CAS service base URL: %s (service URL: %s)', cfg.cas.service_base_url, cfg.cas.service_url);
 
     auth.setProvider(new forgauth.ForgCasProvider(forgClient, {
       casUrl: String(cfg.cas.cas_url),
       casServiceUrl: String(cfg.cas.service_url),
-      casAppendPath: cfg.cas.append_path === true ? true : false,
+      casServiceBaseUrl: String(cfg.cas.service_base_url),
       casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
     }));
     info('CAS authentication provider enabled');
@@ -393,19 +398,19 @@ async function doStop(): Promise<void> {
     await activeStopped;
   }
 
-  try {
-    await status.monitor.stop();
-    info('Status monitor stopped');
-  } catch (err) {
-    warn('Status monitor stop failure: %s', err);
-  }
-
   // disconnect Mongoose (MongoDB)
   try {
     await mongoose.disconnect();
     info('Mongoose disconnected');
   } catch (err) {
     warn('Mongoose disconnect failure: %s', err);
+  }
+
+  try {
+    await status.monitor.stop();
+    info('Status monitor stopped');
+  } catch (err) {
+    warn('Status monitor stop failure: %s', err);
   }
 
   info('Application stopped');

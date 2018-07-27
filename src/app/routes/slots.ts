@@ -45,6 +45,9 @@ const debug = dbg('runcheck:slots');
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
+const GRP = auth.RoleScheme.GRP;
+const USR = auth.RoleScheme.USR;
+
 let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
@@ -75,7 +78,7 @@ export function getRouter(opts?: RouterOptions): express.Router {
  * @param slot Model
  */
 function getPermissions(req: express.Request, slot: Slot) {
-  const ownerRole = auth.formatRole('GRP', slot.area, 'LEADER');
+  const ownerRole = auth.formatRole(GRP, slot.area, 'LEADER');
   const assignRoles = [ ownerRole ].concat(adminRoles);
   const assign = auth.hasAnyRole(req, assignRoles);
   if (debug.enabled) {
@@ -298,7 +301,7 @@ router.put('/slots/:name_or_id/installation', auth.ensureAuthc(), catchAll(async
     slotId: models.ObjectId(slot.id),
     deviceId: models.ObjectId(device.id),
     installOn: installOn,
-    installBy: auth.formatRole('USR', username),
+    installBy: auth.formatRole(USR, username),
     state: 'INSTALLING',
   });
 

@@ -48,6 +48,9 @@ const FORBIDDEN = HttpStatus.FORBIDDEN;
 const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 
+const GRP = auth.RoleScheme.GRP;
+const USR = auth.RoleScheme.USR;
+
 let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
@@ -190,7 +193,7 @@ router.get('/groups/slot/:id/members', catchAll(async (req, res) => {
  * Compute the permissions of the current user for the specified group.
  */
 function getPermissions(req: express.Request, owner: string) {
-  const ownerRole = auth.formatRole('GRP', owner, 'LEADER');
+  const ownerRole = auth.formatRole(GRP, owner, 'LEADER');
   const manageRoles = [ ownerRole ].concat(adminRoles);
   const manage = auth.hasAnyRole(req, manageRoles);
   if (debug.enabled) {
@@ -244,7 +247,7 @@ router.post('/groups/slot/:id/members', auth.ensureAuthc(), ensurePackage(), ens
   }
 
   slot.groupId = group._id;
-  await slot.saveWithHistory(auth.formatRole('USR', username));
+  await slot.saveWithHistory(auth.formatRole(USR, username));
 
   let webslot: webapi.Slot = {
     id: ObjectId(slot._id).toHexString(),
@@ -293,7 +296,7 @@ router.delete('/groups/slot/:id/members', auth.ensureAuthc(), ensurePackage(), e
   }
 
   slot.groupId = undefined;
-  await slot.saveWithHistory(auth.formatRole('USR', username));
+  await slot.saveWithHistory(auth.formatRole(USR, username));
 
   res.json(<webapi.Pkg<{}>> {
     data: {},
@@ -345,7 +348,7 @@ router.post('/groups/slot', auth.ensureAuthc(), ensurePackage(), ensureAccepts('
   };
 
   let group = new Group(doc);
-  group.saveWithHistory(auth.formatRole('USR', username));
+  group.saveWithHistory(auth.formatRole(USR, username));
 
   const apiGroup: webapi.Group = {
     id: ObjectId(group._id).toHexString(),

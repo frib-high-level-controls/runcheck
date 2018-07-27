@@ -72,6 +72,9 @@ const NOT_FOUND = HttpStatus.NOT_FOUND;
 const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
+const GRP = auth.RoleScheme.GRP;
+const USR = auth.RoleScheme.USR;
+const VAR = auth.RoleScheme.VAR;
 
 let adminRoles: string[] = [];
 
@@ -182,17 +185,17 @@ function applyCfg(subject: webapi.ChecklistSubject, cfg?: ChecklistConfig) {
  */
 function getVarRoles(target: Target): [string, string] {
   if (target.dept) {
-    return ['DEPT_LEADER', auth.formatRole('GRP', target.dept, 'LEADER')];
+    return ['DEPT_LEADER', auth.formatRole(GRP, target.dept, 'LEADER')];
   }
   if (target.area) {
-    return ['AREA_LEADER', auth.formatRole('GRP', target.area, 'LEADER')];
+    return ['AREA_LEADER', auth.formatRole(GRP, target.area, 'LEADER')];
   }
   if (target.owner) {
     if (target.memberType === Slot.modelName) {
-      return ['AREA_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
+      return ['AREA_LEADER', auth.formatRole(GRP, target.owner, 'LEADER')];
     }
     if (target.memberType === Device.modelName) {
-      return ['DEPT_LEADER', auth.formatRole('GRP', target.owner, 'LEADER')];
+      return ['DEPT_LEADER', auth.formatRole(GRP, target.owner, 'LEADER')];
     }
   }
   return ['', ''];
@@ -206,7 +209,7 @@ function subVarRoles(roles: string[], varRoles: Array<[string, string]>): string
   let subRoles = new Array<string>();
   for (let role of roles) {
     let r = auth.parseRole(role);
-    if (r && r.scheme === 'VAR') {
+    if (r && r.scheme === VAR) {
       let varRole = varRolesMap.get(r.identifier);
       if (varRole) {
         subRoles.push(varRole);
@@ -549,17 +552,17 @@ router.post('/checklists', auth.ensureAuthc(), ensurePackage(), ensureAccepts('j
   if (slot) {
     debug('Update target (slot) with new checklist id: %s', checklist._id);
     slot.checklistId = models.ObjectId(checklist._id);
-    await slot.saveWithHistory(auth.formatRole('USR', username));
+    await slot.saveWithHistory(auth.formatRole(USR, username));
   }
   if (device) {
     debug('Update target (device) with new checklist id: %s', checklist._id);
     device.checklistId = models.ObjectId(checklist._id);
-    await device.saveWithHistory(auth.formatRole('USR', username));
+    await device.saveWithHistory(auth.formatRole(USR, username));
   }
   if (group) {
     debug('Update target (group) with new checklist id: %s', checklist._id);
     group.checklistId = models.ObjectId(checklist._id);
-    await group.saveWithHistory(auth.formatRole('USR', username));
+    await group.saveWithHistory(auth.formatRole(USR, username));
   }
 
   let webSubjects: webapi.ChecklistSubjectDetails[] = [];
@@ -866,7 +869,7 @@ router.post('/checklists/:id/subjects', auth.ensureAuthc(), ensurePackage(), ens
   };
   let subject = new ChecklistSubject(doc);
 
-  await subject.saveWithHistory(auth.formatRole('USR', username));
+  await subject.saveWithHistory(auth.formatRole(USR, username));
 
   subjects.push(subject);
 
@@ -1055,7 +1058,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage()
 
   if (config) {
     debug('Save subject configuration: %s', config.subjectName);
-    await config.saveWithHistory(auth.formatRole('USR', username));
+    await config.saveWithHistory(auth.formatRole(USR, username));
   }
 
   debug('Save checklist with updated summary');
@@ -1291,7 +1294,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
       await checklist.save();
     }
     debug('Save checklist status with history');
-    await status.saveWithHistory(auth.formatRole('USR', username));
+    await status.saveWithHistory(auth.formatRole(USR, username));
 
     debug('Save checklist with updated summary');
     isChecklistApproved(checklist, subjects, configs, statuses, true);

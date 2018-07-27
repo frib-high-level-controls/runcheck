@@ -101,6 +101,8 @@ const info = console.info;
 const warn = console.warn;
 const error = console.error;
 
+const USR = auth.RoleScheme.USR;
+
 const approvedAreas = new Array<string>();
 const approvedDepts = new Array<string>();
 const approvedNames = new Array<RegExp>();
@@ -508,13 +510,13 @@ async function main() {
         m.slot.installDeviceOn = undefined;
         m.slot.installDeviceId = undefined;
         info(`Update slot: ${JSON.stringify(m.slot, null, 4)}`);
-        prms.push(m.slot.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(m.slot.saveWithHistory(auth.formatRole(USR, installBy)));
 
         m.device.installSlotBy = undefined;
         m.device.installSlotOn = undefined;
         m.device.installSlotId = undefined;
         info(`Update device: ${JSON.stringify(m.device, null, 4)}`);
-        prms.push(m.device.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(m.device.saveWithHistory(auth.formatRole(USR, installBy)));
       }
       await Promise.all(prms);
     }
@@ -532,11 +534,11 @@ async function main() {
       const prms: Array<Promise<Slot | Device>> = [];
       for (const slot of modifiedSlots.values()) {
         info(`Save slot: ${JSON.stringify(slot, null, 4)}`);
-        prms.push(slot.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(slot.saveWithHistory(auth.formatRole(USR, installBy)));
       }
       for (const device of modifiedDevices.values()) {
         info(`Save device: ${JSON.stringify(device, null, 4)}`);
-        prms.push(device.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(device.saveWithHistory(auth.formatRole(USR, installBy)));
       }
       await Promise.all(prms);
     }
@@ -557,13 +559,13 @@ async function main() {
         m.slot.installDeviceOn = m.install.installOn;
         m.slot.installDeviceBy = m.install.installBy;
         info(`Update slot: ${JSON.stringify(m.slot, null, 4)}`);
-        prms.push(m.slot.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(m.slot.saveWithHistory(auth.formatRole(USR, installBy)));
 
         m.device.installSlotId = m.install.slotId;
         m.device.installSlotOn = m.install.installOn;
         m.device.installSlotBy = m.install.installBy;
         info(`Update device: ${JSON.stringify(m.device, null, 4)}`);
-        prms.push(m.device.saveWithHistory(auth.formatRole('USR', installBy)));
+        prms.push(m.device.saveWithHistory(auth.formatRole(USR, installBy)));
       }
       await Promise.all(prms);
     }

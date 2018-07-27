@@ -87,41 +87,76 @@ module.exports = function(grunt) {
         ],
       },
     },
-    copy: {
-      pkg: {
-        files: [{
-          expand: true,
-          src: 'package.json',
-          dest: 'app/'
-        }],
-      },
-    },
     clean: {
       app: [ './app' ],
       test: [ './test' ],
       tools: [ './tools' ],
       public: [ './public/js' ],
       docs: [ './public/docs/*.html' ]
-    }
+    },
   });
 
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-ts');
   grunt.loadNpmTasks('grunt-tslint');
   grunt.loadNpmTasks('grunt-contrib-clean');
-  grunt.loadNpmTasks('grunt-contrib-copy');
 
   grunt.registerTask('template', ['shell:template']);
   grunt.registerTask('test', ['mochaTest']);
   grunt.registerTask('puglint', ['shell:puglint']);
+
+  grunt.registerTask('save_version_file', 'Save version information to app/verison.json', function () {
+    var pkg = grunt.file.readJSON('package.json');
+    var gitCommitCmd = {cmd:'git', args:['rev-parse', 'HEAD']};
+    var gitVersionCmd = {cmd:'git', args:['describe', '--match', 'v[0-9]*', '--always', '--dirty', '--long']};
+    var template = '<%= pkg_version %> (Build Date: <%= build_date %>, Commit: <%= git_commit.substring(0,7) %>)';
+    var done = this.async();
+
+    grunt.util.spawn(gitCommitCmd, function (err1, gitCommit) {
+      if (err1) { done(err1); return; }
+
+      grunt.util.spawn(gitVersionCmd, function (err2, gitVersion) {
+        if (err2) { done(err2); return; }
+
+        var data = {
+          name: String(pkg.name),
+          git_commit: String(gitCommit),
+          git_version: String(gitVersion),
+          pkg_version: String(pkg.version),
+          build_date: new Date().toISOString(),
+        };
+        data.version = grunt.template.process(template, { data: data });
+        grunt.file.write('app/version.json', JSON.stringify(data, null, 4));
+        done();
+      });
+    });
+  });
+
+  grunt.registerTask('ensure_version_tag', 'Ensure package version and git tag match', function () {
+    var pkg = grunt.file.readJSON('package.json');
+    var gitVersionCmd = {cmd:'git', args:['describe', '--match', 'v[0-9]*', '--always', '--dirty', '--exact-match']};
+    var done = this.async();
+
+    grunt.util.spawn(gitVersionCmd, function (err, gitVersion) {
+      if (err) { done(err); return; }
+
+      var pkg_version = 'v' + pkg.version;
+      var git_version = String(gitVersion);
+      if (pkg_version !== git_version) {
+        grunt.warn('Package version (' + pkg_version + ') does not match Git version (' + git_version + ')');
+        return;
+      }
+      done();
+    });
+  });
 
   grunt.registerTask('default', [
     'build',
   ]);
 
   grunt.registerTask('build', [
+    'save_version_file',
     'ts:app',
-    'copy:pkg',
     'ts:web',
     'ts:tools',
     'shell:pugcompile',
@@ -130,6 +165,7 @@ module.exports = function(grunt) {
 
   grunt.registerTask('deploy', [
     'clean',
+    'ensure_version_tag',
     'build',
   ]);
 

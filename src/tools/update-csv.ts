@@ -56,6 +56,8 @@ const info = console.info;
 const warn = console.warn;
 const error = console.error;
 
+const USR = auth.RoleScheme.USR;
+
 mongoose.Promise = global.Promise;
 
 async function main() {
@@ -253,7 +255,7 @@ async function main() {
     for (const doc of modified) {
       try {
         info('Saving document with history: %s', doc.id);
-        await doc.saveWithHistory(auth.formatRole('USR', updateBy));
+        await doc.saveWithHistory(auth.formatRole(USR, updateBy));
       } catch (err) {
         error(err.message);
         process.exitCode = 1;

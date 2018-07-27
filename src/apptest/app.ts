@@ -16,6 +16,7 @@ import { State } from '../app';
 import * as auth from '../app/shared/auth';
 import * as forgauth from '../app/shared/forg-auth';
 import * as handlers from '../app/shared/handlers';
+import * as logging from '../app/shared/logging';
 import * as status from '../app/shared/status';
 import * as tasks from '../app/shared/tasks';
 
@@ -37,9 +38,9 @@ let app: express.Application;
 const task = new tasks.StandardTask<express.Application>(doStart, doStop);
 
 // application logging
-export let info = console.log;
-export let warn = console.warn;
-export let error = console.error;
+export let info = logging.log;
+export let warn = logging.warn;
+export let error = logging.error;
 
 export function getState(): State {
   return task.getState();
@@ -52,6 +53,13 @@ export function start(): Promise<express.Application> {
 
 async function doStart(): Promise<express.Application> {
   app = express();
+
+  if (app.get('env') === 'test') {
+    // disable logging for testing
+    logging.setInfo(null);
+    logging.setWarn(null);
+    logging.setError(null);
+  }
 
   const forgClient = forgapi.MockClient.getInstance();
 
@@ -93,7 +101,6 @@ async function doStart(): Promise<express.Application> {
   }));
 
   app.use(express.static(path.resolve(__dirname, '..', '..', 'public')));
-  app.use(express.static(path.resolve(__dirname, '..', '..', 'bower_components')));
 
   app.use(authProvider.initialize());
 
@@ -131,17 +138,18 @@ export function stop(): Promise<void> {
 }
 
 async function doStop(): Promise<void> {
-  try {
-    await status.monitor.stop();
-  } catch (err) {
-    warn('Status monitor stop failure: %s', err);
-  }
 
   // disconnect Mongoose (MongoDB)
   try {
     await mongoose.disconnect();
   } catch (err) {
     warn('Mongoose disconnect failure: %s', err);
+  }
+
+  try {
+    await status.monitor.stop();
+  } catch (err) {
+    warn('Status monitor stop failure: %s', err);
   }
 
   return;
