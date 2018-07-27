@@ -259,9 +259,30 @@ $(() => {
     },
     filters: {
       humanize: function(value: string) {
-        return value
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/^./, (str) => {return str.toUpperCase(); });
+        let newVal = '';
+        switch (value.toLowerCase()) {
+          case 'desc':
+            newVal =  'Description';
+            break;
+          case 'carelevel':
+            newVal =  'Level of Care';
+            break;
+          case 'safetylevel':
+            newVal = 'Level of Safety';
+            break;
+          case 'drr':
+          case 'arr':
+            newVal = value.toUpperCase();
+            break;
+          default:
+            return value
+            // decamelize
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (str) => {return str.toUpperCase(); })
+            // capitalize ID
+            .replace(/(Id)/g, (l) => l.toUpperCase());
+        }
+        return newVal;
       },
     },
   });
@@ -304,7 +325,8 @@ $(() => {
         return '#' + this.updateID;
       },
       updateDate(): string {
-        return moment(new Date(this.updateData.at)).format('MMM D, YYYY [at] h:m:s A');
+        return moment(new Date(this.updateData.at))
+          .format('MMM D, YYYY [at] h:m:s A');
       },
     },
   });
