@@ -5,27 +5,27 @@ import fs = require('fs');
 import path = require('path');
 import util = require('util');
 
-import rc = require('rc');
 import bodyparser = require('body-parser');
 import express = require('express');
-import favicon = require('serve-favicon');
+import session = require('express-session');
 import mongoose = require('mongoose');
 import morgan = require('morgan');
-import session = require('express-session');
+import rc = require('rc');
+import favicon = require('serve-favicon');
 
+import auth = require('./shared/auth');
+import forgauth = require('./shared/forg-auth');
+import forgapi = require('./shared/forgapi');
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
 import status = require('./shared/status');
 import tasks = require('./shared/tasks');
-import auth = require('./shared/auth');
-import forgapi = require('./shared/forgapi');
-import forgauth = require('./shared/forg-auth');
 
 import api1 = require('./routes/api1');
-import devices = require('./routes/devices');
-import slots = require('./routes/slots');
-import groups = require('./routes/groups');
 import checklists = require('./routes/checklists');
+import devices = require('./routes/devices');
+import groups = require('./routes/groups');
+import slots = require('./routes/slots');
 
 
 // package metadata
@@ -97,7 +97,7 @@ function updateActivityStatus(): void {
   } else {
     status.setComponentError('Activity', activeCount + ' > ' + activeLimit);
   }
-};
+}
 
 const readFile = util.promisify(fs.readFile);
 
