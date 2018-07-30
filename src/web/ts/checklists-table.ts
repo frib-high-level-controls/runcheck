@@ -164,7 +164,7 @@ $(WebUtil.wrapCatchAll0(async () => {
         }
       }
       if (subject) {
-        this.parent.updateStatusModal.show(this.value(), this.comment(), subject);
+        this.parent.updateStatusModal.show(subject, this.value(), this.comment());
       } else {
         console.error('Subject option not found: %s', this.subject());
       }
@@ -205,7 +205,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       this.hide();
     }
 
-    public show(value: string, comment: string, subject: ChecklistSubjectOption) {
+    public show(subject: ChecklistSubjectOption, value?: string, comment?: string) {
       this.value(value);
       this.comment(comment);
       this.subject(subject);
