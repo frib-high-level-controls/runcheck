@@ -1,5 +1,7 @@
-var path = require('path')
-var webpack = require('webpack')
+const path = require('path')
+const webpack = require('webpack')
+
+const VueLoaderPlugin = require('vue-loader/lib/plugin')
 
 module.exports = {
   mode: 'development',
@@ -13,6 +15,15 @@ module.exports = {
   },
   module: {
     rules: [
+      {
+        test: /\.ts$/,
+        enforce: 'pre',
+        loader: 'tslint-loader',
+        options: {
+          /* Loader options go here */
+          cibfugFile: 'tslint.json',
+        },
+      },
       {
         test: /\.vue$/,
         loader: 'vue-loader',
@@ -49,6 +60,8 @@ module.exports = {
       ChecklistUtil: './checklistutil.ts',
       WebUtil: './shared/webutil.ts',
     }),
+    // initialize the vue-loader
+    new VueLoaderPlugin(),
   ],
   resolve: {
     extensions: ['.ts', '.js', '.vue', '.json'],
