@@ -1,7 +1,6 @@
 /**
  * Support user interaction on Device details view.
  */
-
 $(() => {
 
   let slot: webapi.Slot = (<any> window).slot;
@@ -407,7 +406,8 @@ $(() => {
       axios
         .get(GET_URI)
         .then((response) => {
-          this.updates = response.data.data;
+          let data = response.data.data;
+          this.updates = data;
         })
         .catch((error) => {
           this.errorState = true;
