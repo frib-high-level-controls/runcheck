@@ -26,7 +26,7 @@ export function matchPattern(pattern: string, flags?: string): RegExp {
   pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
   pattern = pattern.replace(/\\\*/g, '(.*)');
   return new RegExp('^' + pattern + '$', flags);
-};
+}
 
 export class MockClient implements forgapi.IClient {
 
@@ -36,7 +36,7 @@ export class MockClient implements forgapi.IClient {
     }
     MockClient.instance = new MockClient();
     return MockClient.instance;
-  };
+  }
 
   protected static instance: MockClient | undefined;
 
@@ -46,7 +46,7 @@ export class MockClient implements forgapi.IClient {
 
   public addUser(user: User | User[]) {
     if (Array.isArray(user)) {
-      for (let u of user) {
+      for (const u of user) {
         this.addUser(u);
       }
     } else if (user.uid) {
@@ -56,17 +56,17 @@ export class MockClient implements forgapi.IClient {
       }
       this.users.set(user.uid, user);
     }
-  };
+  }
 
   public removeUser(uid: string | string[]) {
     if (Array.isArray(uid)) {
-      for (let u of uid) {
+      for (const u of uid) {
         this.removeUser(u);
       }
     } else {
       this.users.delete(uid.toUpperCase());
     }
-  };
+  }
 
   public clear() {
     this.users.clear();
@@ -78,17 +78,19 @@ export class MockClient implements forgapi.IClient {
     if (!user) {
       return Promise.resolve(null);
     }
-    return Promise.resolve(user);
-  };
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(user)));
+  }
 
   public findUsers(): Promise<User[]> {
-    return Promise.resolve(Array.from(this.users.values()));
-  };
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(Array.from(this.users.values()))));
+  }
 
   public searchUsers(opts: SearchUsersOptions): Promise<SearchUser[]> {
-    let users: SearchUser[] = [];
+    const users: SearchUser[] = [];
 
-    for (let user of this.users.values()) {
+    for (const user of this.users.values()) {
       let conds = 0;
       let found = 0;
       if (opts.fullname) {
@@ -107,16 +109,17 @@ export class MockClient implements forgapi.IClient {
         users.push({
           uid: user.uid,
           fullname: user.fullname,
-          role: auth.formatRole('USR', user.uid),
+          role: auth.formatRole(auth.RoleScheme.USR, user.uid),
         });
       }
     }
-    return Promise.resolve(users);
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(users)));
   }
 
   public addGroup(group: Group | Group[]) {
     if (Array.isArray(group)) {
-      for (let g of group) {
+      for (const g of group) {
         this.addGroup(g);
       }
     } else if (group.uid) {
@@ -126,34 +129,36 @@ export class MockClient implements forgapi.IClient {
       }
       this.groups.set(group.uid, group);
     }
-  };
+  }
 
   public removeGroup(uid: string | string[]) {
     if (Array.isArray(uid)) {
-      for (let u of uid) {
+      for (const u of uid) {
         this.removeGroup(u);
       }
     } else {
       this.users.delete(uid.toUpperCase());
     }
-  };
+  }
 
   public findGroup(uid: string): Promise<Group | null> {
     const group = this.groups.get(uid.toUpperCase());
     if (!group) {
       return Promise.resolve(null);
     }
-    return Promise.resolve(group);
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(group)));
   }
 
   public findGroups(): Promise<Group[]> {
-    return Promise.resolve(Array.from(this.groups.values()));
-  };
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(Array.from(this.groups.values()))));
+  }
 
   public searchGroups(opts: SearchGroupsOptions): Promise<SearchGroup[]> {
-    let groups: SearchGroup[] = [];
+    const groups: SearchGroup[] = [];
 
-    for (let group of this.groups.values()) {
+    for (const group of this.groups.values()) {
       let conds = 0;
       let found = 0;
       if (opts.srcname) {
@@ -193,10 +198,11 @@ export class MockClient implements forgapi.IClient {
           fullname: group.fullname,
           source: group.source,
           type: group.type,
-          role: auth.formatRole('GRP', group.uid),
+          role: auth.formatRole(auth.RoleScheme.GRP, group.uid),
         });
       }
     }
-    return Promise.resolve(groups);
+    // Deep copy result to avoid incidental modification
+    return Promise.resolve(JSON.parse(JSON.stringify(groups)));
   }
 }

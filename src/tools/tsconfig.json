@@ -12,6 +12,7 @@
         "noUnusedParameters": false,
         "removeComments": false,
         "preserveConstEnums": true,
+        "skipLibCheck": true,
         "sourceMap": false
     }
 }

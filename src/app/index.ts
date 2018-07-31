@@ -3,35 +3,36 @@
  */
 import fs = require('fs');
 import path = require('path');
+import util = require('util');
 
-import rc = require('rc');
 import bodyparser = require('body-parser');
 import express = require('express');
-import favicon = require('serve-favicon');
+import session = require('express-session');
 import mongoose = require('mongoose');
 import morgan = require('morgan');
-import session = require('express-session');
+import rc = require('rc');
+import favicon = require('serve-favicon');
 
+import auth = require('./shared/auth');
+import forgauth = require('./shared/forg-auth');
+import forgapi = require('./shared/forgapi');
 import handlers = require('./shared/handlers');
 import logging = require('./shared/logging');
 import status = require('./shared/status');
 import tasks = require('./shared/tasks');
-import auth = require('./shared/auth');
-import forgapi = require('./shared/forgapi');
-import forgauth = require('./shared/forg-auth');
 
 import api1 = require('./routes/api1');
-import devices = require('./routes/devices');
-import slots = require('./routes/slots');
-import groups = require('./routes/groups');
 import checklists = require('./routes/checklists');
+import devices = require('./routes/devices');
+import groups = require('./routes/groups');
+import slots = require('./routes/slots');
 
 
 // package metadata
 interface Package {
   name?: {};
   version?: {};
-};
+}
 
 // application configuration
 interface Config {
@@ -50,6 +51,7 @@ interface Config {
   mongo: {
     user?: {};
     pass?: {};
+    host?: {};
     port: {};
     addr: {};
     db: {};
@@ -58,14 +60,14 @@ interface Config {
   cas: {
     cas_url?: {};
     service_url?: {};
-    append_path?: {};
+    service_base_url?: {};
     version?: {};
 };
   forgapi: {
     url?: {};
     agentOptions?: {};
   };
-};
+}
 
 // application roles (consider moving to configuration file)
 const ADMIN_ROLES = [ 'ADM:RUNCHECK' ];
@@ -82,11 +84,11 @@ export let warn = logging.warn;
 export let error = logging.error;
 
 // application lifecycle
-let task = new tasks.StandardTask<express.Application>(doStart, doStop);
+const task = new tasks.StandardTask<express.Application>(doStart, doStop);
 
 // application activity
 let activeCount = 0;
-let activeLimit = 100;
+const activeLimit = 100;
 let activeStopped = Promise.resolve();
 
 function updateActivityStatus(): void {
@@ -95,53 +97,47 @@ function updateActivityStatus(): void {
   } else {
     status.setComponentError('Activity', activeCount + ' > ' + activeLimit);
   }
-};
+}
 
-// read file with path resolution
-function readFile(...pathSegments: string[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    fs.readFile(path.resolve(...pathSegments), (err, data) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(data);
-    });
-  });
-};
+const readFile = util.promisify(fs.readFile);
 
 // read the application name and version
 async function readNameVersion(): Promise<[string | undefined, string | undefined]> {
   // first look for application name and version in the environment
   let name = process.env.NODE_APP_NAME;
   let version = process.env.NODE_APP_VERSION;
-  // second look for application name and verison in packge.json
+  // second look for application name and verison in package.json
   if (!name || !version) {
+    const pkgPath = path.resolve(__dirname, 'version.json');
+    let pkg: Package | undefined;
     try {
-      let data = await readFile(__dirname, '..', 'package.json');
-      let pkg: Package = JSON.parse(data.toString('UTF-8'));
-      if (!name && pkg && pkg.name) {
-        name = String(pkg.name);
-      }
-      if (!version && pkg && pkg.version) {
-        version = String(pkg.version);
-      }
-    } catch (ierr) {
-      // ignore //
+      pkg = JSON.parse(await readFile(pkgPath, 'UTF-8'));
+    } catch (err) {
+      warn('Missing or invalid package metadata: %s: %s', pkgPath, err);
+    }
+    if (!name && pkg && pkg.name) {
+      name = String(pkg.name);
+    } else {
+      name = String(name);
+    }
+    if (!version && pkg && pkg.version) {
+      version = String(pkg.version);
+    } else {
+      version = String(version);
     }
   }
   return [name, version];
-};
+}
 
 // get the application state
 export function getState(): State {
   return task.getState();
-};
+}
 
 // asynchronously start the application
 export function start(): Promise<express.Application> {
   return task.start();
-};
+}
 
 // asynchronously configure the application
 async function doStart(): Promise<express.Application> {
@@ -151,7 +147,7 @@ async function doStart(): Promise<express.Application> {
   info('Application starting');
 
   activeCount = 0;
-  activeStopped = new Promise<void>(function (resolve) {
+  activeStopped = new Promise<void>((resolve) => {
     activeFinished = resolve;
   });
 
@@ -159,7 +155,7 @@ async function doStart(): Promise<express.Application> {
 
   app = express();
 
-  let [name, version] = await readNameVersion();
+  const [name, version] = await readNameVersion();
   app.set('name', name);
   app.set('version', version);
 
@@ -180,9 +176,10 @@ async function doStart(): Promise<express.Application> {
     next();
   });
 
-  let env: {} | undefined = app.get('env');
+  const env: {} | undefined = app.get('env');
+  info('Deployment environment: \'%s\'', env);
 
-  let cfg: Config = {
+  const cfg: Config = {
     app: {
       port: '3000',
       addr: 'localhost',
@@ -210,7 +207,7 @@ async function doStart(): Promise<express.Application> {
   if (name && (typeof name === 'string')) {
     rc(name, cfg);
     if (cfg.configs) {
-      for (let file of cfg.configs) {
+      for (const file of cfg.configs) {
         info('Load configuration: %s', file);
       }
     }
@@ -235,7 +232,10 @@ async function doStart(): Promise<express.Application> {
     }
     mongoUrl += '@';
   }
-  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
+  if (!cfg.mongo.host) {
+    cfg.mongo.host = `${cfg.mongo.addr}:${cfg.mongo.port}`;
+  }
+  mongoUrl +=  `${cfg.mongo.host}/${cfg.mongo.db}`;
 
   mongoose.Promise = global.Promise;
 
@@ -256,7 +256,7 @@ async function doStart(): Promise<express.Application> {
 
   status.setComponentError('MongoDB', 'Never Connected');
   // Remove password from the mongoUrl to avoid logging the password!
-  const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:******@');
+  const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:<password>@');
   info('Mongoose default connection: %s', safeMongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
@@ -273,27 +273,29 @@ async function doStart(): Promise<express.Application> {
   // Need the FORG base URL available to views
   app.locals.forgurl = String(cfg.forgapi.url);
 
-  if (!cfg.cas.cas_url) {
-    throw new Error('CAS base URL not configured');
+  if (env === 'production' || process.env.RUNCHECK_AUTHC_DISABLED !== 'true') {
+    if (!cfg.cas.cas_url) {
+      throw new Error('CAS base URL not configured');
+    }
+    info('CAS base URL: %s', cfg.cas.cas_url);
+
+    if (!cfg.cas.service_base_url) {
+      throw new Error('CAS service base URL not configured');
+    }
+    info('CAS service base URL: %s (service URL: %s)', cfg.cas.service_base_url, cfg.cas.service_url);
+
+    auth.setProvider(new forgauth.ForgCasProvider(forgClient, {
+      casUrl: String(cfg.cas.cas_url),
+      casServiceUrl: String(cfg.cas.service_url),
+      casServiceBaseUrl: String(cfg.cas.service_base_url),
+      casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
+    }));
+    info('CAS authentication provider enabled');
+  } else {
+    // Use this provider for local development that DISABLES authentication!
+    auth.setProvider(new forgauth.DevForgBasicProvider(forgClient, {}));
+    warn('Development authentication provider: Password verification DISABLED!');
   }
-  info('CAS base URL: %s', cfg.cas.cas_url);
-
-  if (!cfg.cas.service_url) {
-    throw new Error('CAS service URL not configured');
-  }
-  info('CAS service URL: %s, (append path: %s)', cfg.cas.service_url, cfg.cas.append_path);
-
-  // const authProvider = new forgauth.ForgCasProvider(forgClient, {
-  //   casUrl: String(cfg.cas.cas_url),
-  //   casServiceUrl: String(cfg.cas.service_url),
-  //   casAppendPath: cfg.cas.append_path === true ? true : false,
-  //   casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
-  // });
-
-  // Use this provider for local development that DISABLES authentication!
-  const authProvider = new forgauth.DevForgBasicProvider(forgClient, {});
-
-  auth.setProvider(authProvider);
 
   // view engine configuration
   app.set('views', path.resolve(__dirname, '..', 'views'));
@@ -311,12 +313,12 @@ async function doStart(): Promise<express.Application> {
     },
   }));
 
-  // Authentication handlers
+  // Authentication handlers (must follow session middleware)
   app.use(auth.getProvider().initialize());
 
   // Request logging configuration (must follow authc middleware)
-  morgan.token('remote-user', function (req) {
-    let username = auth.getUsername(req);
+  morgan.token('remote-user', (req) => {
+    const username = auth.getUsername(req);
     return username || 'anonymous';
   });
 
@@ -350,16 +352,15 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.get('/logout', (req, res) => {
-    authProvider.logout(req);
-    if (typeof (<any> authProvider).getCasLogoutUrl !== 'function') {
-      // If the development provider is being used, then just redirect to index.
-      res.redirect('/');
+    auth.getProvider().logout(req);
+    const provider = auth.getProvider();
+    if (provider instanceof forgauth.ForgCasProvider) {
+      const redirectUrl = provider.getCasLogoutUrl(true);
+      info('Redirect to CAS logout: %s', redirectUrl);
+      res.redirect(redirectUrl);
       return;
     }
-    // TODO: Consider moving this to the provider's logout function.
-    const redirectUrl = (<any> authProvider).getCasLogoutUrl(true);
-    info('Redirect to CAS logout: %s', redirectUrl);
-    res.redirect(redirectUrl);
+    res.redirect(res.locals.basePath || '/');
   });
 
   app.get('/', (req, res) => {
@@ -381,7 +382,7 @@ async function doStart(): Promise<express.Application> {
 
   info('Application started');
   return app;
-};
+}
 
 // asynchronously stop the application
 export function stop(): Promise<void> {
@@ -397,13 +398,6 @@ async function doStop(): Promise<void> {
     await activeStopped;
   }
 
-  try {
-    await status.monitor.stop();
-    info('Status monitor stopped');
-  } catch (err) {
-    warn('Status monitor stop failure: %s', err);
-  }
-
   // disconnect Mongoose (MongoDB)
   try {
     await mongoose.disconnect();
@@ -412,5 +406,12 @@ async function doStop(): Promise<void> {
     warn('Mongoose disconnect failure: %s', err);
   }
 
+  try {
+    await status.monitor.stop();
+    info('Status monitor stopped');
+  } catch (err) {
+    warn('Status monitor stop failure: %s', err);
+  }
+
   info('Application stopped');
-};
+}

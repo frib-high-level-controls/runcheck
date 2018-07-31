@@ -5,8 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as dbg from 'debug';
-import rc = require('rc');
 import mongoose = require('mongoose');
+import rc = require('rc');
 
 import * as history from '../app/shared/history';
 
@@ -20,7 +20,7 @@ import {
 } from '../app/models/checklist';
 
 
-interface HistoryDocument extends history.Document<HistoryDocument> {};
+interface HistoryDocument extends history.Document<HistoryDocument> {}
 
 interface Config {
   configs?: string[];
@@ -37,7 +37,7 @@ interface Config {
   user?: {};
   dryrun?: {};
   _?: Array<{}>;
-};
+}
 
 mongoose.Promise = global.Promise;
 
@@ -48,7 +48,7 @@ const error = console.error;
 
 async function main() {
 
-  let cfg: Config = {
+  const cfg: Config = {
     mongo: {
       port: '27017',
       addr: 'localhost',
@@ -62,7 +62,7 @@ async function main() {
 
   rc('import-file', cfg);
   if (cfg.configs) {
-    for (let file of cfg.configs) {
+    for (const file of cfg.configs) {
       info('Load configuration: %s', file);
     }
   }
@@ -88,11 +88,11 @@ async function main() {
     return;
   }
 
-  let models = new Map<string, mongoose.Model<mongoose.Document>>();
+  const models = new Map<string, mongoose.Model<mongoose.Document>>();
 
-  for (let filePath of cfg._) {
-    let absFilePath = path.resolve(String(filePath));
-    let name = path.basename(absFilePath, '.json');
+  for (const filePath of cfg._) {
+    const absFilePath = path.resolve(String(filePath));
+    const name = path.basename(absFilePath, '.json');
     if (name.toUpperCase() === Slot.collection.name.toUpperCase()) {
       models.set(absFilePath, Slot);
     } else if (name.toUpperCase() === Device.collection.name.toUpperCase()) {
@@ -109,15 +109,15 @@ async function main() {
 
   let valid = true;
 
-  let documents = new Map<string, mongoose.Document[]>();
+  const documents = new Map<string, mongoose.Document[]>();
 
-  for (let [filePath, Model] of models.entries()) {
+  for (const [filePath, Model] of models.entries()) {
     let docs = documents.get(filePath);
     if (!docs) {
       documents.set(filePath, docs = []);
     }
 
-    let data = await new Promise<Array<{}>>((resolve, reject) => {
+    const data = await new Promise<Array<{}>>((resolve, reject) => {
       debug('Read and parse file: %s', filePath);
       fs.readFile(filePath, 'UTF-8', (err, json) => {
         if (err) {
@@ -140,9 +140,9 @@ async function main() {
     });
     debug('Total data records read: %s', data.length);
 
-    for (let d of data) {
+    for (const d of data) {
       info('Create %s and validate: %s', Model.modelName, JSON.stringify(d));
-      let doc = new Model(d);
+      const doc = new Model(d);
       try {
         await doc.validate();
       } catch (err) {
@@ -177,11 +177,11 @@ async function main() {
 
   const updatedBy = cfg.user ? String(cfg.user) : 'system';
 
-  for (let [_, docs] of documents.entries()) {
-    for (let doc of docs) {
+  for (const [, docs] of documents.entries()) {
+    for (const doc of docs) {
       try {
-        if (typeof (<HistoryDocument> doc).saveWithHistory === 'function') {
-          await (<HistoryDocument> doc).saveWithHistory(updatedBy);
+        if (typeof (doc as HistoryDocument).saveWithHistory === 'function') {
+          await (doc as HistoryDocument).saveWithHistory(updatedBy);
         } else {
           await doc.save();
         }
@@ -192,6 +192,6 @@ async function main() {
   }
 
   await mongoose.disconnect();
-};
+}
 
 main().catch(error);

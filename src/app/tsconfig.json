@@ -2,8 +2,6 @@
     "compilerOptions": {
         "module": "commonjs",
         "target": "es2016",
-        "allowJs": true,
-        "checkJs": false,
         "alwaysStrict": true,
         "noImplicitAny": true,
         "noImplicitThis": true,
@@ -12,6 +10,7 @@
         "noUnusedParameters": false,
         "removeComments": false,
         "preserveConstEnums": true,
+        "skipLibCheck": true,
         "sourceMap": false
     }
 }

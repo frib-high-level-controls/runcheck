@@ -34,6 +34,8 @@ interface RouterOptions {
 
 const debug = dbg('runcheck:devices');
 
+const GRP = auth.RoleScheme.GRP;
+
 let adminRoles: string[] = [];
 
 export function getAdminRoles(): string[] {
@@ -64,7 +66,7 @@ export function getRouter(opts?: RouterOptions): express.Router {
  * @param slot Model
  */
 function getPermissions(req: express.Request, device: Device) {
-  const ownerRole = auth.formatRole('GRP', device.dept, 'LEADER');
+  const ownerRole = auth.formatRole(GRP, device.dept, 'LEADER');
   const assignRoles = [ ownerRole ].concat(adminRoles);
   const assign = auth.hasAnyRole(req, assignRoles);
   if (debug.enabled) {

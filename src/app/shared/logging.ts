@@ -5,54 +5,88 @@ import util = require('util');
 
 export type Logger = (message?: any, ...optionalParams: any[]) => void;
 
+export interface ILogger extends Logger {
+  isEnabled(): boolean;
+}
 
-export function getLog(): Logger {
-  return log;
+function NewILogger(logger: Logger, isEnabled: () => boolean): ILogger {
+  // Cast required to convert regular function to "hybrid" function with method(s)!
+  // (see http://www.typescriptlang.org/docs/handbook/interfaces.html#hybrid-types)
+  const ilogger = ((message?: any, ...optionalParams: any[]) => {
+    logger(message, ...optionalParams);
+  }) as ILogger;
+
+  ilogger.isEnabled = isEnabled;
+
+  return ilogger;
+}
+
+
+export function getInfo(): Logger | null {
+  return infoLogger;
+}
+
+export function setInfo(logger: Logger | null) {
+  infoLogger = logger;
+}
+
+let infoLogger: Logger | null = (message?: any, ...optionalParams: any[]): void => {
+  console.log('INFO: ' + util.format(message, ...optionalParams)); // tslint:disable-line:no-console
 };
 
-export function setLog(logger: Logger) {
-  log = logger;
+export const info = NewILogger((message?: any, ...optionalParams: any[]) => {
+  if (typeof infoLogger === 'function') {
+    infoLogger(message, ...optionalParams);
+  }
+}, () => (typeof infoLogger === 'function'));
+
+
+// Log is simply a synonym for Info
+
+export function getLog(): Logger | null {
+  return getInfo();
+}
+
+export function setLog(logger: Logger | null) {
+  setInfo(logger);
+}
+
+export const log = info;
+
+
+export function getWarn(): Logger | null {
+  return warnLogger;
+}
+
+export function setWarn(logger: Logger | null) {
+  warnLogger = logger;
+}
+
+let warnLogger: Logger | null = (message?: any, ...optionalParams: any[]): void => {
+  console.warn('WARN: ' + util.format(message, ...optionalParams)); // tslint:disable-line:no-console
 };
 
-export let log: Logger = (message?: any, ...optionalParams: any[]): void => {
-  console.log('INFO: ' + util.format(message, ...optionalParams)); // tslint:disable-line
+export const warn = NewILogger((message?: any, ...optionalParams: any[]) => {
+  if (typeof warnLogger === 'function') {
+    warnLogger(message, ...optionalParams);
+  }
+}, () => (typeof warnLogger === 'function'));
+
+
+export function getError(): Logger | null {
+  return errorLogger;
+}
+
+export function setError(logger: Logger | null) {
+  errorLogger = logger;
+}
+
+let errorLogger: Logger | null = (message?: any, ...optionalParams: any[]): void => {
+  console.error('ERROR: ' + util.format(message, ...optionalParams)); // tslint:disable-line:no-console
 };
 
-
-export function getInfo(): Logger {
-  return info;
-};
-
-export function setInfo(logger: Logger) {
-  info = logger;
-};
-
-export let info: Logger = (message?: any, ...optionalParams: any[]): void => {
-  console.info('INFO: ' + util.format(message, ...optionalParams)); // tslint:disable-line
-};
-
-
-export function getWarn(): Logger {
-  return warn;
-};
-
-export function setWarn(logger: Logger) {
-  warn = logger;
-};
-
-export let warn: Logger = (message?: any, ...optionalParams: any[]): void => {
-  console.warn('WARN: ' + util.format(message, ...optionalParams));
-};
-
-
-export function getError(): Logger {
-  return error;
-};
-
-export function setError(logger: Logger) {
-  error = logger;
-};
-
-export let error: Logger = (message?: any, ...optionalParams: any[]): void => {
-  console.error('ERROR: ' + util.format(message, ...optionalParams));
-};
+export let error = NewILogger((message?: any, ...optionalParams: any[]) => {
+  if (typeof errorLogger === 'function') {
+    errorLogger(message, ...optionalParams);
+  }
+}, () => (typeof errorLogger === 'function'));

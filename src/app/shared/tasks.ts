@@ -5,8 +5,12 @@ import { EventEmitter } from 'events';
 
 import * as dbg from 'debug';
 
+import * as logging from './logging';
+import * as promises from './promises';
+
 const debug  = dbg('webapp:tasks');
 
+const warn = logging.warn;
 
 export type Worker<T> = () => Promise<T> | T;
 
@@ -18,7 +22,7 @@ export abstract class AbstractStandardTask<T> extends EventEmitter {
 
   public getState(): State {
     return this.state;
-  };
+  }
 
   public start(): Promise<T> {
     debug('Initiate task start');
@@ -44,7 +48,7 @@ export abstract class AbstractStandardTask<T> extends EventEmitter {
         throw err;
       });
     });
-  };
+  }
 
   public stop(): Promise<void> {
     debug('Initiate task stop');
@@ -66,7 +70,7 @@ export abstract class AbstractStandardTask<T> extends EventEmitter {
       this.setState('STOPPED');
       throw err;
     });
-  };
+  }
 
   protected setState(state: State) {
     if (this.state !== state) {
@@ -74,12 +78,12 @@ export abstract class AbstractStandardTask<T> extends EventEmitter {
       this.state = state;
       this.emit(state.toLowerCase());
     }
-  };
+  }
 
   protected abstract doStart(): Promise<T>;
 
   protected abstract doStop(): Promise<void>;
-};
+}
 
 
 export class StandardTask<T> extends AbstractStandardTask<T> {
@@ -91,7 +95,7 @@ export class StandardTask<T> extends AbstractStandardTask<T> {
     super();
     this.starter = starter;
     this.stopper = stopper;
-  };
+  }
 
   protected doStart(): Promise<T> {
     try {
@@ -99,7 +103,7 @@ export class StandardTask<T> extends AbstractStandardTask<T> {
     } catch (err) {
       return Promise.reject(err);
     }
-  };
+  }
 
   protected doStop(): Promise<void> {
     try {
@@ -107,22 +111,59 @@ export class StandardTask<T> extends AbstractStandardTask<T> {
     } catch (err) {
       return Promise.reject(err);
     }
-  };
-};
+  }
+}
 
 
-export abstract class AbstractIntervalTask extends AbstractStandardTask<void> {
+export abstract class AbstractRepeatTask extends AbstractStandardTask<void> {
+
+  protected executing = Promise.resolve();
+
+  public execute(): Promise<void> {
+    return this.isExecuting().then((isExecuting) => {
+      if (isExecuting) {
+        debug('Repeat task is (already) executing');
+        return this.executing;
+      }
+      const now = process.hrtime();
+      this.executing = Promise.resolve().then(() => {
+        debug('Repeat task executing');
+        this.emit('executing');
+        return this.doExecute();
+      })
+      .then(() => {
+        debug('Repeat task executed');
+        this.emit('executed', process.hrtime(now)[0]);
+      })
+      .catch((err) => {
+        debug('Repeat task executed: %s', err);
+        this.emit('error', err);
+        throw err;
+      });
+      return this.executing;
+    });
+  }
+
+  protected isExecuting(): Promise<boolean> {
+    return promises.isPending(this.executing);
+  }
+
+  protected abstract doExecute(): Promise<void>;
+
+  protected abstract doInterrupt(): Promise<void>;
+}
+
+
+export abstract class AbstractIntervalTask extends AbstractRepeatTask {
 
   protected delay: number;
 
   protected timer: NodeJS.Timer;
 
-  protected executing = Promise.resolve();
-
   constructor(delay: number) {
     super();
     this.delay = delay;
-  };
+  }
 
   public start(): Promise<void> {
     return super.start().then(() => {
@@ -132,48 +173,29 @@ export abstract class AbstractIntervalTask extends AbstractStandardTask<void> {
   }
 
   protected doStart(): Promise<void> {
+    debug('Set interval timer: %ss', this.delay);
     this.timer = setInterval(() => {
-       this.execute();
+       debug('Execute interval task now');
+       this.execute().catch((err) => {
+          warn('Error executing interval task: %s', err);
+       });
     }, this.delay);
     return Promise.resolve();
-  };
+  }
 
   protected doStop(): Promise<void> {
     if (this.timer) {
       debug('Clear interval timer');
       clearInterval(this.timer);
     }
-    return Promise.resolve().then(() => {
-      return this.doInterrupt();
-    })
-    .then(() => {
-      return this.executing;
+    return this.isExecuting().then((isExecuting) => {
+      if (!isExecuting) {
+        return this.executing;
+      }
+      return this.doInterrupt().then(() => this.executing);
     });
-  };
-
-  protected execute(): Promise<void> {
-    let now = process.hrtime();
-    this.executing = Promise.resolve().then(() => {
-      debug('Interval task executing');
-      this.emit('executing');
-      return this.doExecute();
-    })
-    .then(() => {
-      debug('Interval task executed');
-      this.emit('executed', process.hrtime(now)[0]);
-    })
-    .catch((err) => {
-      debug('Interval task executed: %s', err);
-      this.emit('executed', process.hrtime(now)[0]);
-      throw err;
-    });
-    return this.executing;
-  };
-
-  protected abstract doExecute(): Promise<void>;
-
-  protected abstract doInterrupt(): Promise<void>;
-};
+  }
+}
 
 
 export class IntervalTask extends AbstractIntervalTask {
@@ -185,7 +207,7 @@ export class IntervalTask extends AbstractIntervalTask {
     super(delay);
     this.executer = executer;
     this.interrupter = interrupter;
-  };
+  }
 
   protected doExecute(): Promise<void> {
     try {
@@ -193,7 +215,7 @@ export class IntervalTask extends AbstractIntervalTask {
     } catch (err) {
       return Promise.reject(err);
     }
-  };
+  }
 
   protected doInterrupt(): Promise<void> {
     if (!this.interrupter) {
@@ -205,4 +227,4 @@ export class IntervalTask extends AbstractIntervalTask {
       return Promise.reject(err);
     }
   }
-};
+}
