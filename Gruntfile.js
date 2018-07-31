@@ -2,17 +2,6 @@ module.exports = function(grunt) {
   'use strict';
 
   grunt.initConfig({
-    eslint: {
-      target: ['gruntfile.js', 'lib/**/*.js', 'routes/**/*.js', 'public/javascripts/*.js', 'test/**/*.js']
-    },
-    mochaTest: {
-      test: {
-        options: {
-          reporter: 'spec'
-        },
-        src: ['test/**/*.js']
-      }
-    },
     shell: {
       options: {
         stderr: false
