@@ -41,7 +41,7 @@
       updateID(): string {
         return 'update' + this.index;
       },
-      updateLink(): String {
+      updateLink(): string {
         return '#' + this.updateID;
       },
       updateDate(): string {

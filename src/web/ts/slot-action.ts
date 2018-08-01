@@ -1,7 +1,7 @@
 /**
  * Support user interaction on Device details view.
  */
-import axios from 'axios';
+
 import Vue from 'vue';
 
 // For now JQuery is included globally,
@@ -9,10 +9,9 @@ import Vue from 'vue';
 // import * as $ from 'jquery';
 
 import ChecklistUtil from './checklistutil-shim';
+import History from './components/History.vue';
 import WebUtil from './webutil-shim';
 
-import HistoryPanel from './components/HistoryPanel.vue';
-import LoadingPanel from './components/LoadingPanel.vue';
 
 
 $(() => {
@@ -255,178 +254,17 @@ $(() => {
     }
   }
 
-  // const PathItem = Vue.extend({
-  //   template: `      
-  //     <li class="list-group-item">
-  //       <strong>{{pathData.name | humanize}}
-  //         <div class="text-danger bg-danger pull-right">
-  //           {{pathData.value}}
-  //         </div>
-  //       </strong>
-  //     </li>`,
-  //   props: {
-  //     pathData: {
-  //       type: Object as () => webapi.Path,
-  //       required: true,
-  //     },
-  //   },
-  //   filters: {
-  //     humanize: function(value: string) {
-  //       let newVal = '';
-  //       switch (value.toLowerCase()) {
-  //         case 'desc':
-  //           newVal =  'Description';
-  //           break;
-  //         case 'carelevel':
-  //           newVal =  'Level of Care';
-  //           break;
-  //         case 'safetylevel':
-  //           newVal = 'Level of Safety';
-  //           break;
-  //         case 'drr':
-  //         case 'arr':
-  //           newVal = value.toUpperCase();
-  //           break;
-  //         default:
-  //           return value
-  //           // decamelize
-  //           .replace(/([A-Z])/g, ' $1')
-  //           .replace(/^./, (str) => {return str.toUpperCase(); })
-  //           // capitalize ID
-  //           .replace(/(Id)/g, (l) => l.toUpperCase());
-  //       }
-  //       return newVal;
-  //     },
-  //   },
-  // });
-
-  // const UpdateItem = Vue.extend({
-  //   template: `
-  //   <div class="panel panel-default">
-  //     <div class="panel-heading">
-  //       <a class="text-info collapsed" role="button" data-toggle="collapse" 
-  //       :href="updateLink" aria-expanded="false">
-  //       {{updateDate}}
-  //         <div class="pull-right">{{updateData.by}}</div>
-  //       </a> 
-  //     </div>
-  //     <div class="panel-collapse collapse" :id="updateID" role="tabpanel" 
-  //     aria-expanded="false" style="height: 0px;">
-  //       <ol class="list-group">
-  //         <path-item v-for="(path, index) in updateData.paths" :path-data=path :key=index></path-item>
-  //       </ol>
-  //     </div>
-  //   </div>`,
-  //   props: {
-  //     updateData: {
-  //       type: Object as () => webapi.Update,
-  //       required: true,
-  //     },
-  //     index: {
-  //       type: Number,
-  //       required: true,
-  //     },
-  //   },
-  //   components: {
-  //     'path-item': PathItem,
-  //   },
-  //   computed: {
-  //     updateID(): string {
-  //       return 'update' + this.index;
-  //     },
-  //     updateLink(): String {
-  //       return '#' + this.updateID;
-  //     },
-  //     updateDate(): string {
-  //       return moment(new Date(this.updateData.at))
-  //         .format('MMM D, YYYY [at] h:m:s A');
-  //     },
-  //   },
-  // });
-
-  // const LoadingPanel = Vue.extend({
-  //   template: `
-  //     <div class="panel panel-default">
-  //       <div class="panel-body">
-  //         <div class="text-center" style="font-size:24px;">
-  //           <span class="fa fa-spinner fa-spin"></span>
-  //         </div>
-  //       </div>
-  //     </div> 
-  //   `,
-  // });
-
-  // const HistoryComponent = Vue.extend({
-  //   template: `
-  //     <div class="panel-group" :class="{scrollable: updates.length > 12}">
-  //       <h3 v-if="errorState">Error Loading history</h3>
-  //       <update-item
-  //         v-else 
-  //         v-for="(update, index) in updates" 
-  //         :key="index" 
-  //         :index="index" 
-  //         :update-data="update">
-  //       </update-item>
-  //     </div>
-  //   `,
-  //   props: {
-  //     updates: {
-  //       type: Array as () => webapi.Update[],
-  //     },
-  //     errorState: {
-  //       type: Boolean,
-  //     },
-  //   },
-  //   components: {
-  //     'update-item': UpdateItem,
-  //   },
-  // });
-
-  const GET_URI = `${basePath}/slots/${slot.id}/history`;
   const vm = new Vue({
     template: `
       <div>
-        <h2>History</h2>
-        <component :is="component" v-bind="childProps"></component>
+        <history-component :GET_URI = "GET_HISTORY_URI"></history-component>
       </div>
     `,
     data: {
-      updates: Array as () => webapi.Update[],
-      loading: true,
-      errorState: false,
-    },
-    computed: {
-      component: function() {
-        if (this.loading) {
-          return 'loading-panel';
-        } else {
-          return 'history-component';
-        }
-      },
-      childProps: function() {
-        if (!this.loading) {
-          return {
-            updates: this.updates,
-            errorState: this.errorState,
-          };
-        }
-      },
+      GET_HISTORY_URI: `${basePath}/slots/${slot.id}/history`,
     },
     components: {
-      'loading-panel': LoadingPanel,
-      'history-component': HistoryPanel,
-    },
-    mounted () {
-      axios
-        .get(GET_URI)
-        .then((response) => {
-          this.updates = response.data.data;
-        })
-        .catch((error) => {
-          this.errorState = true;
-        })
-        // basically a finally
-        .then(() => this.loading = false);
+      'history-component': History,
     },
   });
 
