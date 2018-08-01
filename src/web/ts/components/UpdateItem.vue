@@ -22,7 +22,7 @@
   import Vue from 'vue';
 
   import PathItem from './PathItem.vue';
-  
+
   export default Vue.extend({
     props: {
       updateData: {

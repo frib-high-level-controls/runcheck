@@ -1,9 +1,19 @@
 /**
  * Support user interaction on Device details view.
  */
+import axios from 'axios';
+import Vue from 'vue';
 
-import LoadingPanel from './components/LoadingPanel.vue';
+// For now JQuery is included globally,
+// in the future it may need to be imported.
+// import * as $ from 'jquery';
+
+import ChecklistUtil from './checklistutil-shim';
+import WebUtil from './webutil-shim';
+
 import HistoryPanel from './components/HistoryPanel.vue';
+import LoadingPanel from './components/LoadingPanel.vue';
+
 
 $(() => {
 
