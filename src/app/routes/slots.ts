@@ -217,7 +217,7 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
-  let perms = getPermissions(req, slot);
+  const perms = getPermissions(req, slot);
 
   const apiSlot: webapi.Slot = {
     id: models.ObjectId(slot._id).toHexString(),
