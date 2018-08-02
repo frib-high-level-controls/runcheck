@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
-        "module": "none",
+        "module": "es2015",
+        "moduleResolution": "node",
         "target": "es5",
         "alwaysStrict": true,
         "noImplicitAny": true,
@@ -10,6 +11,7 @@
         "noUnusedParameters": false,
         "removeComments": false,
         "preserveConstEnums": true,
+        "skipLibCheck": true,
         "sourceMap": false,
         "lib": [ "dom", "es5", "scripthost", "es2015.promise" ]
     }

@@ -531,3 +531,8 @@ class ChecklistUtil {
     this.checklist = checklist;
   }
 };
+
+// Needed for Webpack when included using the ProvidePlugin
+if (typeof module === 'object' && typeof module.exports === 'object') {
+  module.exports = ChecklistUtil;
+}

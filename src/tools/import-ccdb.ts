@@ -2,8 +2,8 @@
  * Commend to import data from CCDB database (mysql) and load to MongoDB
  */
 /* tslint:disable:max-line-length */
-import stream = require('stream');
 import readline = require('readline');
+import stream = require('stream');
 
 import dbg = require('debug');
 import mongoose = require('mongoose');
@@ -68,7 +68,7 @@ interface Config {
   processes?: {[key: string]: {} };
   subjects?: Array<{[key: string]: {}}>;
   safetyLevels?: {[key: string]: {} };
-};
+}
 
 
 const debug = dbg('import-ccdb');
@@ -82,7 +82,7 @@ mongoose.Promise = global.Promise;
 // Partially wrap the mysql library to use promises.
 function mysql_createConnection(options: any) {
 
-  let conn = mysql.createConnection(options);
+  const conn = mysql.createConnection(options);
 
   function connect() {
     return new Promise((resolve, reject) => {
@@ -98,7 +98,7 @@ function mysql_createConnection(options: any) {
 
   function query(sqlString: string, values: string[]) {
     return new Promise((resolve, reject) => {
-      let cb = (err: mysql.MysqlError | null, results?: any, fields?: mysql.FieldInfo[]) => {
+      const cb = (err: mysql.MysqlError | null, results?: any, fields?: mysql.FieldInfo[]) => {
         if (err) {
           reject(err);
           return;
@@ -130,7 +130,7 @@ function mysql_createConnection(options: any) {
     query: query,
     end: end,
   };
-};
+}
 
 
 async function mongoose_connect(cfg: Config): Promise<void> {
@@ -159,14 +159,14 @@ async function mongoose_connect(cfg: Config): Promise<void> {
   // });
 
   return mongoose.connect(mongoUrl, cfg.mongo.options);
-};
+}
 
 
 function mongoose_disconnect(): Promise<void> {
   return new Promise((resolve, reject) => {
     mongoose.disconnect().then(resolve, reject);
   });
-};
+}
 
 
 // Example SEDS structure:
@@ -185,7 +185,7 @@ function parseSEDS(seds: string) {
   if (!seds) {
     return;
   }
-  let data = JSON.parse(seds);
+  const data = JSON.parse(seds);
   if (!data.meta) {
     throw new Error('SEDS data missing "meta" block');
   }
@@ -207,11 +207,11 @@ function parseSEDS(seds: string) {
   }
 
   throw new Error('SEDS data unsupported type: ' + data.meta.type);
-};
+}
 
 async function main() {
 
-  let cfg: Config = {
+  const cfg: Config = {
     mongo: {
       port: '27017',
       addr: 'localhost',
@@ -226,7 +226,7 @@ async function main() {
 
   rc('import-ccdb', cfg);
   if (cfg.configs) {
-    for (let file of cfg.configs) {
+    for (const file of cfg.configs) {
       info('Load configuration: %s', file);
     }
   }
@@ -267,7 +267,7 @@ async function main() {
     });
   }
 
-  let password = await new Promise((resolve) => {
+  const password = await new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: new stream.Writable({
@@ -289,7 +289,7 @@ async function main() {
 
   info('Connecting to CCDB: mysql://%s@%s/%s', cfg.user, cfg.host, cfg.database);
 
-  let connection = mysql_createConnection({
+  const connection = mysql_createConnection({
     host     : cfg.host,
     user     : cfg.user,
     password : password,
@@ -326,7 +326,7 @@ async function main() {
 
   // Import Device data
 
-  let devices: { [key: string]: Device } = {};
+  const devices: { [key: string]: Device } = {};
 
   // mysql> desc device;
   // +----------------+--------------+------+-----+---------+-------+
@@ -361,8 +361,8 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let device = new Device();
+  for (const row of rows) {
+    const device = new Device();
     info('Importing device: %s (%s)', row.serial_number, row.description);
     device.name = row.serial_number;
     device.desc = row.description;
@@ -401,14 +401,14 @@ async function main() {
       return;
     }
 
-    for (let prop of props) {
+    for (const prop of props) {
       if (prop.name === 'Alias') {
         device.desc = parseSEDS(prop.prop_value);
         continue;
       }
 
       if (prop.name === 'DepartmentManager') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (cfg.deptmgrs && cfg.deptmgrs[value]) {
           device.dept = String(cfg.deptmgrs[value]);
         }
@@ -416,7 +416,7 @@ async function main() {
       }
 
       if (prop.name === 'AssociatedDepartment') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (cfg.ascdepts && cfg.ascdepts[value]) {
           device.dept = String(cfg.ascdepts[value]);
         }
@@ -439,7 +439,7 @@ async function main() {
 
   // Import device data
 
-  let slots: { [key: string]: Slot } = {};
+  const slots: { [key: string]: Slot } = {};
 
   // mysql> desc slot;
   // +-----------------+--------------+------+-----+---------+-------+
@@ -476,22 +476,22 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
+  for (const row of rows) {
     if (row.type === '_GRP' || row.type === '_ROOT') {
       info('Skipping slot: %s', row.name);
       continue;
     }
 
     info('Importing slot: %s', row.name);
-    let slot = new Slot();
+    const slot = new Slot();
     slot.name = row.name;
     slot.desc = row.description;
     slot.deviceType = row.type;
 
     // Use an alternate safety level from configuration
     if (cfg.safetyLevels && cfg.safetyLevels[row.name]) {
-      let rawSafetyLevel = cfg.safetyLevels[row.name];
-      let altSafetyLevel = SAFETY_LEVELS.reduce((prev, value) => {
+      const rawSafetyLevel = cfg.safetyLevels[row.name];
+      const altSafetyLevel = SAFETY_LEVELS.reduce((prev, value) => {
         return (rawSafetyLevel === value) ? value : prev;
       }, undefined);
       if (!altSafetyLevel) {
@@ -521,10 +521,10 @@ async function main() {
       return;
     }
 
-    for (let prop of props) {
+    for (const prop of props) {
 
       if (prop.name === 'AreaManager') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (value) {
           if (cfg.areamgrs && cfg.areamgrs[value]) {
             slot.area = String(cfg.areamgrs[value]);
@@ -537,7 +537,7 @@ async function main() {
       }
 
       if (prop.name === 'AssociatedArea') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (value) {
           if (cfg.ascareas && cfg.ascareas[value]) {
             slot.area = String(cfg.ascareas[value]);
@@ -554,7 +554,7 @@ async function main() {
       }
 
       if (prop.name === 'AssociatedDRR') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (value) {
           slot.drr = String(value);
         } else {
@@ -565,7 +565,7 @@ async function main() {
       }
 
       if (prop.name === 'AssociatedARR') {
-        let value = parseSEDS(prop.prop_value);
+        const value = parseSEDS(prop.prop_value);
         if (value) {
           slot.arr = String(value);
         } else {
@@ -604,7 +604,7 @@ async function main() {
   // | owner       | bigint(20)   | YES  | MUL | NULL    |       |
   // +-------------+--------------+------+-----+---------+-------+
 
-  let groups: { [key: string]: Group | undefined } = {};
+  const groups: { [key: string]: Group | undefined } = {};
 
   try {
     rows = await connection.query(
@@ -620,15 +620,16 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
+  for (const row of rows) {
     info('Importing slot group: %s', row.name);
-    let group = new Group(<IGroup> {
+    const doc: IGroup = {
       name: row.name,
       desc: row.description,
       // Temporary value to pass validation
       owner: 'UNKNOWN',
       memberType: Slot.modelName,
-    });
+    };
+    const group = new Group(doc);
 
     try {
       await group.validate();
@@ -657,15 +658,15 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let group = groups[row.slot_group_name];
+  for (const row of rows) {
+    const group = groups[row.slot_group_name];
     if (!group) {
       error('Group name found with name: %s', row.slot_group_name);
       connection.end();
       return;
     }
 
-    let slot = slots[row.slot_name];
+    const slot = slots[row.slot_name];
     if (!slot) {
       error('Slot name found with name: %s', row.slot_name);
       connection.end();
@@ -822,7 +823,7 @@ async function main() {
   // +--------------+--------------+------+-----+---------+-------+
 
 
-  let checklists: {[key: string]: Checklist} = {};
+  const checklists: {[key: string]: Checklist} = {};
 
   try {
     rows = await connection.query(
@@ -840,15 +841,15 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let device = devices[row.serial_number];
+  for (const row of rows) {
+    const device = devices[row.serial_number];
     if (!device) {
       error('Device not found for checklist: %s', row.serial_number);
       connection.end();
       return;
     }
 
-    let doc: IChecklist = {
+    const doc: IChecklist = {
       targetId: device._id,
       targetType: Device.modelName,
       checklistType: getDeviceChecklistType(),
@@ -858,7 +859,7 @@ async function main() {
     };
 
     info('Import Checklist for Device: %s', device.name);
-    let cl = new Checklist(doc);
+    const cl = new Checklist(doc);
 
     device.checklistId = cl._id;
 
@@ -890,15 +891,15 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let slot = slots[row.name];
+  for (const row of rows) {
+    const slot = slots[row.name];
     if (!slot) {
       error('Slot not found for checklist: %s', row.name);
       connection.end();
       return;
     }
 
-    let doc: IChecklist = {
+    const doc: IChecklist = {
       targetId: slot._id,
       targetType: Slot.modelName,
       checklistType: getSlotChecklistType(slot.safetyLevel),
@@ -908,7 +909,7 @@ async function main() {
     };
 
     info('Import Checklist for Slot: %s', slot.name);
-    let cl = new Checklist(doc);
+    const cl = new Checklist(doc);
 
     slot.checklistId = cl._id;
 
@@ -940,15 +941,15 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let group = groups[row.name];
+  for (const row of rows) {
+    const group = groups[row.name];
     if (!group) {
       error('Group not found for checklist: %s', row.name);
       connection.end();
       return;
     }
 
-    let doc: IChecklist = {
+    const doc: IChecklist = {
       targetId: group._id,
       targetType: Group.modelName,
       checklistType: getSlotChecklistType(group.safetyLevel),
@@ -958,7 +959,7 @@ async function main() {
     };
 
     info('Import Checklist for Group: %s', group.name);
-    let cl = new Checklist(doc);
+    const cl = new Checklist(doc);
 
     group.checklistId = cl._id;
 
@@ -974,7 +975,7 @@ async function main() {
     checklists[row.assignment_id] = cl;
   }
 
-  let authUsers: {[key: string]: string | undefined} = {};
+  const authUsers: {[key: string]: string | undefined} = {};
 
   try {
     rows = await connection.query(
@@ -990,13 +991,13 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
+  for (const row of rows) {
     debug('Auth User: %s: %s', row.id, row.user_id);
     authUsers[row.id] = row.user_id;
   }
 
 
-  let clStatusOptions: {[key: string]: string | undefined} = {};
+  const clStatusOptions: {[key: string]: string | undefined} = {};
 
   try {
     rows = await connection.query(
@@ -1012,21 +1013,21 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
+  for (const row of rows) {
     debug('CL Status Option: %s: %s', row.statusOptionId, row.name);
     clStatusOptions[row.statusOptionId] = row.name;
   }
 
 
-  let configs: ChecklistConfig[] = [];
-  let statuses: ChecklistStatus[] = [];
+  const configs: ChecklistConfig[] = [];
+  const statuses: ChecklistStatus[] = [];
 
-  for (let clAssignmentId in checklists) {
+  for (const clAssignmentId in checklists) {
     if (!checklists.hasOwnProperty(clAssignmentId)) {
       continue;
     }
 
-    let cl = checklists[clAssignmentId];
+    const cl = checklists[clAssignmentId];
 
     try {
       rows = await connection.query(
@@ -1045,7 +1046,7 @@ async function main() {
     }
     debug('Rows: %s', rows.length);
 
-    for (let row of rows) {
+    for (const row of rows) {
       let subjectName: string | undefined;
       if (cfg.processes && cfg.processes[row.process]) {
         subjectName = String(cfg.processes[row.process]);
@@ -1058,11 +1059,11 @@ async function main() {
       let config: ChecklistConfig | undefined;
       let status: ChecklistStatus | undefined;
 
-      let assignedUserId = authUsers[row.assigned_sme];
+      const assignedUserId = authUsers[row.assigned_sme];
       debug('CL Assigned SME: %s, for process: %s', assignedUserId || null, row.process);
       if (assignedUserId) {
         // Process has Assigned SME
-        let doc: IChecklistConfig = {
+        const doc: IChecklistConfig = {
           checklistId: cl._id,
           subjectName: subjectName,
           assignees: [ `USR:${assignedUserId.toUpperCase()}` ],
@@ -1076,7 +1077,7 @@ async function main() {
       if (!statusValue) {
         // Process is Disabled (N/A)
         if (!config) {
-          let doc: IChecklistConfig = {
+          const doc: IChecklistConfig = {
             checklistId: cl._id,
             subjectName: subjectName,
             required: false,
@@ -1098,7 +1099,7 @@ async function main() {
           warn('WARN: Checklist Status YC missing comment');
         }
 
-        let doc: IChecklistStatus = {
+        const doc: IChecklistStatus = {
           checklistId: cl._id,
           subjectName: subjectName,
           value: statusValue,
@@ -1125,11 +1126,11 @@ async function main() {
     }
   }
 
-  let subjects: ChecklistSubject[] = [];
+  const subjects: ChecklistSubject[] = [];
 
   if (Array.isArray(cfg.subjects)) {
-    for (let doc of cfg.subjects) {
-      let subject = new ChecklistSubject(doc);
+    for (const doc of cfg.subjects) {
+      const subject = new ChecklistSubject(doc);
 
       try {
         await subject.validate();
@@ -1142,11 +1143,11 @@ async function main() {
       subjects.push(subject);
     }
   } else {
-    console.warn('WARN: No default checklist subjects specified!');
+    warn('WARN: No default checklist subjects specified!');
   }
 
   // Compute checklist summary
-  for (let id in checklists) {
+  for (const id in checklists) {
     if (checklists.hasOwnProperty(id)) {
       isChecklistApproved(checklists[id], subjects, configs, statuses, true);
       info('Checklist summary: %s, Approved: %s, Checked: %s, Total: %s',
@@ -1172,7 +1173,7 @@ async function main() {
   // | slot           | bigint(20)   | YES  | MUL | NULL    |       |
   // +----------------+--------------+------+-----+---------+-------+
 
-  let installs: {[key: string]: Install | undefined} = {};
+  const installs: {[key: string]: Install | undefined} = {};
 
   try {
     rows = await connection.query(
@@ -1190,15 +1191,15 @@ async function main() {
     return;
   }
 
-  for (let row of rows) {
-    let slot = slots[row.name];
+  for (const row of rows) {
+    const slot = slots[row.name];
     if (!slot) {
       error('Slot not found: %s', row.name);
       connection.end();
       return;
     }
 
-    let device = devices[row.serial_number];
+    const device = devices[row.serial_number];
     if (!device) {
       error('Device not found: %s', row.name);
       connection.end();
@@ -1206,13 +1207,14 @@ async function main() {
     }
 
     info('Import Install for Slot: %s, Device: %s', row.name, row.serial_number);
-    let install = new Install(<IInstall> {
+    const doc: IInstall = {
       slotId: slot._id,
       deviceId: device._id,
       installBy: row.modified_by.toUpperCase(),
       installOn: row.install_date,
       state: 'INSTALLED',
-    });
+    };
+    const install = new Install(doc);
 
     try {
       await install.validate();
@@ -1261,7 +1263,7 @@ async function main() {
 
   info('Cleared Runcheck database');
 
-  for (let name in devices) {
+  for (const name in devices) {
     if (devices.hasOwnProperty(name)) {
       info('Saving device: %s', name);
       try {
@@ -1274,7 +1276,7 @@ async function main() {
     }
   }
 
-  for (let name in slots) {
+  for (const name in slots) {
     if (slots.hasOwnProperty(name)) {
       info('Saving slot: %s', name);
       try {
@@ -1287,11 +1289,11 @@ async function main() {
     }
   }
 
-  for (let name in groups) {
+  for (const name in groups) {
     if (groups.hasOwnProperty(name)) {
       info('Saving group: %s', name);
       try {
-        let group = groups[name];
+        const group = groups[name];
         if (group) {
           await group.saveWithHistory('SYS:IMPORTCCDB');
         } else {
@@ -1305,11 +1307,11 @@ async function main() {
     }
   }
 
-  for (let id in installs) {
+  for (const id in installs) {
     if (installs.hasOwnProperty(id)) {
       info('Saving install: %s', id);
       try {
-        let install = installs[id];
+        const install = installs[id];
         if (install) {
           await install.save();
         } else {
@@ -1323,7 +1325,7 @@ async function main() {
     }
   }
 
-  for (let id in checklists) {
+  for (const id in checklists) {
     if (checklists.hasOwnProperty(id)) {
       info('Saving checklist: %s', id);
       try {
@@ -1336,7 +1338,7 @@ async function main() {
     }
   }
 
-  for (let id in configs) {
+  for (const id in configs) {
     if (configs.hasOwnProperty(id)) {
       info('Saving checklist config: %s', id);
       try {
@@ -1349,7 +1351,7 @@ async function main() {
     }
   }
 
-  for (let id in statuses) {
+  for (const id in statuses) {
     if (statuses.hasOwnProperty(id)) {
       info('Saving checklist status: %s', id);
       try {
@@ -1362,7 +1364,7 @@ async function main() {
     }
   }
 
-  for (let id in subjects) {
+  for (const id in subjects) {
     if (subjects.hasOwnProperty(id)) {
       info('Saving checklist subject: %s', id);
       try {
@@ -1378,7 +1380,7 @@ async function main() {
   await mongoose_disconnect();
 
   info('DONE');
-};
+}
 
 main().catch((err) => {
   error(err);
