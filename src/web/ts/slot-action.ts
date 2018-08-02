@@ -16,7 +16,7 @@ import WebUtil from './webutil-shim';
 
 $(() => {
 
-  let slot: webapi.Slot = (<any> window).slot;
+  const slot: webapi.Slot = (window as any).slot;
 
   // Used to populate device selection for installation
   let devices: Array<{ id: string, text: string, disabled?: boolean }> | undefined;
@@ -49,7 +49,7 @@ $(() => {
         return;
       }
 
-      let details = deviceDetailsTemplate({
+      const details = deviceDetailsTemplate({
         device: pkg.data,
         embedded: true,
       });
@@ -129,7 +129,7 @@ $(() => {
 
       devices = [];
       if (pkg && Array.isArray(pkg.data)) {
-        for (let device of pkg.data) {
+        for (const device of pkg.data) {
           let text = `${device.name} (${device.desc})`;
           if (text.length > 48) {
             text = `${text.substr(0, 48)}...`;
@@ -160,23 +160,27 @@ $(() => {
     evt.preventDefault();
 
     $('install-form').attr('disabled', 'disabled');
-    let installDeviceId = $('#install-name').find(':selected').val();
-    let installDeviceOn: Date | null = $('#install-date').datepicker('getUTCDate');
+    const installDeviceId = $('#install-name').find(':selected').val();
+    const installDeviceOn: Date | null = $('#install-date').datepicker('getUTCDate');
 
     let pkg: webapi.Pkg<webapi.SlotInstall>;
     try {
+
+      const reqPkg: webapi.Pkg<webapi.SlotInstall> = {
+        data: {
+          installDeviceId: installDeviceId ? String(installDeviceId) : undefined,
+          installDeviceOn: installDeviceOn ? installDeviceOn.toISOString().split('T')[0] : undefined,
+        },
+      };
+
       pkg = await $.ajax({
         url: `${basePath}/slots/${slot.id}/installation`,
         method: 'PUT',
         dataType: 'json',
         contentType: 'application/json; charset=utf-8',
-        data: JSON.stringify(<webapi.Pkg<webapi.SlotInstall>> {
-          data: {
-            installDeviceId: installDeviceId ? String(installDeviceId) : undefined,
-            installDeviceOn: installDeviceOn ? installDeviceOn.toISOString().split('T')[0] : undefined,
-          },
-        }),
+        data: JSON.stringify(reqPkg),
       });
+
       if (!pkg.data.installDeviceId) {
         throw new Error('Invalid Device ID');
       }
@@ -254,7 +258,7 @@ $(() => {
     }
   }
 
-  
+
   const vm = new Vue({
     template: `
       <div>
