@@ -2,7 +2,6 @@
   "name": "runcheck-web",
   "private": true,
   "dependencies": {
-    "axios": "^0.18.0",
     "bootstrap": "^3.3.7",
     "bootstrap-datepicker": "^1.7.1",
     "datatables.net": "^1.10.16",
