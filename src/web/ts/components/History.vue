@@ -6,8 +6,8 @@
 </template>
 
 <script lang="ts">
-    import axios from 'axios';
     import Vue from 'vue';
+    import WebUtil from '../webutil-shim';
     import HistoryPanel from './HistoryPanel.vue';
     import LoadingPanel from './LoadingPanel.vue';
 
@@ -19,7 +19,7 @@
         },
         data() {
             return {
-                updates: Array as () => webapi.Update[],
+                updates: new Array<webapi.Update>(),
                 loading: true,
                 errorState: false,
             };
@@ -46,16 +46,24 @@
             'history-component': HistoryPanel,
         },
         mounted() {
-            axios
-                .get(this.GET_URI)
-                .then((response) => {
-                    this.updates = response.data.data;
-                })
-                .catch((error) => {
+            WebUtil.catchAll(async () => {
+                let pkg: webapi.Pkg<webapi.Update[]>;
+                try {
+                    pkg = await $.ajax({
+                        url: this.GET_URI,
+                        contentType: 'application/json',
+                        method: 'GET',
+                        dataType: 'json',
+                    });
+                } catch (xhr) {
+                    pkg = xhr.responseJSON;
                     this.errorState = true;
-                })
-                // basically a finally
-                .then(() => this.loading = false);
+                    return;
+                } finally {
+                    this.loading = false;
+                }
+                this.updates = pkg.data;
+            });
         },
     });
 </script>
