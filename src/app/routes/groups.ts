@@ -18,6 +18,7 @@ import {
   ensurePackage,
   findQueryParam,
   format,
+  getUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -137,7 +138,7 @@ router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
     throw new RequestError('Group not found', NOT_FOUND);
   }
 
-  let perms = getPermissions(req, group.owner);
+  const perms = getPermissions(req, group.owner);
 
   const apiGroup: webapi.Group = {
     id: ObjectId(group._id).toHexString(),
@@ -162,6 +163,32 @@ router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
       });
     },
   });
+}));
+
+router.get('/groups/slot/:name_or_id/history', catchAll(async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Group with name or id: %s', nameOrId);
+
+  let group: Group | null;
+  if (isValidId(nameOrId)) {
+    group = await Group.findByIdWithHistory(nameOrId);
+  } else {
+    group = await Group.findOneWithHistory({ name: nameOrId.toUpperCase()});
+  }
+
+  if (!group || !group.id) {
+    throw new RequestError('Group not found', NOT_FOUND);
+  }
+
+
+  const apiUpdates: webapi.Update[] = getUpdates(group);
+
+
+  const respkg: webapi.Pkg<webapi.Update[]> = {
+    data: apiUpdates,
+  };
+
+  res.json(respkg);
 }));
 
 

@@ -110,6 +110,26 @@ describe('Test group routes', () => {
     }
   });
 
+
+  describe('Get Device History', () => {
+    const table = [
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 200, group: 'FE_TEST:GROUP_1' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 200, group: 'FE_TEST:GROUP_2' },
+    ];
+
+    for (const row of table) {
+      it( `User ${row.user || 'anonymous'} get group history (${row.name})`, async () => {
+        const groupId = await getGroupId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .get(`/groups/slot/${groupId}/history`)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect(expectPackage());
+      });
+    }
+  });
+
   describe('Remove slot from a group', () => {
     let table = [
       // User unauthorized
