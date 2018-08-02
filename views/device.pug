@@ -30,6 +30,9 @@ block content
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled) Assign
               //- button.btn.btn-primary.hidden#checklist-unassign(type='button', disabled) Unassign
           .panel-body.hidden#checklist-panel
+    .row 
+      .col-md-12
+        #history
 
 block js
   //- script(type='text/javascript', src='/typeahead.js/dist/typeahead.bundle.js')
@@ -40,6 +43,5 @@ block js
   script(type='text/javascript', src=basePath + '/js/templates/checklist-update.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit-row.js')
-  script(type='text/javascript', src=basePath + '/js/checklistutil.js')
-  script(type='text/javascript', src=basePath + '/js/device-action.js')
+  script(type='text/javascript' src=basePath + '/dist/device.js')
   script(type='text/javascript') var device = !{JSON.stringify(device)};

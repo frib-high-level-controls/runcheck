@@ -6,7 +6,8 @@ const VueLoaderPlugin = require('vue-loader/lib/plugin')
 module.exports = {
   mode: 'development',
   entry: {
-    slot: './src/web/ts/slot-action.ts'
+    slot: './src/web/ts/slot-action.ts',
+    device: './src/web/ts/device-action.ts',
   },
   output: {
     path: path.resolve(__dirname, '../../public/dist'),

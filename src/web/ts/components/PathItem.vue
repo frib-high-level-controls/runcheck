@@ -23,11 +23,14 @@ export default Vue.extend({
     },
   },
   filters: {
-    humanize: function(value: string) {
+    humanize: (value: string) => {
       let newVal = '';
       switch (value.toLowerCase()) {
         case 'desc':
           newVal =  'Description';
+          break;
+        case 'dept':
+          newVal =  'Department';
           break;
         case 'carelevel':
           newVal =  'Level of Care';
@@ -43,7 +46,7 @@ export default Vue.extend({
           return value
           // decamelize
           .replace(/([A-Z])/g, ' $1')
-          .replace(/^./, (str) => {return str.toUpperCase(); })
+          .replace(/^./, (str) => str.toUpperCase())
           // capitalize ID
           .replace(/(Id)/g, (l) => l.toUpperCase());
       }
