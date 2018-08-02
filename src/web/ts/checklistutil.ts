@@ -5,7 +5,7 @@
 abstract class ChecklistRequestStatus {
   public requestStatus?: 'NONE' | 'DONE' | 'FAIL';
   public requestStatusMsg?: string;
-};
+}
 
 class ChecklistEditFormTableRow extends ChecklistRequestStatus {
 
@@ -28,7 +28,7 @@ class ChecklistEditFormTableRow extends ChecklistRequestStatus {
     if (subject) {
       this.updateFrom(subject);
     }
-  };
+  }
 
   public updateFrom(subject: webapi.ChecklistSubjectDetails) {
     this.name = subject.name;
@@ -38,16 +38,16 @@ class ChecklistEditFormTableRow extends ChecklistRequestStatus {
     this.mandatory = subject.mandatory;
     this.assignees = subject.assignees.slice();
     this.subject = subject;
-  };
+  }
 
   public isCustom(): boolean {
     return Boolean(this.name.match(/C\w{8}/));
-  };
+  }
 
   public isAddition(): boolean {
     return Boolean(!this.subject);
   }
-};
+}
 
 
 class ChecklistEditFormViewModel {
@@ -63,7 +63,7 @@ class ChecklistEditFormViewModel {
     // copy subjects for use in edit view model
     if (!noUpdate) {
       this.rows = [];
-      for (let subject of this.parent.checklist.subjects) {
+      for (const subject of this.parent.checklist.subjects) {
         this.rows.push(new ChecklistEditFormTableRow(subject));
       }
     }
@@ -72,7 +72,7 @@ class ChecklistEditFormViewModel {
     }));
 
     this.parent.element.find('.cl-subject-add').click(WebUtil.wrapCatchAll1((event) => {
-      let row = new ChecklistEditFormTableRow();
+      const row = new ChecklistEditFormTableRow();
       this.rows.push(row);
 
       $(event.target).parents('tr').before(checklistEditRowTemplate({
@@ -93,11 +93,11 @@ class ChecklistEditFormViewModel {
       event.preventDefault();
 
       for (let ridx = 0; ridx < this.rows.length; ridx += 1) {
-        let row = this.rows[ridx];
-        let e = $(`#${row.name}`);
+        const row = this.rows[ridx];
+        const e = $(`#${row.name}`);
 
-        let add = row.isAddition();
-        let remove = e.hasClass('hidden');
+        const add = row.isAddition();
+        const remove = e.hasClass('hidden');
         // ignore subjects added then removed before saving
         if (remove && add) {
           this.rows.splice(ridx, 1);
@@ -148,7 +148,7 @@ class ChecklistEditFormViewModel {
               dataType: 'json',
             });
           } catch (xhr) {
-            let message = 'Unknown error updating subject';
+            const message = 'Unknown error updating subject';
             row.requestStatus = 'FAIL';
             row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
             continue;
@@ -187,7 +187,7 @@ class ChecklistEditFormViewModel {
               dataType: 'json',
             });
           } catch (xhr) {
-            let message = 'Unknown error updating subject';
+            const message = 'Unknown error updating subject';
             row.requestStatus = 'FAIL';
             row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
             continue;
@@ -209,7 +209,7 @@ class ChecklistEditFormViewModel {
       this.render(true);
     }));
   }
-};
+}
 
 
 class ChecklistUpdateFormHistory {
@@ -246,9 +246,9 @@ class ChecklistUpdateFormTableRow extends ChecklistRequestStatus {
     let inputAt: string | undefined;
     let inputBy: string | undefined;
 
-    let history: ChecklistUpdateFormHistory[] = [];
-    for (let update of status.history.updates) {
-      for (let path of update.paths) {
+    const history: ChecklistUpdateFormHistory[] = [];
+    for (const update of status.history.updates) {
+      for (const path of update.paths) {
         if (path.name === 'value') {
           value = String(path.value);
         } else if (path.name === 'comment') {
@@ -281,7 +281,7 @@ class ChecklistUpdateFormTableRow extends ChecklistRequestStatus {
     this.comment = status.comment;
     this.history = history.reverse();
   }
-};
+}
 
 class ChecklistUpdateFormViewModel {
   private parent: ChecklistUtil;
@@ -296,9 +296,9 @@ class ChecklistUpdateFormViewModel {
 
     if (!noUpdate) {
       this.rows = {};
-      for (let subject of this.parent.checklist.subjects) {
+      for (const subject of this.parent.checklist.subjects) {
         let row: ChecklistUpdateFormTableRow | undefined;
-        for (let status of this.parent.checklist.statuses) {
+        for (const status of this.parent.checklist.statuses) {
           if (subject.name === status.subjectName) {
             row = new ChecklistUpdateFormTableRow(status);
             break;
@@ -318,9 +318,9 @@ class ChecklistUpdateFormViewModel {
     }));
 
     // enable checklist controls as permitted
-    for (let subject of this.parent.checklist.subjects) {
+    for (const subject of this.parent.checklist.subjects) {
       if (subject.canUpdate) {
-        let sel = this.parent.element.find(`#${subject.name} select`).removeAttr('disabled');
+        const sel = this.parent.element.find(`#${subject.name} select`).removeAttr('disabled');
         if (sel.val() === 'YC') {
           this.parent.element.find(`#${subject.name} input`).removeAttr('disabled');
         }
@@ -333,7 +333,7 @@ class ChecklistUpdateFormViewModel {
 
     this.parent.element.find('.cl-subject-status-value').each((idx, elem) => {
       $(elem).change((evt) => {
-        let value = $(evt.target);
+        const value = $(evt.target);
         if (value.val() === 'YC') {
           value.parents('.cl-subject').find('.cl-subject-status-comment').removeAttr('disabled');
         } else {
@@ -351,7 +351,7 @@ class ChecklistUpdateFormViewModel {
     });
 
     this.parent.element.on('click', '.cl-subject-show-history', WebUtil.wrapCatchAll1((event) => {
-      let btn = $(event.target).toggleClass('hidden');
+      const btn = $(event.target).toggleClass('hidden');
       let history = btn.parents('tr:first').next('.cl-subject-history');
       while (history.length) {
         history = history.toggleClass('hidden').next('.cl-subject-history');
@@ -360,7 +360,7 @@ class ChecklistUpdateFormViewModel {
     }));
 
     this.parent.element.on('click', '.cl-subject-hide-history', WebUtil.wrapCatchAll1((event) => {
-      let btn = $(event.target).toggleClass('hidden');
+      const btn = $(event.target).toggleClass('hidden');
       let history = btn.parents('tr:first').next('.cl-subject-history');
       while (history.length) {
         history = history.toggleClass('hidden').next('.cl-subject-history');
@@ -375,11 +375,11 @@ class ChecklistUpdateFormViewModel {
     this.parent.element.find('.cl-update-save').click(WebUtil.wrapCatchAll1(async (event) => {
       event.preventDefault();
 
-      for (let subject of this.parent.checklist.subjects) {
+      for (const subject of this.parent.checklist.subjects) {
         if (subject.canUpdate && (subject.mandatory || subject.required)) {
-          let e = $(`#${subject.name}`);
+          const e = $(`#${subject.name}`);
 
-          let row = this.rows[subject.name];
+          const row = this.rows[subject.name];
           if (!row) {
             console.error('Row for subject not found: %s', subject.name);
             continue;
@@ -423,7 +423,7 @@ class ChecklistUpdateFormViewModel {
             });
           } catch (xhr) {
             pkg = xhr.responseJSON;
-            let message = 'Unknown error updating checklist status';
+            const message = 'Unknown error updating checklist status';
             row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
             row.requestStatus = 'FAIL';
             continue;
@@ -458,7 +458,7 @@ class ChecklistUpdateFormViewModel {
     // ensure the checklist is visible
     this.parent.element.removeClass('hidden');
   }
-};
+}
 
 
 
@@ -468,7 +468,7 @@ class ChecklistUtil {
 
   public static render(selector: string, checklist: webapi.ChecklistDetails | string, edit?: boolean) {
     WebUtil.catchAll(async () => {
-      let element = $(selector).first();
+      const element = $(selector).first();
       if (element.length === 0) {
         throw new Error(`Checklist element not found with selector: ${selector}`);
       }
@@ -493,7 +493,7 @@ class ChecklistUtil {
         }
       }
 
-      let checklistViewModel = new ChecklistUtil(element, checklist);
+      const checklistViewModel = new ChecklistUtil(element, checklist);
       if (edit) {
         checklistViewModel.editForm.render();
       } else {
@@ -512,7 +512,7 @@ class ChecklistUtil {
         dataType: 'json',
       });
     } catch (xhr) {
-      let message = 'Unknown error retrieving checklist';
+      const message = 'Unknown error retrieving checklist';
       throw new Error(WebUtil.unwrapPkgErrMsg(xhr, message));
     }
 
@@ -530,7 +530,7 @@ class ChecklistUtil {
     this.element = element;
     this.checklist = checklist;
   }
-};
+}
 
 // Needed for Webpack when included using the ProvidePlugin
 if (typeof module === 'object' && typeof module.exports === 'object') {
