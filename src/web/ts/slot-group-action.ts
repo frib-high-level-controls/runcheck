@@ -1,6 +1,10 @@
 /**
  * Support user interaction on Slot Group details view.
  */
+import Vue from 'vue';
+import ChecklistUtil from './checklistutil-shim';
+import History from './components/History.vue';
+import WebUtil from './webutil-shim';
 
 $(() => {
   type GroupMemberTableRow = webapi.Slot & { selected?: boolean };
@@ -364,4 +368,21 @@ $(() => {
       vm.deselectRow(row);
     }
   }));
+
+  const v = new Vue({
+    template: `
+      <div>
+        <history-component :GET_URI = "GET_HISTORY_URI"></history-component>
+      </div>
+    `,
+    data: {
+      GET_HISTORY_URI: `${basePath}/groups/slot/${group.id}/history`,
+    },
+    components: {
+      'history-component': History,
+    },
+  });
+
+  v.$mount('#history');
+
 });

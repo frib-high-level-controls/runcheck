@@ -8,6 +8,7 @@ module.exports = {
   entry: {
     slot: './src/web/ts/slot-action.ts',
     device: './src/web/ts/device-action.ts',
+    group: './src/web/ts/slot-group-action.ts',
   },
   output: {
     path: path.resolve(__dirname, '../../public/dist'),
