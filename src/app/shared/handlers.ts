@@ -17,8 +17,8 @@ import {
 import * as HttpStatusCodes from 'http-status-codes';
 
 import {
+  Document,
   IPath,
-  IUpdate,
 } from './history';
 
 import * as log from './logging';
@@ -382,23 +382,27 @@ export function validateAndThrow(req: Request, msg?: string | C[], code?: number
   });
 }
 
-export function getUpdates(model: any) {
-  const updates: IUpdate[] = model.history.updates;
+
+/**
+ * Get document history updates and prepare for response as Web API.
+ */
+export function getHistoryUpdates<D extends Document<D>>(doc: D) {
+  const updates = doc.history.updates;
   const apiUpdates: webapi.Update[] = [];
   if (updates) {
     updates.forEach((update) => {
 
-      let paths: IPath[] = update.paths;
-      let apiPaths: webapi.Path[] = [];
+      const paths: IPath[] = update.paths;
+      const apiPaths: webapi.Path[] = [];
       paths.forEach((path) => {
-        let apiPath = {
+        const apiPath = {
           name: path.name,
           value: path.value,
         };
         apiPaths.push(apiPath);
       });
 
-      let apiUpdate: webapi.Update = {
+      const apiUpdate: webapi.Update = {
         at: update.at.toDateString(),
         by: update.by,
         paths: apiPaths,
