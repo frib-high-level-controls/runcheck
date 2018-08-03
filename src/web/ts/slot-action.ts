@@ -12,8 +12,6 @@ import ChecklistUtil from './checklistutil-shim';
 import History from './components/History.vue';
 import WebUtil from './webutil-shim';
 
-
-
 $(() => {
 
   const slot: webapi.Slot = (window as any).slot;

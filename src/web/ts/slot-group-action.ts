@@ -9,7 +9,7 @@ import WebUtil from './webutil-shim';
 $(() => {
   type GroupMemberTableRow = webapi.Slot & { selected?: boolean };
 
-  let group: webapi.Group = (<any> window).group;
+  const group: webapi.Group = (window as any).group;
 
   /**
    * Defines the full view model for this page.
@@ -33,11 +33,11 @@ $(() => {
      */
     public selectRow(row: DataTables.RowMethods) {
       // Cast required here because 'object' type is used.
-      let data = <GroupMemberTableRow> row.data();
+      const data = row.data() as GroupMemberTableRow;
       data.selected = true;
       let added = false;
-      let rows: DataTables.RowMethods[] = [];
-      for (let r of this.selectedRows()) {
+      const rows: DataTables.RowMethods[] = [];
+      for (const r of this.selectedRows()) {
         if (r.index() === row.index()) {
           return;
         }
@@ -60,11 +60,11 @@ $(() => {
      */
     public deselectRow(row: DataTables.RowMethods) {
       // Cast required here because 'object' type is used.
-      let data = <GroupMemberTableRow> row.data();
+      const data = row.data() as GroupMemberTableRow;
       data.selected = false;
       let removed = false;
-      let rows: DataTables.RowMethods[] = [];
-      for (let r of this.selectedRows()) {
+      const rows: DataTables.RowMethods[] = [];
+      for (const r of this.selectedRows()) {
         if (r.index() === row.index()) {
           removed = true;
           continue;
@@ -141,8 +141,8 @@ $(() => {
     public async deleteSlot() {
       this.isSubmitted = true;
       this.canSubmit(false);
-      for (let row of this.parent.selectedRows()) {
-        let data = <GroupMemberTableRow> row.data();
+      for (const row of this.parent.selectedRows()) {
+        const data = row.data() as GroupMemberTableRow;
         let pkg: webapi.Pkg<webapi.Slot>;
         try {
           pkg = await $.ajax({
@@ -262,36 +262,36 @@ $(() => {
   const slotColumns: datatablesutil.ColumnSettings[] = [
     {
       title: '',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         return `<input type="checkbox" class="row-select-box" ${row.selected ? 'checked="checked"' : ''}/>`;
       },
       searching: false,
     },  {
       title: 'Order',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
-        let m = row.name.match(/([DN]\d+)/);
+        const m = row.name.match(/([DN]\d+)/);
         return m ? m[1] : '';
       },
       searching: true,
     }, {
       title: 'Name',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         return `<a class="text-monospace text-nowrap" href="${basePath}/slots/${row.name}">${row.name}</a>`;
       },
       searching: true,
     }, {
       title: 'Type',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         return row.deviceType || 'Unknown';
       },
       searching: true,
     }, {
       title: 'Area',
-      data: <any> null, // 'area',
+      data: null as any, // 'area',
       render: (row: GroupMemberTableRow) => {
         if (forgurl && row.area) {
           return `<a class="text-monospace" href="${forgurl}/groups/${row.area}" target="_blank">${row.area}</a>`;
@@ -302,7 +302,7 @@ $(() => {
       searching: true,
     }, {
       title: 'Level of care',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         switch (row.careLevel) {
           case 'LOW': return 'Low';
@@ -314,14 +314,14 @@ $(() => {
       searching: true,
     }, {
       title: 'DRR',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         return row.drr || 'Unknown';
       },
       searching: true,
     }, {
       title: 'ARR',
-      data: <any> null,
+      data: null as any,
       render: (row: GroupMemberTableRow): string => {
         return row.arr || 'Unknown';
       },
@@ -329,7 +329,7 @@ $(() => {
     },
   ];
 
-  let GroupMemberTable = $('#slot-table').DataTable({
+  const GroupMemberTable = $('#slot-table').DataTable({
     ajax: {
       url: `${basePath}/groups/slot/${group ? group.id : ''}/members`,
       dataType: 'json',
@@ -355,16 +355,16 @@ $(() => {
   DataTablesUtil.addFilterHead('#slot-table', slotColumns);
 
   $('#slot-table').on('click', '.row-select-box', WebUtil.wrapCatchAll1((event) => {
-    let selectbox = $(event.target);
+    const selectbox = $(event.target);
     if (selectbox.is(':checked')) {
-      let tr = selectbox.parents('tr').first();
+      const tr = selectbox.parents('tr').first();
       tr.addClass('selected active');
-      let row = GroupMemberTable.row(tr.get(0));
+      const row = GroupMemberTable.row(tr.get(0));
       vm.selectRow(row);
     } else {
-      let tr = selectbox.parents('tr').first();
+      const tr = selectbox.parents('tr').first();
       tr.removeClass('selected active');
-      let row = GroupMemberTable.row(tr.get(0));
+      const row = GroupMemberTable.row(tr.get(0));
       vm.deselectRow(row);
     }
   }));
@@ -384,5 +384,4 @@ $(() => {
   });
 
   v.$mount('#history');
-
 });

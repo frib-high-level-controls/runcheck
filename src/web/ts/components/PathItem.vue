@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <li class="list-group-item">

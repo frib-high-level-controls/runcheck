@@ -12,7 +12,7 @@ import History from './components/History.vue';
 import WebUtil from './webutil-shim';
 $(() => {
 
-  let device: webapi.Device = (<any> window).device;
+  const device: webapi.Device = (window as any).device;
 
   function installationRender(selector: string, slotId: string) {
     WebUtil.catchAll(async () => {
@@ -42,7 +42,7 @@ $(() => {
         return;
       }
 
-      let details = slotDetailsTemplate({
+      const details = slotDetailsTemplate({
         slot: pkg.data,
         embedded: true,
       });
