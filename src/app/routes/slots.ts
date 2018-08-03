@@ -16,6 +16,10 @@ import {
 } from '../shared/handlers';
 
 import {
+  resolveChecklist,
+} from '../lib/checklists';
+
+import {
   Slot,
 } from '../models/slot';
 
@@ -35,6 +39,7 @@ import {
 import {
   Checklist,
 } from '../models/checklist';
+
 
 interface RouterOptions {
   adminRoles?: string[];
@@ -137,26 +142,15 @@ router.get('/slots', catchAll(async (req, res) => {
             throw new RequestError(`Installed Device not found: ${slot.installDeviceId}`);
           }
         }
-        if (slot.groupId) {
-          let group = groups.get(slot.groupId.toHexString());
-          if (!group) {
-            throw new RequestError(`Slot Group not found: ${slot.groupId}`, INTERNAL_SERVER_ERROR);
-          }
-          if (group.checklistId) {
-            const checklist = checklists.get(group.checklistId.toHexString());
-            if (checklist) {
-              row.checklistApproved = checklist.approved;
-              row.checklistChecked = checklist.checked;
-              row.checklistTotal = checklist.total;
-            }
-          }
-        } else if (slot.checklistId) {
-          const checklist = checklists.get(slot.checklistId.toHexString());
+        try {
+          const checklist = resolveChecklist(slot, checklists, groups)
           if (checklist) {
             row.checklistApproved = checklist.approved;
             row.checklistChecked = checklist.checked;
             row.checklistTotal = checklist.total;
           }
+        } catch (err) {
+          throw new RequestError(`Checklist not resolved: ${err.message}`, INTERNAL_SERVER_ERROR);
         }
         rows.push(row);
       }
