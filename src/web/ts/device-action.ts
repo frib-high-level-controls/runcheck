@@ -1,10 +1,18 @@
 /**
  * Support user interaction on Device details view.
  */
+import Vue from 'vue';
 
+// For now JQuery is included globally,
+// in the future it may need to be imported.
+// import * as $ from 'jquery';
+
+import ChecklistUtil from './checklistutil-shim';
+import History from './components/History.vue';
+import WebUtil from './webutil-shim';
 $(() => {
 
-  let device: webapi.Device = (<any> window).device;
+  const device: webapi.Device = (window as any).device;
 
   function installationRender(selector: string, slotId: string) {
     WebUtil.catchAll(async () => {
@@ -34,7 +42,7 @@ $(() => {
         return;
       }
 
-      let details = slotDetailsTemplate({
+      const details = slotDetailsTemplate({
         slot: pkg.data,
         embedded: true,
       });
@@ -116,4 +124,20 @@ $(() => {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
     }
   }
+
+  const vm = new Vue({
+    template: `
+      <div>
+        <history-component :GET_URI = "GET_HISTORY_URI"></history-component>
+      </div>
+    `,
+    data: {
+      GET_HISTORY_URI: `${basePath}/devices/${device.id}/history`,
+    },
+    components: {
+      'history-component': History,
+    },
+  });
+
+  vm.$mount('#history');
 });

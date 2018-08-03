@@ -11,13 +11,13 @@ export enum ChecklistValue {
   N = 'N',
   Y = 'Y',
   YC = 'YC',
-};
+}
 
 export enum ChecklistType {
   DEVICE_DEFAULT = 'DEVICE_DEFAULT',
   SLOT_DEFAULT = 'SLOT_DEFAULT',
   SLOT_SAFETY = 'SLOT_SAFETY',
-};
+}
 
 export interface IChecklistSubject {
   checklistId?: ObjectId;
@@ -30,12 +30,12 @@ export interface IChecklistSubject {
   required: boolean;
   mandatory: boolean;
   assignees: string[];
-};
+}
 
 export interface ChecklistSubject extends IChecklistSubject, history.Document<ChecklistSubject> {
   applyCfg(cfg: ChecklistConfig): void;
   isCustom(): boolean;
-};
+}
 
 export interface IChecklistConfig {
   checklistId: ObjectId;
@@ -46,7 +46,7 @@ export interface IChecklistConfig {
 
 export interface ChecklistConfig extends IChecklistConfig, history.Document<ChecklistConfig> {
   // no additional methods
-};
+}
 
 export interface IChecklistStatus {
   checklistId: ObjectId;
@@ -55,11 +55,11 @@ export interface IChecklistStatus {
   comment: string;
   inputAt: Date;
   inputBy: string;
-};
+}
 
 export interface ChecklistStatus extends IChecklistStatus, history.Document<ChecklistStatus> {
   isApproved(withComment?: boolean): boolean;
-};
+}
 
 export interface IChecklist {
   checklistType: ChecklistType;
@@ -68,11 +68,11 @@ export interface IChecklist {
   approved: boolean;
   checked: number;
   total: number;
-};
+}
 
 export interface Checklist extends IChecklist, mongoose.Document {
   // no additional methods
-};
+}
 
 
 const Schema = mongoose.Schema;
@@ -93,11 +93,11 @@ export const CHECKLIST_TYPES: ChecklistType[] = [
 
 export function isChecklistValueValid(value?: string): boolean {
   return CHECKLIST_VALUES.reduce((p, v) => (p || (v === value)), false);
-};
+}
 
 export function isChecklistValueApproved(value?: string, withComment?: boolean): boolean {
   return (value === ChecklistValue.YC) || (!withComment && (value === ChecklistValue.Y));
-};
+}
 
 /**
  * Summarize the status of the checklist, including final approval.
@@ -109,11 +109,11 @@ export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSub
   let finalsTotal = 0;
   let finalsChecked = 0;
 
-  for (let subject of subjects) {
+  for (const subject of subjects) {
     if (checklist.checklistType === subject.checklistType) {
 
       let config: ChecklistConfig | undefined;
-      for (let c of configs) {
+      for (const c of configs) {
         if (checklist._id.equals(c.checklistId) && (subject.name === c.subjectName)) {
           config = c;
           break;
@@ -121,7 +121,7 @@ export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSub
       }
 
       let status: ChecklistStatus | undefined;
-      for (let s of statuses) {
+      for (const s of statuses) {
         if (checklist._id.equals(s.checklistId) && (subject.name === s.subjectName)) {
           status = s;
           break;
@@ -145,7 +145,7 @@ export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSub
       }
     }
   }
-  let approved = (finalsChecked > 0) && (finalsChecked === finalsTotal);
+  const approved = (finalsChecked > 0) && (finalsChecked === finalsTotal);
 
   if (apply) {
     checklist.approved = approved;
@@ -154,7 +154,7 @@ export function isChecklistApproved(checklist: Checklist, subjects: ChecklistSub
   }
 
   return approved;
-};
+}
 
 // A checklist is a list of responses for various subjects:
 //  targetType: the type of the object to which this checklist belongs
@@ -293,7 +293,7 @@ checklistSubjectSchema.methods.applyCfg = function(this: ChecklistSubject, cfg?:
   }
 };
 
-checklistSubjectSchema.methods.isCustom = function(this: ChecklistSubject): Boolean {
+checklistSubjectSchema.methods.isCustom = function(this: ChecklistSubject): boolean {
   return (this.checklistId !== undefined);
 };
 

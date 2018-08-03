@@ -89,3 +89,8 @@ abstract class WebUtil {
     return xhr.statusText;
   }
 }
+
+// Needed for Webpack when included using the ProvidePlugin
+if (typeof module === 'object' && typeof module.exports === 'object') {
+  module.exports = WebUtil;
+}

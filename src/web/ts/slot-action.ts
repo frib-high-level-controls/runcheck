@@ -2,9 +2,19 @@
  * Support user interaction on Device details view.
  */
 
+import Vue from 'vue';
+
+// For now JQuery is included globally,
+// in the future it may need to be imported.
+// import * as $ from 'jquery';
+
+import ChecklistUtil from './checklistutil-shim';
+import History from './components/History.vue';
+import WebUtil from './webutil-shim';
+
 $(() => {
 
-  let slot: webapi.Slot = (<any> window).slot;
+  const slot: webapi.Slot = (window as any).slot;
 
   // Used to populate device selection for installation
   let devices: Array<{ id: string, text: string, disabled?: boolean }> | undefined;
@@ -37,7 +47,7 @@ $(() => {
         return;
       }
 
-      let details = deviceDetailsTemplate({
+      const details = deviceDetailsTemplate({
         device: pkg.data,
         embedded: true,
       });
@@ -117,7 +127,7 @@ $(() => {
 
       devices = [];
       if (pkg && Array.isArray(pkg.data)) {
-        for (let device of pkg.data) {
+        for (const device of pkg.data) {
           let text = `${device.name} (${device.desc})`;
           if (text.length > 48) {
             text = `${text.substr(0, 48)}...`;
@@ -148,23 +158,27 @@ $(() => {
     evt.preventDefault();
 
     $('install-form').attr('disabled', 'disabled');
-    let installDeviceId = $('#install-name').find(':selected').val();
-    let installDeviceOn: Date | null = $('#install-date').datepicker('getUTCDate');
+    const installDeviceId = $('#install-name').find(':selected').val();
+    const installDeviceOn: Date | null = $('#install-date').datepicker('getUTCDate');
 
     let pkg: webapi.Pkg<webapi.SlotInstall>;
     try {
+
+      const reqPkg: webapi.Pkg<webapi.SlotInstall> = {
+        data: {
+          installDeviceId: installDeviceId ? String(installDeviceId) : undefined,
+          installDeviceOn: installDeviceOn ? installDeviceOn.toISOString().split('T')[0] : undefined,
+        },
+      };
+
       pkg = await $.ajax({
         url: `${basePath}/slots/${slot.id}/installation`,
         method: 'PUT',
         dataType: 'json',
         contentType: 'application/json; charset=utf-8',
-        data: JSON.stringify(<webapi.Pkg<webapi.SlotInstall>> {
-          data: {
-            installDeviceId: installDeviceId ? String(installDeviceId) : undefined,
-            installDeviceOn: installDeviceOn ? installDeviceOn.toISOString().split('T')[0] : undefined,
-          },
-        }),
+        data: JSON.stringify(reqPkg),
       });
+
       if (!pkg.data.installDeviceId) {
         throw new Error('Invalid Device ID');
       }
@@ -241,4 +255,21 @@ $(() => {
       $('#checklist-assign').removeClass('hidden').attr('disabled', 'disabled');
     }
   }
+
+
+  const vm = new Vue({
+    template: `
+      <div>
+        <history-component :GET_URI = "GET_HISTORY_URI"></history-component>
+      </div>
+    `,
+    data: {
+      GET_HISTORY_URI: `${basePath}/slots/${slot.id}/history`,
+    },
+    components: {
+      'history-component': History,
+    },
+  });
+
+  vm.$mount('#history');
 });

@@ -24,6 +24,7 @@ import {
   catchAll,
   ensureAccepts,
   format,
+  getHistoryUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -191,6 +192,33 @@ router.get('/devices/:name_or_id', catchAll(async (req, res) => {
   });
 }));
 
+/**
+ * Get the history of a device specified by name or ID
+ * and then respond with JSON.
+ */
+router.get('/devices/:name_or_id/history', ensureAccepts('json'), catchAll( async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Device (and history) with name or id: %s', nameOrId);
+
+  let device: Device | null;
+  if (models.isValidId(nameOrId)) {
+    device = await Device.findByIdWithHistory(nameOrId);
+  } else {
+    device = await Device.findOneWithHistory({ name: nameOrId.toUpperCase() });
+  }
+
+  if (!device) {
+    throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
+  }
+
+  const apiUpdates: webapi.Update[] = getHistoryUpdates(device);
+
+  const respkg: webapi.Pkg<webapi.Update[]> = {
+    data: apiUpdates,
+  };
+
+  res.json(respkg);
+}));
 
 router.get('/devices/:id/checklistId', ensureAccepts('json'), catchAll(async (req, res) => {
   const id = String(req.params.id);

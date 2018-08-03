@@ -21,7 +21,7 @@ import * as data from './data';
 
 async function getDeviceNameOrId(r: { name: string, by: string }) {
   if (r.by === 'ID') {
-    let device = await Device.findOne({ name: r.name}).exec();
+    const device = await Device.findOne({ name: r.name}).exec();
     if (!device || !device.id) {
       throw new AssertionError({ message: `Device not found with name: ${r.name}` });
     }
@@ -47,7 +47,7 @@ describe('Test device routes', () => {
   });
 
   describe('Get device data', () => {
-    let table = [
+    const table = [
       { name: 'T99999-DEVA-0009-0099-S00001', user: '', by: 'name' },
       { name: 'T99999-DEVA-0009-0099-S00001', user: '', by: 'ID' },
       { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', by: 'name' },
@@ -62,7 +62,7 @@ describe('Test device routes', () => {
       { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', by: 'ID' },
     ];
 
-    for (let row of table) {
+    for (const row of table) {
       it( `User ${row.user || 'anonymous'} get device (${row.name}) by ${row.by}`, async () => {
         const nameOrId = await getDeviceNameOrId(row);
         const agent = await requestFor(handler, row.user);
@@ -75,4 +75,32 @@ describe('Test device routes', () => {
     }
   });
 
+  describe('Get Device History', () => {
+    const table = [
+      { name: 'T99999-DEVA-0009-0099-S00001', user: '', by: 'name' },
+      { name: 'T99999-DEVA-0009-0099-S00001', user: '', by: 'ID' },
+      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', by: 'name' },
+      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEDM', by: 'ID' },
+      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', by: 'name' },
+      { name: 'T99999-DEVA-0009-0099-S00001', user: 'FEAM', by: 'ID' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: '', by: 'name' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: '', by: 'ID' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', by: 'name' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEDM', by: 'ID' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', by: 'name' },
+      { name: 'T99999-DEVB-0009-0099-S00002', user: 'FEAM', by: 'ID' },
+    ];
+
+    for (const row of table) {
+      it( `User ${row.user || 'anonymous'} get device history (${row.name}) by ${row.by}`, async () => {
+        const nameOrId = await getDeviceNameOrId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .get(`/devices/${nameOrId}/history`)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect(expectPackage());
+      });
+    }
+  });
 });

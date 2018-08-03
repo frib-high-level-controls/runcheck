@@ -62,6 +62,12 @@ module.exports = function(grunt) {
         },
       },
     },
+    webpack: {
+      options: {
+        stats: !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
+      },
+      prod: require('./src/web/webpack.config'),
+    },
     tslint: {
       options: {
         configuration: 'tslint.json',
@@ -80,7 +86,7 @@ module.exports = function(grunt) {
       app: [ './app' ],
       test: [ './test' ],
       tools: [ './tools' ],
-      public: [ './public/js' ],
+      public: [ './public/js', './public/dist' ],
       docs: [ './public/docs/*.html' ]
     },
   });
@@ -88,6 +94,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-ts');
   grunt.loadNpmTasks('grunt-tslint');
+  grunt.loadNpmTasks('grunt-webpack');
   grunt.loadNpmTasks('grunt-contrib-clean');
 
   grunt.registerTask('template', ['shell:template']);
@@ -147,6 +154,7 @@ module.exports = function(grunt) {
     'save_version_file',
     'ts:app',
     'ts:web',
+    'webpack:prod',
     'ts:tools',
     'shell:pugcompile',
     'shell:pugrender',

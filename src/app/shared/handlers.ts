@@ -16,6 +16,11 @@ import {
 
 import * as HttpStatusCodes from 'http-status-codes';
 
+import {
+  Document,
+  IPath,
+} from './history';
+
 import * as log from './logging';
 
 
@@ -375,4 +380,35 @@ export function validateAndThrow(req: Request, msg?: string | C[], code?: number
       throw new RequestError(perror.message, perror.code, perror);
     }
   });
+}
+
+
+/**
+ * Get document history updates and prepare for response as Web API.
+ */
+export function getHistoryUpdates<D extends Document<D>>(doc: D) {
+  const updates = doc.history.updates;
+  const apiUpdates: webapi.Update[] = [];
+  if (updates) {
+    updates.forEach((update) => {
+
+      const paths: IPath[] = update.paths;
+      const apiPaths: webapi.Path[] = [];
+      paths.forEach((path) => {
+        const apiPath = {
+          name: path.name,
+          value: path.value,
+        };
+        apiPaths.push(apiPath);
+      });
+
+      const apiUpdate: webapi.Update = {
+        at: update.at.toDateString(),
+        by: update.by,
+        paths: apiPaths,
+      };
+      apiUpdates.push(apiUpdate);
+    });
+  }
+  return apiUpdates;
 }

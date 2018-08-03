@@ -68,6 +68,9 @@ block content
               h4.fa.fa-spinner.fa-spin.hidden#checklist-spin
               button.btn.btn-primary.hidden#checklist-assign(type='button', disabled='disabled') Assign
           .panel-body.hidden#checklist-panel
+    .row 
+      .col-md-12
+        #history
   .container
     .modal.fade#removeSlotModal(tabindex='-1', role='dialog', aria-labelledby='modalLabel', aria-hidden='true', data-bind='with: deleteSlotModal')
       .modal-dialog
@@ -85,13 +88,11 @@ block js
   script(type='text/javascript', src=basePath + '/node_modules/datatables.net/js/jquery.dataTables.js')
   script(type='text/javascript', src=basePath + '/node_modules/datatables.net-bs/js/dataTables.bootstrap.js')
   script(type='text/javascript', src=basePath + '/node_modules/knockout/build/output/knockout-latest.js')
-  script(type='text/javascript', src=basePath + '/js/shared/webutil.js')
   script(type='text/javascript', src=basePath + '/js/datatablesutil.js')
-  script(type='text/javascript', src=basePath + '/js/checklistutil.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-update.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit.js')
   script(type='text/javascript', src=basePath + '/js/templates/checklist-edit-row.js')
-  script(type='text/javascript', src=basePath + '/js/slot-group-action.js')
+  script(type='text/javascript' src=basePath + '/dist/group.js')
   script(type='text/javascript') group = !{JSON.stringify(group)};
   if forgurl
     script(type='text/javascript') var forgurl = '#{forgurl}'

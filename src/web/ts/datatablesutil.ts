@@ -7,11 +7,11 @@
 abstract class DataTablesUtil {
 
   public static addFilterHead(tableQuery: string, columns: datatablesutil.ColumnSettings[]) {
-    let t = $(tableQuery);
-    let tr = $('<tr/>').appendTo(t.find('thead'));
+    const t = $(tableQuery);
+    const tr = $('<tr/>').appendTo(t.find('thead'));
 
     columns.forEach((column, idx) => {
-      let th = $('<th></th>').appendTo(tr);
+      const th = $('<th></th>').appendTo(tr);
       if (column.searching) {
         th.append(`<input type="text" placeholder="${column.placeholder || ''}"
                        style="width:80%;" autocomplete="off">`);
@@ -27,6 +27,6 @@ abstract class DataTablesUtil {
         });
       }
     });
-  };
+  }
 
-};
+}

@@ -128,4 +128,32 @@ describe('Test slot routes', () => {
     }
   });
 
+  describe('Get Slot History', () => {
+    let table = [
+      { name: 'FE_TEST:DEVA_D0001', user: '', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: '', by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEDM', by: 'ID' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', by: 'name' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: '', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: '', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEDM', by: 'ID' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', by: 'name' },
+      { name: 'FE_TEST:DEVB_D0002', user: 'FEAM', by: 'ID' },
+    ];
+
+    for (let row of table) {
+      it( `User ${row.user || 'anonymous'} get slot history (${row.name}) by ${row.by}`, async () => {
+        const nameOrId = await getSlotNameOrId(row);
+        const agent = await requestFor(handler, row.user);
+        return agent
+          .get(`/slots/${nameOrId}/history`)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect(expectPackage());
+      });
+    }
+  });
 });

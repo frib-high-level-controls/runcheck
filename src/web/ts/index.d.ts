@@ -5,3 +5,5 @@
 /// <reference path="../../app/webapi.d.ts" />
 
 declare let basePath: string;
+
+declare var Vue: vue.VueConstructor;

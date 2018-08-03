@@ -10,7 +10,9 @@ import * as models from '../shared/models';
 
 import {
   catchAll,
+  ensureAccepts,
   format,
+  getHistoryUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -161,6 +163,35 @@ router.get('/slots', catchAll(async (req, res) => {
   });
 }));
 
+
+/**
+ * Get the history of a slot slot specified by name or ID
+ * and then respond with JSON.
+ */
+router.get('/slots/:name_or_id/history', ensureAccepts('json'), catchAll( async (req, res) => {
+  const nameOrId = String(req.params.name_or_id);
+  debug('Find Slot (and history) with name or id: %s', nameOrId);
+
+  let slot: Slot | null;
+  if (models.isValidId(nameOrId)) {
+    slot = await Slot.findByIdWithHistory(nameOrId);
+  } else {
+    slot = await Slot.findOneWithHistory({ name: nameOrId.toUpperCase() });
+  }
+
+  if (!slot) {
+    throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
+  }
+
+  const apiUpdates: webapi.Update[] = getHistoryUpdates(slot);
+
+  let respkg: webapi.Pkg<webapi.Update[]> = {
+    data: apiUpdates,
+  };
+
+  res.json(respkg);
+}));
+
 /**
  * Get the slot specified by name or ID
  * and then respond with either HTML or JSON.
@@ -180,7 +211,7 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
-  let perms = getPermissions(req, slot);
+  const perms = getPermissions(req, slot);
 
   const apiSlot: webapi.Slot = {
     id: models.ObjectId(slot._id).toHexString(),
@@ -200,6 +231,7 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
     canAssign: perms.assign,
     canInstall: perms.install,
   };
+
 
   return format(res, {
     'text/html': () => {
