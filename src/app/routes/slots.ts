@@ -6,13 +6,13 @@ import * as express from 'express';
 import * as moment from 'moment';
 
 import * as auth from '../shared/auth';
-// import * as history from '../shared/history';
 import * as models from '../shared/models';
 
 import {
   catchAll,
+  ensureAccepts,
   format,
-  getUpdates,
+  getHistoryUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -174,7 +174,7 @@ router.get('/slots', catchAll(async (req, res) => {
  * Get the history of a slot slot specified by name or ID
  * and then respond with JSON.
  */
-router.get('/slots/:name_or_id/history', catchAll( async (req, res) => {
+router.get('/slots/:name_or_id/history', ensureAccepts('json'), catchAll( async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot (and history) with name or id: %s', nameOrId);
 
@@ -189,7 +189,7 @@ router.get('/slots/:name_or_id/history', catchAll( async (req, res) => {
     throw new RequestError('Slot not found', HttpStatus.NOT_FOUND);
   }
 
-  const apiUpdates: webapi.Update[] = getUpdates(slot);
+  const apiUpdates: webapi.Update[] = getHistoryUpdates(slot);
 
   let respkg: webapi.Pkg<webapi.Update[]> = {
     data: apiUpdates,

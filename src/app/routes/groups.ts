@@ -18,7 +18,7 @@ import {
   ensurePackage,
   findQueryParam,
   format,
-  getUpdates,
+  getHistoryUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -165,7 +165,7 @@ router.get('/groups/slot/:name_or_id', catchAll(async (req, res) => {
   });
 }));
 
-router.get('/groups/slot/:name_or_id/history', catchAll(async (req, res) => {
+router.get('/groups/slot/:name_or_id/history', ensureAccepts('json'), catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Group with name or id: %s', nameOrId);
 
@@ -181,7 +181,7 @@ router.get('/groups/slot/:name_or_id/history', catchAll(async (req, res) => {
   }
 
 
-  const apiUpdates: webapi.Update[] = getUpdates(group);
+  const apiUpdates: webapi.Update[] = getHistoryUpdates(group);
 
 
   const respkg: webapi.Pkg<webapi.Update[]> = {

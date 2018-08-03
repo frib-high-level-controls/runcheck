@@ -62,7 +62,7 @@ interface Config {
     service_url?: {};
     service_base_url?: {};
     version?: {};
-};
+  };
   forgapi: {
     url?: {};
     agentOptions?: {};

@@ -24,7 +24,7 @@ import {
   catchAll,
   ensureAccepts,
   format,
-  getUpdates,
+  getHistoryUpdates,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -196,7 +196,7 @@ router.get('/devices/:name_or_id', catchAll(async (req, res) => {
  * Get the history of a device specified by name or ID
  * and then respond with JSON.
  */
-router.get('/devices/:name_or_id/history', catchAll( async (req, res) => {
+router.get('/devices/:name_or_id/history', ensureAccepts('json'), catchAll( async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Device (and history) with name or id: %s', nameOrId);
 
@@ -211,7 +211,7 @@ router.get('/devices/:name_or_id/history', catchAll( async (req, res) => {
     throw new RequestError('Device not found', HttpStatus.NOT_FOUND);
   }
 
-  const apiUpdates: webapi.Update[] = getUpdates(device);
+  const apiUpdates: webapi.Update[] = getHistoryUpdates(device);
 
   const respkg: webapi.Pkg<webapi.Update[]> = {
     data: apiUpdates,
