@@ -40,6 +40,7 @@ export interface ISlot {
   installDeviceId?: ObjectId;
   installDeviceBy?: string;
   installDeviceOn?: Date;
+  machineModes: string[];
 };
 
 export interface Slot extends ISlot, history.Document<Slot> {
@@ -149,6 +150,12 @@ const slotSchema = new Schema({
   installDeviceOn: {
     type: Date,
     required: false,
+  },
+  machineModes: {
+    type: [String],
+    // required: true, // Requires non-empty array!
+    // Use the following less strict replacement.
+    validate: (v: any) => (Array.isArray(v)),
   },
 });
 

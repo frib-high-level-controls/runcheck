@@ -38,6 +38,12 @@ table.table
           when 'CREDITED_PPS': td Credited Control Personnel Protection System
           default: td= slot.safetyLevel
       tr
+        th Machine Modes
+        if Array.isArray(slot.machineModes) && slot.machineModes.length > 0
+          td= slot.machineModes.join(', ')
+        else
+          td= 'None'
+      tr
         th DRR
         td= slot.drr
       tr

@@ -84,6 +84,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
+    machineModes: [],
   }, {
     name: 'FE_TEST:DEVB_D0002',
     desc: 'Test Slot #2',
@@ -93,6 +94,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.CONTROL_ESH,
+    machineModes: [],
   }, {
     name: 'FE_TEST:DEVA_D0003',
     desc: 'Test Slot #3',
@@ -102,6 +104,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
+    machineModes: [],
   }, {
     name: 'FE_TEST:DEVA_D0004',
     desc: 'Test Slot #4',
@@ -112,6 +115,7 @@ export const SLOTS: ISlot[] = [
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
     groupId: new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'),
+    machineModes: [],
   }, {
     name: 'FE_TEST:DEVA_D0002',
     desc: 'Test Slot #2',
@@ -121,6 +125,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.CONTROL_ESH,
+    machineModes: [],
   },
 ];
 

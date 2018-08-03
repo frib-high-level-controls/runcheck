@@ -659,6 +659,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
         safetyLevel: SafetyLevel.NONE,
         arr: '',
         drr: '',
+        machineModes: [],
       },
       errors: [],
     };
