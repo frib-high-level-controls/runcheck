@@ -22,6 +22,7 @@ import status = require('./shared/status');
 import tasks = require('./shared/tasks');
 
 import api1 = require('./routes/api1');
+import api2 = require('./routes/api2');
 import checklists = require('./routes/checklists');
 import devices = require('./routes/devices');
 import groups = require('./routes/groups');
@@ -373,6 +374,7 @@ async function doStart(): Promise<express.Application> {
   app.use(groups.getRouter({ adminRoles: ADMIN_ROLES }));
   app.use(checklists.getRouter({ adminRoles: ADMIN_ROLES }));
   app.use(api1.getRouter());
+  app.use(api2.getRouter());
 
   // no handler found for request (404)
   app.use(handlers.notFoundHandler());
