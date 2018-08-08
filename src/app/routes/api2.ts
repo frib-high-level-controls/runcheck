@@ -1,6 +1,8 @@
 /**
  * RESTful API for RunCheck v2
  */
+import * as util from 'util';
+
 import * as dbg from 'debug';
 import * as express from 'express';
 
@@ -14,7 +16,6 @@ import {
 import {
   catchAll,
   ensureAccepts,
-  findQueryParam,
   HttpStatus,
   RequestError,
 } from '../shared/handlers';
@@ -38,6 +39,9 @@ import {
 import {
   Group,
 } from '../models/group';
+
+type Request = express.Request;
+type Response = express.Response;
 
 interface API2Slot {
   id: string;
@@ -82,6 +86,7 @@ interface API2DeviceConds {
 const debug = dbg('runcheck:routes:api2');
 
 const NOT_FOUND = HttpStatus.NOT_FOUND;
+const BAD_REQUEST = HttpStatus.BAD_REQUEST;
 const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 
 const router = express.Router();
@@ -92,22 +97,49 @@ export function getRouter(opts?: {}): express.Router {
 
 // Methods for preparing mongo conditions from request query parameters
 
-function qpString(v: any): string {
-  return (v ? String(v) : '');
-}
+/**
+ * Consolidate request parameters (from query and body) into single map (case insensitive)
+ */
+function ReqParamsToMap(req: Request): Map<string, string | string[]> {
+  const m = new Map<string, string | string[]>();
 
-function qpExists(req: express.Request, name: string): [string | string[], boolean] {
-  let v = findQueryParam(req, name, false, true);
-  const found = (v || v === '' || v === 0.0 || Array.isArray(v));
-  if (!found) {
-    return ['', false];
+  function str(v: {}) {
+    return (v ? String(v) : '');
   }
-  if (Array.isArray(v)) {
-    v = v.map((s) => qpString(s));
-  } else {
-    v = qpString(v);
+
+  function append(key: string, value: {}) {
+    const k = key.toUpperCase();
+
+    let v: string | string[];
+    if (Array.isArray(value)) {
+      v = value.map(str);
+    } else {
+      v = str(value);
+    }
+
+    const cv = m.get(k);
+    if (cv) {
+      if (Array.isArray(cv)) {
+        m.set(k, cv.concat(v));
+      } else {
+        m.set(k, [ cv ].concat(v));
+      }
+    } else {
+      m.set(k, v);
+    }
   }
-  return [v, true];
+
+  for (const key of Object.keys(req.query)) {
+    append(key, req.query[key]);
+  }
+
+  if (req.body) {
+    for (const key of Object.keys(req.body)) {
+      append(key, req.body[key]);
+    }
+  }
+
+  return m;
 }
 
 function upperCaseCond(value: string | string[]): string | { $in: string[] } {
@@ -133,91 +165,69 @@ function patternCond(value: string | string[], flags?: string): RegExp | { $in: 
 }
 
 
-router.get('/api/v2/slots', ensureAccepts('json'), catchAll(async (req, res) => {
+async function slotFilterHandler(req: Request, res: Response) {
+  const params = ReqParamsToMap(req);
+
+  let start: number | undefined;
+  let limit: number | undefined;
   const conds: API2SlotConds = {};
+  for (const [key, value] of  params.entries()) {
+    switch (key) {
+      case 'NAME':
+        conds.name = patternCond(value, 'i');
+        continue;
+      case 'AREA':
+        conds.area = patternCond(value, 'i');
+        continue;
+      case 'DEVICETYPE':
+        conds.deviceType = patternCond(value, 'i');
+        continue;
+      case 'ARR':
+        conds.arr = patternCond(value, 'i');
+        continue;
+      case 'DRR':
+        conds.drr = patternCond(value, 'i');
+        continue;
+      case 'CARELEVEL':
+        conds.careLevel = upperCaseCond(value);
+        continue;
+      case 'SAFETYLEVEL':
+        conds.safetyLevel = upperCaseCond(value);
+        continue;
+      case 'MACHINEMODE':
+        conds.machineModes = patternCond(value, 'i');
+        continue;
 
-  let [value, exists] = qpExists(req, 'name');
-  if (exists) {
-    conds.name = patternCond(value, 'i');
+      // pagination
+      case 'START':
+        start = Number(value);
+        if (!Number.isInteger(start) || start < 0) {
+          throw new RequestError(`Start parameter is invalid: ${value}`, BAD_REQUEST);
+        }
+        continue;
+      case 'LIMIT':
+        limit = Number(value);
+        if (!Number.isInteger(limit) || limit < 0) {
+          throw new RequestError(`Limit parameter is invalid: ${value}`, BAD_REQUEST);
+        }
+        continue;
+
+      default:
+        throw new RequestError(`Filter parameter unsupported: ${key}`, BAD_REQUEST);
+    }
   }
-
-  [value, exists] = qpExists(req, 'area');
-  if (exists) {
-    conds.area = patternCond(value, 'i');
-  }
-
-  [value, exists] = qpExists(req, 'deviceType');
-  if (exists) {
-    conds.deviceType = patternCond(value, 'i');
-  }
-
-  [value, exists] = qpExists(req, 'arr');
-  if (exists) {
-    conds.arr = patternCond(value, 'i');
-  }
-
-  [value, exists] = qpExists(req, 'drr');
-  if (exists) {
-    conds.drr = patternCond(value, 'i');
-  }
-
-  [value, exists] = qpExists(req, 'careLevel');
-  if (exists) {
-    conds.careLevel = upperCaseCond(value);
-  }
-
-  [value, exists] = qpExists(req, 'safetyLevel');
-  if (exists) {
-    conds.safetyLevel = upperCaseCond(value);
-  }
-
-  [value, exists] = qpExists(req, 'machineMode');
-  if (exists) {
-    conds.machineModes = patternCond(value, 'i');
-  }
-
-  // Support for paging may be need?
-  // let limit: undefined | number;
-  // [value, exists] = qpExists(req, 'limit');
-  // if (exists) {
-  //   if (Array.isArray(value)) {
-  //     if (value.length > 0) {
-  //       limit = Number(value[0]);
-  //     }
-  //   } else {
-  //     limit = Number(value);
-  //   }
-  //   if (limit) {
-  //     limit = Number.isFinite(limit) ? limit : undefined;
-  //   }
-  // }
-  //
-  // let start: undefined | number;
-  // [value, exists] = qpExists(req, 'start');
-  // if (exists) {
-  //   if (Array.isArray(value)) {
-  //     if (value.length > 0) {
-  //       start = Number(value[0]);
-  //     }
-  //   } else {
-  //     start = Number(value);
-  //   }
-  //   if (start) {
-  //     limit = Number.isFinite(start) ? start : undefined;
-  //   }
-  // }
 
   if (debug.enabled) {
-    debug('Find slots: Conds: %s, Limit: %s, Start: %s', JSON.stringify(conds));
+    debug('Find slots: Conds: %s, Start: %s, Limit: %s', util.inspect(conds), start, limit);
   }
 
   const [ slots, groups, checklists ] = await Promise.all([
-    Slot.find(conds).sort({ name: -1 }).exec(),
+    Slot.find(conds).sort({ name: 1 }).skip(start || 0).limit(limit || 10000).exec(),
     mapById(Group.find({ memberType: Slot.modelName }).exec()),
     mapById(Checklist.find({ targetType: { $in: [ Slot.modelName, Group.modelName ] }}).exec()),
   ]);
 
-  const api2Slots = new Array<API2Slot>();
+  const pkg: webapi.Pkg<API2Slot[]> = { data: [] };
   for (const slot of slots) {
     let approved = false;
     try {
@@ -229,7 +239,7 @@ router.get('/api/v2/slots', ensureAccepts('json'), catchAll(async (req, res) => 
       throw new RequestError(`Checklist not resolved: ${err.message}`, INTERNAL_SERVER_ERROR);
     }
 
-    api2Slots.push({
+    pkg.data.push({
       id: ObjectId(slot._id).toHexString(),
       name: slot.name,
       desc: slot.desc,
@@ -243,11 +253,15 @@ router.get('/api/v2/slots', ensureAccepts('json'), catchAll(async (req, res) => 
       approved: approved,
     });
   }
-  res.json(api2Slots);
-}));
+  res.json(pkg);
+}
+
+router.get('/api/v2/slots(;filter)?', ensureAccepts('json'), catchAll(slotFilterHandler));
+
+router.post('/api/v2/slots;filter', ensureAccepts('json'), catchAll(slotFilterHandler));
 
 
-router.get('/api/v2/slots/:name_or_id', ensureAccepts('json'), catchAll( async (req, res) => {
+router.get('/api/v2/slots/:name_or_id', ensureAccepts('json'), catchAll(async (req, res) => {
   const nameOrId = String(req.params.name_or_id);
   debug('Find Slot (and checklist) with name or id: %s', nameOrId);
 
@@ -270,56 +284,79 @@ router.get('/api/v2/slots/:name_or_id', ensureAccepts('json'), catchAll( async (
   }
 
   if (slot.checklistId && !(checklist && slot.checklistId.equals(checklist._id))) {
-    throw new RequestError('Expected Checklist not found', INTERNAL_SERVER_ERROR);
+    throw new RequestError('Expected checklist not found', INTERNAL_SERVER_ERROR);
   }
 
   const approved = checklist ? checklist.approved : false;
 
-  const api2Slot: API2Slot = {
-    id: ObjectId(slot._id).toHexString(),
-    name: slot.name,
-    desc: slot.desc,
-    area: slot.area,
-    deviceType: slot.deviceType,
-    drr: slot.drr,
-    arr: slot.arr,
-    careLevel: slot.careLevel,
-    safetyLevel: slot.safetyLevel,
-    machineModes: slot.machineModes,
-    approved: approved,
+  const pkg: webapi.Pkg<API2Slot> = {
+    data: {
+      id: ObjectId(slot._id).toHexString(),
+      name: slot.name,
+      desc: slot.desc,
+      area: slot.area,
+      deviceType: slot.deviceType,
+      drr: slot.drr,
+      arr: slot.arr,
+      careLevel: slot.careLevel,
+      safetyLevel: slot.safetyLevel,
+      machineModes: slot.machineModes,
+      approved: approved,
+    },
   };
-  res.json(api2Slot);
+  res.json(pkg);
 }));
 
 
-router.get('/api/v2/devices', ensureAccepts('json'), catchAll(async (req, res) => {
+async function deviceFilterHandler(req: Request, res: Response) {
+  const params = ReqParamsToMap(req);
+
+  let start: number | undefined;
+  let limit: number | undefined;
   const conds: API2DeviceConds = {};
 
-  let [value, exists] = qpExists(req, 'name');
-  if (exists) {
-    conds.name = patternCond(value, 'i');
+  for (const [key, value] of params.entries()) {
+    switch (key) {
+      case 'NAME':
+        conds.name = patternCond(value, 'i');
+        continue;
+      case 'DEPT':
+        conds.dept = patternCond(value, 'i');
+        continue;
+      case 'DEVICETYPE':
+        conds.deviceType = patternCond(value, 'i');
+        continue;
+
+      // pagination
+      case 'START':
+        start = Number(value);
+        if (!Number.isInteger(start) || start < 0) {
+          throw new RequestError(`Start parameter is invalid: ${value}`, BAD_REQUEST);
+        }
+        continue;
+      case 'LIMIT':
+        limit = Number(value);
+        if (!Number.isInteger(limit) || limit < 0) {
+          throw new RequestError(`Limit parameter is invalid: ${value}`, BAD_REQUEST);
+        }
+        continue;
+
+      default:
+        throw new RequestError(`Filter parameter unsupported: ${key}`, BAD_REQUEST);
+    }
   }
 
-  [value, exists] = qpExists(req, 'dept');
-  if (exists) {
-    conds.dept = patternCond(value, 'i');
-  }
-
-  [value, exists] = qpExists(req, 'deviceType');
-  if (exists) {
-    conds.deviceType = patternCond(value, 'i');
-  }
   if (debug.enabled) {
-    debug('Find devices: Conds: %s, Limit: %s, Start: %s', JSON.stringify(conds));
+    debug('Find devices: Conds: %s, Start: %s, Limit: %s', util.inspect(conds), start, limit);
   }
 
   const [ devices, groups, checklists ] = await Promise.all([
-    Device.find(conds).sort({ name: -1 }).exec(),
+    Device.find(conds).sort({ name: 1 }).skip(start || 0).limit(limit || 10000).exec(),
     mapById(Group.find({ memberType: Device.modelName }).exec()),
     mapById(Checklist.find({ targetType: { $in: [ Device.modelName, Group.modelName ] }}).exec()),
   ]);
 
-  const api2Devices = new Array<API2Device>();
+  const pkg: webapi.Pkg<API2Device[]> = { data: [] };
   for (const device of devices) {
     let approved = false;
     try {
@@ -331,7 +368,7 @@ router.get('/api/v2/devices', ensureAccepts('json'), catchAll(async (req, res) =
       throw new RequestError(`Checklist not resolved: ${err.message}`, INTERNAL_SERVER_ERROR);
     }
 
-    api2Devices.push({
+    pkg.data.push({
       id: ObjectId(device._id).toHexString(),
       name: device.name,
       desc: device.desc,
@@ -340,8 +377,12 @@ router.get('/api/v2/devices', ensureAccepts('json'), catchAll(async (req, res) =
       approved: approved,
     });
   }
-  res.json(api2Devices);
-}));
+  res.json(pkg);
+}
+
+router.get('/api/v2/devices(;filter)?', ensureAccepts('json'), catchAll(deviceFilterHandler));
+
+router.post('/api/v2/devices;filter', ensureAccepts('json'), catchAll(deviceFilterHandler));
 
 
 router.get('/api/v2/devices/:name_or_id', ensureAccepts('json'), catchAll( async (req, res) => {
@@ -367,18 +408,20 @@ router.get('/api/v2/devices/:name_or_id', ensureAccepts('json'), catchAll( async
   }
 
   if (device.checklistId && !(checklist && device.checklistId.equals(checklist._id))) {
-    throw new RequestError('Expected Checklist not found', INTERNAL_SERVER_ERROR);
+    throw new RequestError('Expected checklist not found', INTERNAL_SERVER_ERROR);
   }
 
   const approved = checklist ? checklist.approved : false;
 
-  const api2Device: API2Device = {
-    id: ObjectId(device._id).toHexString(),
-    name: device.name,
-    desc: device.desc,
-    dept: device.dept,
-    deviceType: device.deviceType,
-    approved: approved,
+  const pkg: webapi.Pkg<API2Device> = {
+    data: {
+      id: ObjectId(device._id).toHexString(),
+      name: device.name,
+      desc: device.desc,
+      dept: device.dept,
+      deviceType: device.deviceType,
+      approved: approved,
+    },
   };
-  res.json(api2Device);
+  res.json(pkg);
 }));
