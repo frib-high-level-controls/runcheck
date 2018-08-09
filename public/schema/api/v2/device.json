@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "/api/v2/device.json",
+  "title": "Device Package",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the device.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Unique name of this device.",
+          "type": "string"
+        },
+        "desc": {
+          "description": "Description of this device",
+          "type": "string"
+        },
+        "dept": {
+          "description": "Identifier of the department that owns this device.",
+          "type": "string"
+        },
+        "deviceType": {
+          "description": "The standard abbreviation of the type of this device.",
+          "type": "string"
+        },
+        "approved": {
+          "description": "The checklist status for this device.",
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "name", "desc", "dept", "deviceType", "approved"]
+    }
+  },
+  "error": {
+    "$ref": "./error.json"
+  }
+}

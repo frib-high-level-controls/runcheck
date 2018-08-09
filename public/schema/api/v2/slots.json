@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "/api/v2/slots.json",
+  "title": "Slot List Package",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "./slot.json#/properties/data"
+      }
+    },
+    "error": {
+      "$ref": "./error.json"
+    }
+  }
+}

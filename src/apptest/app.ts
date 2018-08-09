@@ -20,6 +20,8 @@ import * as logging from '../app/shared/logging';
 import * as status from '../app/shared/status';
 import * as tasks from '../app/shared/tasks';
 
+import * as api1 from '../app/routes/api1';
+import * as api2 from '../app/routes/api2';
 import * as checklists from '../app/routes/checklists';
 import * as devices from '../app/routes/devices';
 import * as groups from '../app/routes/groups';
@@ -122,6 +124,8 @@ async function doStart(): Promise<express.Application> {
   app.use(slots.getRouter());
   app.use(groups.getRouter());
   app.use(checklists.getRouter());
+  app.use(api1.getRouter());
+  app.use(api2.getRouter());
 
   // no handler found for request
   app.use(handlers.notFoundHandler());

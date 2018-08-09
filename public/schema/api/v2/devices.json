@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "/api/v2/devices.json",
+  "title": "Device List Package",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "./device.json#/properties/data"
+      }
+    }
+  },
+  "error": {
+    "$ref": "./error.json"
+  }
+}
