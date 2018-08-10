@@ -21,6 +21,8 @@ import logging = require('./shared/logging');
 import status = require('./shared/status');
 import tasks = require('./shared/tasks');
 
+import migrations = require('./lib/migrations');
+
 import api1 = require('./routes/api1');
 import api2 = require('./routes/api2');
 import checklists = require('./routes/checklists');
@@ -260,6 +262,10 @@ async function doStart(): Promise<express.Application> {
   const safeMongoUrl = mongoUrl.replace(/\/\/(.*):(.*)@/, '//$1:<password>@');
   info('Mongoose default connection: %s', safeMongoUrl);
   await mongoose.connect(mongoUrl, cfg.mongo.options);
+
+  // Database Migration
+  info('Migrate database schema to latest version');
+  await migrations.migrate();
 
   // Authentication configuration
   if (!cfg.forgapi.url) {
