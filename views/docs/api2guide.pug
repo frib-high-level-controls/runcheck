@@ -1,0 +1,147 @@
+extends ../layout.pug
+
+block head
+  title API v2 :: CCDB
+  //- Special styling to ensure that the in-page links are visible below the navigation bar.
+  //- See details: https://stackoverflow.com/questions/10732690/offsetting-an-html-anchor-to-adjust-for-fixed-header
+  style(type='text/css')
+    | body {
+    |   padding-top: 60px;
+    | }
+    | h2 {
+    |   position:relative;
+    | }
+    | h2 span {
+    |   position: absolute; top:-60px;
+    | }
+    | .screenshot {
+    |   border: 1px solid;
+    | }
+
+block content
+  .container
+    .panel.panel-primary
+      .panel-heading
+        h1 <center>CCDB REST API v2</center>
+      .panel-body
+        :marked
+          **Title:** List Slots  
+          **Method:** GET  
+          **URL Path:** /api/v2/slots  
+          **URL Query Parameters:**  
+          *Unless otherwise indicated query parameters may be specified multiple times.*  
+          * *name* - Get slots with the specified name. Matching is case insensitive and wildcards (*) are supported.
+          * *area* - Get slots with the specified area. Matching is case insensitive and wildcards (*) are supported.
+          * *deviceType* - Get slots with the specified device type. Matching is case insensitive and wildcards (*) are supported.
+          * *arr* - Get slots associated with the specified ARR. Matching is case insensitive and wildcards (*) are supported.
+          * *drr* - Get slots associated with the specified DRR. Matching is case insensitive and wildcards (*) are supported.
+          * *careLevel* - Get slots with the specified level of care. Matching is case insensitive.
+          * *safetyLevel* - Get slots with the specified safety level. Matching is case insensitive.
+          * *machineMode* - Get slots associated with the specified machine mode. Matching is case insensitive and wildcards (*) are supported.  
+
+          **Responses:**
+          * 200 - Success ([JSON Schema](../schema/api/v2/slots.json)):  
+          ```json
+          { 
+            "data": [
+              {
+                "id":"6adde727f8018f51a9f22103"
+                "name":"BDS_BBS:DC_D5616"
+                "desc":correctors-X,Y"
+                "area":"ADB:AREA.LAB.ACCEL"
+                "deviceType":"DC"
+                "arr":ARR05"
+                "drr":DRR05"
+                "careLevel":MEDIUM"
+                "safetyLevel":"NONE"
+                "machineModes": [ 'M01A', 'M02' ],
+                "approved":false
+              },
+              ...
+            ]
+          }
+          ```
+          * 406 - Not Acceptable
+          ---
+
+          **Title:** Get Slot  
+          **Method:** GET  
+          **URL Path:** /api/v2/slot/:id  
+          **URL Path Parameters:**  
+          * id: Slot Name or ID **(required)**
+          
+          **Responses:**
+          * 200 - Success ([JSON Schema](../schema/api/v2/slot.json)):  
+          ```json
+          { 
+            "data": {
+              "id":"6adde727f8018f51a9f22103"
+              "name":"BDS_BBS:DC_D5616"
+              "desc":correctors-X,Y"
+              "area":"ADB:AREA.LAB.ACCEL"
+              "deviceType":"DC"
+              "arr":ARR05"
+              "drr":DRR05"
+              "careLevel":MEDIUM"
+              "safetyLevel":"NONE"
+              "machineModes": [ 'M01A', 'M02' ],
+              "approved":false
+            }
+          }
+          ```
+          * 404 - Not Found
+          * 406 - Not Acceptable
+          ---
+
+          **Title:** List Devices  
+          **Method:** GET  
+          **URL Path:** /api/v2/devices  
+          **URL Query Parameters:**  
+          *Unless otherwise indicated query parameters may be specified multiple times.*  
+          * *name* - Get slots with the specified name. Matching is case insensitive and wildcards (*) are supported.
+          * *dept* - Get slots with the specified department. Matching is case insensitive and wildcards (*) are supported.
+          * *deviceType* - Get slots with the specified device type. Matching is case insensitive and wildcards (*) are supported.  
+
+          **Responses:**
+          * 200 - Success ([JSON Schema](../schema/api/v2/devices.json)):  
+          ```json
+          { 
+            "data": [
+              {
+                "id":5b45fdbcccfb182da7363a10"
+                "name":"T30000-MDE-9002-0231"
+                "desc":"6\" Conflat Flange"
+                "dept":"IFS:LAB.FAC.ASD.INSTALL"
+                "deviceType":"FLA"
+                "approved":false
+              },
+              ...
+            ]
+          }
+          ```
+          * 406 - Not Acceptable
+          ---
+
+          **Title:** Get Device  
+          **Method:** GET  
+          **URL Path:** /api/v2/devices/:id  
+          **URL Path Parameters:**  
+          * id: Device Name or ID **(required)**
+
+          **Responses:**
+          * 200 - Success ([JSON Schema](../schema/api/v2/device.json)):  
+          ```json
+          { 
+            "data": {
+                "id":5b45fdbcccfb182da7363a10"
+                "name":"T30000-MDE-9002-0231"
+                "desc":"6\" Conflat Flange"
+                "dept":"IFS:LAB.FAC.ASD.INSTALL"
+                "deviceType":"FLA"
+                "approved":false
+            }
+          }
+          ```
+          * 404 - Not Found
+          * 406 - Not Acceptable
+          ---
