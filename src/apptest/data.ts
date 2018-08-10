@@ -84,7 +84,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
-    machineModes: [],
+    machineModes: [ 'M00', 'M01A', 'M01B', 'M02', 'M03' ],
   }, {
     name: 'FE_TEST:DEVB_D0002',
     desc: 'Test Slot #2',
@@ -94,7 +94,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.CONTROL_ESH,
-    machineModes: [],
+    machineModes: [ 'M01A', 'M01B', 'M02', 'M03' ],
   }, {
     name: 'FE_TEST:DEVA_D0003',
     desc: 'Test Slot #3',
@@ -104,7 +104,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
-    machineModes: [],
+    machineModes: [ 'M01B', 'M02', 'M03' ],
   }, {
     name: 'FE_TEST:DEVA_D0004',
     desc: 'Test Slot #4',
@@ -114,7 +114,7 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
-    machineModes: [],
+    machineModes: [ 'M02', 'M03' ],
   }, {
     name: 'FE_TEST:DEVA_D0002',
     desc: 'Test Slot #2',
@@ -122,9 +122,9 @@ export const SLOTS: ISlot[] = [
     deviceType: 'DEVA',
     arr: 'ARR0X',
     drr: 'DRR0X-0Y',
-    careLevel: CareLevel.MEDIUM,
+    careLevel: CareLevel.HIGH,
     safetyLevel: SafetyLevel.CONTROL_ESH,
-    machineModes: [],
+    machineModes: [ 'M03' ],
   },
 ];
 
