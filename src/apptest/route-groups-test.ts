@@ -66,7 +66,7 @@ describe('Test group routes', () => {
       // Bad Request (owner, slot area unmatch)
       { name: 'FE_TEST:DEVA_D0003', user: 'FEDM', status: 400, group: 'FE_TEST:GROUP_1' },
       // Conflict - slot in another group
-      { name: 'FE_TEST:DEVA_D0004', user: 'FEAM', status: 409, group: 'FE_TEST:GROUP_1' },
+      { name: 'FE_TEST:DEVA_D0001', user: 'FEAM', status: 409, group: 'FE_TEST:GROUP_2' },
     ];
     for (let row of table) {
       it(`User '${row.user || 'Anonymous'}' add slot ${row.name} to ${row.group}`, async () => {

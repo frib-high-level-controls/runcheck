@@ -114,7 +114,6 @@ export const SLOTS: ISlot[] = [
     drr: 'DRR0X-0Y',
     careLevel: CareLevel.MEDIUM,
     safetyLevel: SafetyLevel.NONE,
-    groupId: new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'),
     machineModes: [],
   }, {
     name: 'FE_TEST:DEVA_D0002',
