@@ -403,11 +403,13 @@ export function getHistoryUpdates<D extends Document<D>>(doc: D) {
       });
 
       const apiUpdate: webapi.Update = {
-        at: update.at.toDateString(),
+        at: update.at.toISOString(),
         by: update.by,
         paths: apiPaths,
       };
+      console.log(apiUpdate.at);
       apiUpdates.push(apiUpdate);
+
     });
   }
   return apiUpdates;
