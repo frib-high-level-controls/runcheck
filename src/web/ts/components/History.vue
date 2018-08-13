@@ -62,7 +62,7 @@
                 } finally {
                     this.loading = false;
                 }
-                this.updates = pkg.data;
+                this.updates = pkg.data.reverse();
             });
         },
     });
