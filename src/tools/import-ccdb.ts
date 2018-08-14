@@ -158,7 +158,8 @@ async function mongoose_connect(cfg: Config): Promise<void> {
   //   log.warn('Mongoose default connection disconnected');
   // });
 
-  return mongoose.connect(mongoUrl, cfg.mongo.options);
+  // Need to convert from Promise<typeof mongoose> to Promise<void>
+  return mongoose.connect(mongoUrl, cfg.mongo.options).then(() => { return; });
 }
 
 
