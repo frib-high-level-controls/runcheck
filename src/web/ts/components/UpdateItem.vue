@@ -46,7 +46,7 @@
       },
       updateDate(): string {
         return moment(new Date(this.updateData.at))
-          .format('MMM D, YYYY [at] h:m:s A');
+          .format('MMM D, YYYY [at] h:mm:ss A');
       },
     },
   });
