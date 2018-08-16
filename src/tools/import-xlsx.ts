@@ -50,6 +50,7 @@ interface Config {
   pnsapi: {
     url?: {};
     agentOptions?: {};
+    categories?: {};
   };
   dryrun?: {};
   updateBy?: {};
@@ -206,9 +207,11 @@ async function main() {
     for (const group of forgGroups) {
       if (group.type === 'DEPT') {
         approvedDepts.push(group.uid);
+        debug('FORG Approved department: %s (%s)', group.uid, group.fullname);
       }
       if (group.type === 'AREA') {
         approvedAreas.push(group.uid);
+        debug('FORG Approved area: %s (%s)', group.uid, group.fullname);
       }
     }
   });
@@ -226,11 +229,27 @@ async function main() {
     agentOptions: cfg.pnsapi.agentOptions || {},
   });
 
+  let categories = ['system', 'subsystem', 'device-type'];
+  if (cfg.pnsapi.categories) {
+    if (!Array.isArray(cfg.pnsapi.categories)) {
+      error(`Error: PNS API categories must be an array`);
+      process.exitCode = 1;
+      return;
+    }
+    categories = cfg.pnsapi.categories.map(String);
+  }
+
   const loadNames = pnsClient.findNames().then((pnsNames) => {
     for (const name of pnsNames) {
-      if (name.code) {
-        const code = name.code.replace('n', '\\d?');
+      if (name.code && categories.includes(name.category)) {
+        const m = name.code.match(/^[A-Z0-9nx]+$/);
+        if (!m) {
+          warn(`PNS Invalid %s name: '%s' (ignoring)`, name.category, name.code);
+          continue;
+        }
+        const code = name.code.replace(/n/g, '\\d?').replace(/x/g, '[OLE]');
         approvedNames.push(new RegExp(`^${code}$`));
+        debug(`PNS Approved %s name: '%s' /%s/`, name.category, name.code, code);
       }
     }
   });
