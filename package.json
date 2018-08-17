@@ -1,6 +1,6 @@
 {
   "name": "runcheck",
-  "version": "2.1.0-1.BETA",
+  "version": "2.1.0-2",
   "private": true,
   "scripts": {
     "start": "./bin/app",
