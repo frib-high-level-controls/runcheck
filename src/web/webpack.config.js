@@ -25,7 +25,7 @@ module.exports = {
           /* Loader options go here */
           configFile: 'tslint.json',
           emitErrors: false,
-          failOnHint: true,
+          failOnHint: false,
         },
       },
       {
