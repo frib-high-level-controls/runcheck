@@ -14,12 +14,20 @@ const debug = Debug('webapp:mongod');
 
 let mongod: ChildProcess | null;
 
-let dbpath: string | undefined;
+let dbpath: string | null;
 
-let dbpathCleanup: () => void | undefined;
+let dbpathCleanup: (() => void) | null;
 
+const tmpDirOptions = {
+  // Force cleanup of non-empty temporary directory
+  unsafeCleanup: true,
+  // Prefix to use for temporary directory name
+  prefix: 'webapp-mongod-dbpath-',
+};
 
-/* Try to ensure that temporary directory always gets removed! */
+// Try to ensure that the temporary directory always gets removed,
+// but the 'tmp' library will also cleanup directories on exit
+// (and it might have a more robust way of doing it)!
 process.on('exit', cleanupDBPath);
 process.on('SIGINT', cleanupDBPath);
 process.on('SIGTERM', cleanupDBPath);
@@ -30,7 +38,7 @@ process.on('SIGTERM', cleanupDBPath);
  * Note that startup generally takes at least 2 seconds,
  * which is longer than the default Mocha timeout!
  */
-export async function start(options?: {}): Promise<number> {
+export async function start(options?: { dbpath?: boolean | string }): Promise<number> {
 
   options = options || {};
 
@@ -40,15 +48,28 @@ export async function start(options?: {}): Promise<number> {
 
   const dbargs: string[] = [];
 
-  [dbpath, dbpathCleanup] = await new Promise<[string, () => void]>((resolve, reject) => {
-    tmp.dir((err, path, cleanup) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve([path, cleanup]);
+  if (options.dbpath === true) {
+    // Force creation of new temporary dbpath
+    cleanupDBPath();
+  }
+
+  if (typeof options.dbpath === 'string') {
+    // Use the provided directory for dbpath
+    cleanupDBPath();
+    dbpath = options.dbpath;
+  }
+
+  if (!dbpath) {
+    [dbpath, dbpathCleanup] = await new Promise<[string, () => void]>((resolve, reject) => {
+      tmp.dir(tmpDirOptions, (err, path, cleanup) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve([path, cleanup]);
+      });
     });
-  });
+  }
   dbargs.push('--dbpath', dbpath);
 
 
@@ -122,8 +143,17 @@ export async function stop() {
 }
 
 function cleanupDBPath() {
-  if (dbpath && dbpathCleanup) {
-    debug('Cleanup temporary dbpath: %s', dbpath);
-    dbpathCleanup();
+  if (dbpath) {
+    if (dbpathCleanup) {
+      debug('Cleanup temporary dbpath: %s', dbpath);
+      try {
+        dbpathCleanup();
+      } catch (err) {
+        warn('Error cleaning temporary dbpath: %s', err);
+      } finally {
+        dbpathCleanup = null;
+      }
+    }
+    dbpath = null;
   }
 }
