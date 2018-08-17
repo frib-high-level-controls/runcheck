@@ -155,7 +155,6 @@ module.exports = function(grunt) {
     'ts:app',
     'ts:web',
     'webpack:prod',
-    'ts:tools',
     'shell:pugcompile',
     'shell:pugrender',
   ]);
@@ -164,8 +163,13 @@ module.exports = function(grunt) {
     'ts:apptest',
   ]);
 
+  grunt.registerTask('build-tools', [
+    'ts:tools',
+  ]);
+
   grunt.registerTask('build-all', [
     'build',
+    'build-tools',
     'build-tests',
   ]);
 
@@ -173,6 +177,7 @@ module.exports = function(grunt) {
     'clean',
     'ensure_version_tag',
     'build',
+    'build-tools',
   ]);
 
   grunt.registerTask('lint', [
