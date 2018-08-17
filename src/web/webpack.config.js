@@ -23,7 +23,9 @@ module.exports = {
         loader: 'tslint-loader',
         options: {
           /* Loader options go here */
-          cibfugFile: 'tslint.json',
+          configFile: 'tslint.json',
+          emitErrors: false,
+          failOnHint: true,
         },
       },
       {
