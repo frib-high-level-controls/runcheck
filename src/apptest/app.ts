@@ -27,6 +27,7 @@ import * as devices from '../app/routes/devices';
 import * as groups from '../app/routes/groups';
 import * as slots from '../app/routes/slots';
 
+import * as mongod from './shared/mongod';
 
 import * as forgapi from './shared/mock-forgapi';
 
@@ -76,7 +77,12 @@ async function doStart(): Promise<express.Application> {
   // configure Mongoose (MongoDB)
   mongoose.Promise = global.Promise;
 
-  const mongoUrl = 'mongodb://localhost:27017/webapp-test';
+  let mongoPort = 27017;
+  if (process.env.WEBAPP_START_MONGOD === 'true') {
+    mongoPort = await mongod.start();
+  }
+
+  const mongoUrl = `mongodb://localhost:${mongoPort}/webapp-test`;
 
   const mongoOptions: mongoose.ConnectionOptions = {
     useMongoClient: true,
@@ -148,6 +154,14 @@ async function doStop(): Promise<void> {
     await mongoose.disconnect();
   } catch (err) {
     warn('Mongoose disconnect failure: %s', err);
+  }
+
+  if (process.env.WEBAPP_START_MONGOD === 'true') {
+    try {
+      await mongod.stop();
+    } catch (err) {
+      warn('MongoDB stop failure: %s', err);
+    }
   }
 
   try {
