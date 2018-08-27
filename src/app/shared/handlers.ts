@@ -407,9 +407,8 @@ export function getHistoryUpdates<D extends Document<D>>(doc: D) {
         by: update.by,
         paths: apiPaths,
       };
-      console.log(apiUpdate.at);
-      apiUpdates.push(apiUpdate);
 
+      apiUpdates.push(apiUpdate);
     });
   }
   return apiUpdates;
