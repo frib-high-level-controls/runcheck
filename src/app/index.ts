@@ -76,7 +76,7 @@ interface Config {
 }
 
 // application roles (consider moving to configuration file)
-const ADMIN_ROLES = [ 'ADM:RUNCHECK' ];
+const ADMIN_ROLES = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
 
 // application states (same as tasks.State, but avoids the dependency)
 export type State = 'STARTING' | 'STARTED' | 'STOPPING' | 'STOPPED';
