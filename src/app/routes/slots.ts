@@ -222,6 +222,7 @@ router.get('/slots/:name_or_id', catchAll( async (req, res) => {
     checklistId: slot.checklistId ? slot.checklistId.toHexString() : undefined,
     careLevel: slot.careLevel,
     safetyLevel: slot.safetyLevel,
+    machineModes: Array.from(slot.machineModes),
     drr: slot.drr,
     arr: slot.arr,
     groupId: slot.groupId ? slot.groupId.toHexString() : undefined,

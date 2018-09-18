@@ -141,6 +141,7 @@ declare namespace webapi {
     safetyLevel: string;
     arr: string;
     drr: string;
+    machineModes: string[];
     groupId?: string;
   }
 
