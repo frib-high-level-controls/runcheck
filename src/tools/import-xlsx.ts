@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as util from 'util';
 
 import * as dbg from 'debug';
-import mongoose = require('mongoose');
+import * as mongoose from 'mongoose';
 import rc = require('rc');
 import * as XLSX from 'xlsx';
 
@@ -38,6 +38,7 @@ interface Config {
   mongo: {
     user?: {};
     pass?: {};
+    host?: {};
     port: {};
     addr: {};
     db: {};
@@ -117,8 +118,6 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 let forgClient: forgapi.IClient;
 
-mongoose.Promise = global.Promise;
-
 async function main() {
 
   const cfg: Config = {
@@ -127,8 +126,8 @@ async function main() {
       addr: 'localhost',
       db: 'runcheck-dev',
       options: {
-        // see http://mongoosejs.com/docs/connections.html
-        useMongoClient: true,
+        // Use the "new" URL parser (Remove deprecation warning in Mongoose 5.x!)
+        useNewUrlParser: true,
       },
     },
     forgapi: {
@@ -340,7 +339,10 @@ async function main() {
     }
     mongoUrl += '@';
   }
-  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
+  if (!cfg.mongo.host) {
+    cfg.mongo.host = `${cfg.mongo.addr}:${cfg.mongo.port}`;
+  }
+  mongoUrl +=  `${cfg.mongo.host}/${cfg.mongo.db}`;
 
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 

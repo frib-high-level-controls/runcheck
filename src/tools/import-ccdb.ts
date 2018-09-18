@@ -52,6 +52,7 @@ interface Config {
   mongo: {
     user?: {};
     pass?: {};
+    host?: {};
     port: {};
     addr: {};
     db: {};
@@ -77,7 +78,6 @@ const info = console.info;
 const warn = console.warn;
 const error = console.error;
 
-mongoose.Promise = global.Promise;
 
 // Partially wrap the mysql library to use promises.
 function mysql_createConnection(options: any) {
@@ -144,7 +144,10 @@ async function mongoose_connect(cfg: Config): Promise<void> {
     }
     mongoUrl += '@';
   }
-  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
+  if (!cfg.mongo.host) {
+    cfg.mongo.host = `${cfg.mongo.addr}:${cfg.mongo.port}`;
+  }
+  mongoUrl +=  `${cfg.mongo.host}/${cfg.mongo.db}`;
 
   // mongoose.connection.on('connected', function () {
   //   log.info('Mongoose default connection opened.');
@@ -218,8 +221,8 @@ async function main() {
       addr: 'localhost',
       db: 'runcheck-dev',
       options: {
-        // see http://mongoosejs.com/docs/connections.html
-        useMongoClient: true,
+        // Use the "new" URL parser (Remove deprecation warning in Mongoose 5.x!)
+        useNewUrlParser: true,
       },
     },
     host: 'localhost',

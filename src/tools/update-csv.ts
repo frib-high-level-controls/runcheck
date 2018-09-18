@@ -6,7 +6,7 @@ import * as util from 'util';
 
 import * as csvparse from 'csv-parse';
 import * as dbg from 'debug';
-import mongoose = require('mongoose');
+import * as mongoose from 'mongoose';
 import rc = require('rc');
 
 import * as auth from '../app/shared/auth';
@@ -37,6 +37,7 @@ interface Config {
   mongo: {
     user?: {};
     pass?: {};
+    host?: {};
     port: {};
     addr: {};
     db: {};
@@ -58,7 +59,6 @@ const error = console.error;
 
 const USR = auth.RoleScheme.USR;
 
-mongoose.Promise = global.Promise;
 
 async function main() {
 
@@ -68,8 +68,8 @@ async function main() {
       addr: 'localhost',
       db: 'runcheck-dev',
       options: {
-        // see http://mongoosejs.com/docs/connections.html
-        useMongoClient: true,
+        // Use the "new" URL parser (Remove deprecation warning in Mongoose 5.x!)
+        useNewUrlParser: true,
       },
     },
   };
@@ -161,7 +161,10 @@ async function main() {
     }
     mongoUrl += '@';
   }
-  mongoUrl += cfg.mongo.addr + ':' + cfg.mongo.port + '/' + cfg.mongo.db;
+  if (!cfg.mongo.host) {
+    cfg.mongo.host = `${cfg.mongo.addr}:${cfg.mongo.port}`;
+  }
+  mongoUrl +=  `${cfg.mongo.host}/${cfg.mongo.db}`;
 
   await mongoose.connect(mongoUrl, cfg.mongo.options);
 
