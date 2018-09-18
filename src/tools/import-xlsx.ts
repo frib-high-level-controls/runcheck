@@ -75,6 +75,7 @@ enum SlotColumn {
   DEVICE_TYPE = 'DEVICE TYPE',
   CARE_LEVEL = 'LEVEL OF CARE',
   SAFETY_LEVEL = 'SAFETY DESIGNATION',
+  MACHINE_MODES = 'ASSOCIATED MACHINE MODES',
 }
 
 enum DeviceColumn {
@@ -115,6 +116,7 @@ const ARR_REGEX = /^ARR[\d?]?[\d?]?(-[\w?]+)?$/;
 const DEVICE_TYPE_REGEX = /^\w+$/;
 const DEVICE_NAME_REGEX = /^[A-Z]\d{5}-[A-Z]{3}-\d{4}-\d{4}(-S\d{5})?$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const MACHINE_MODE_REGEX = /^M\d[A-Z]?$/;
 
 let forgClient: forgapi.IClient;
 
@@ -633,6 +635,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
     let deviceType: string | undefined;
     let careLevel: string | undefined;
     let safetyLevel: string | undefined;
+    let machineModes: string | undefined;
     let drr: string | undefined;
     let arr: string | undefined;
 
@@ -662,6 +665,9 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
           break;
         case SlotColumn.ARR:
           arr = String(row[prop]).trim().toUpperCase();
+          break;
+        case SlotColumn.MACHINE_MODES:
+          machineModes = String(row[prop]).trim();
           break;
         default:
           warn(`Slot property, '${prop}', is unexpected, ignoring!`);
@@ -763,6 +769,20 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
       result.errors.push(`Slot ARR, '${drr}', is not valid`);
     } else {
       result.slot.arr = arr;
+    }
+
+    if (machineModes) {
+      let machineModesValid = true;
+      const splitMachineModes = machineModes.split(/\s*,\s*/);
+      for (const mode of splitMachineModes) {
+        if (!mode.match(MACHINE_MODE_REGEX)) {
+          result.errors.push(`Slot machine mode, '${mode}', is not valid`);
+          machineModesValid = false;
+        }
+      }
+      if (machineModesValid) {
+        result.slot.machineModes = splitMachineModes;
+      }
     }
 
     results.push(result);

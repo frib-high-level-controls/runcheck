@@ -60,6 +60,17 @@ const error = console.error;
 const USR = auth.RoleScheme.USR;
 
 
+/**
+ * Split is similar to the standard function except
+ * it returns an empty array for an empty string.
+ */
+function split(str: string, pattern: RegExp) {
+  if (str.length === 0) {
+    return [];
+  }
+  return str.split(pattern);
+}
+
 async function main() {
 
   const cfg: Config = {
@@ -173,12 +184,34 @@ async function main() {
     const modified = new Array<HistoryDocument>();
     outer: for (const record of data) {
       let cond: POJO | undefined;
-      for (const prop in record) {
+      for (let prop in record) {
         if (record.hasOwnProperty(prop) && prop.startsWith('cond:')) {
+          // Record value should already be a string, but this will ensure it!
+          const recValue = String(record[prop]);
+          // Remove the 'cond:' prefix from the property
+          prop = prop.substring(5);
+
+          const path = Model.schema.path(prop);
+          if (!path) {
+            error('Error: Document (%s) schema does not have path: %s', Model.modelName, prop);
+            hasError = true;
+            continue outer;
+          }
+
           if (!cond) {
             cond = {};
           }
-          cond[prop.substring(5)] = record[prop];
+
+          // If path is type array then convert comma seperated list to array
+          if (path instanceof mongoose.Schema.Types.Array) {
+            const splitRecValue = split(recValue, /\s*,\s*/);
+            debug('Condition property: %s, value split into array: "%s" => [%s]', prop, recValue, splitRecValue);
+            cond[prop] = splitRecValue;
+            continue;
+          }
+
+          debug('Condition property: %s, with value: %s', prop, recValue);
+          cond[prop] = recValue;
         }
       }
       if (!cond) {
@@ -203,12 +236,33 @@ async function main() {
 
       for (const prop in record) {
         if (record.hasOwnProperty(prop) && !prop.startsWith('cond:')) {
-          if (!doc.schema.path(prop)) {
+          // Record value should already be a string, but this will ensure it!
+          const recValue = String(record[prop]);
+
+          const path = doc.schema.path(prop);
+          if (!path) {
             error('Error: Document (%s) schema does not have path: %s', Model.modelName, prop);
             hasError = true;
             continue outer;
           }
-          doc.set(prop, record[prop]);
+
+          // If path is type array then convert comma seperated list to array
+          if (path instanceof mongoose.Schema.Types.Array) {
+            const splitRecValue = split(recValue, /\s*,\s*/);
+            debug('Record property: %s, value split into array: "%s" => [%s]', prop, recValue, splitRecValue);
+
+            const docValue = doc.get(prop);
+            if (!Array.isArray(docValue)) {
+              warn('Warning: Document property: %s, array value expected', prop);
+              doc.set(prop, splitRecValue);
+            } else if (splitRecValue.join() !== docValue.join()) {
+              doc.set(prop, splitRecValue);
+            }
+            continue;
+          }
+
+          debug('Record property: %s, with value: %s', prop, recValue);
+          doc.set(prop, recValue);
         }
       }
 
@@ -229,7 +283,7 @@ async function main() {
       info('Document (%s: %s): modified {', Model.modelName, JSON.stringify(cond));
       info('  "_id":"%s"', doc._id);
       for (const path of modifiedPaths) {
-        info('  "%s":"%s"', path, doc.get(path));
+        info('  "%s":%s', path, JSON.stringify(doc.get(path)));
       }
       info('}');
 
