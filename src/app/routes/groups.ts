@@ -209,6 +209,7 @@ router.get('/groups/slot/:id/members', catchAll(async (req, res) => {
       safetyLevel: slot.safetyLevel,
       arr: slot.arr,
       drr: slot.drr,
+      machineModes: Array.from(slot.machineModes),
     });
   }
   res.json(<webapi.Pkg<webapi.Slot[]>> {
@@ -287,6 +288,7 @@ router.post('/groups/slot/:id/members', auth.ensureAuthc(), ensurePackage(), ens
     safetyLevel: slot.safetyLevel,
     arr: slot.arr,
     drr: slot.drr,
+    machineModes: Array.from(slot.machineModes),
   };
 
   res.json(<webapi.Pkg<webapi.Slot>> {
