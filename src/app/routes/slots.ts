@@ -296,7 +296,7 @@ router.put('/slots/:name_or_id/installation', auth.ensureAuthc(), catchAll(async
     throw new RequestError('Date is required', BAD_REQUEST);
   }
 
-  if (!pkg.data.installDeviceOn.match(/\d{4}-\d{2}-\d{2}/)) {
+  if (!pkg.data.installDeviceOn.match(/\d{4}-\d{2}-\d{2}/)) { // TODO: /^$/
     throw new RequestError('Date is invalid (1)', BAD_REQUEST);
   }
 
