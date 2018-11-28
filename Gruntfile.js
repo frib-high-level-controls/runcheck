@@ -7,7 +7,7 @@ module.exports = function(grunt) {
         stderr: false
       },
       puglint: {
-        command: './node_modules/.bin/pug-lint ./views/*.pug ./views/web/*.pug',
+        command: './node_modules/.bin/pug-lint ./views/*.pug ./views/docs/*.pug ./views/web/*.pug',
       },
       pugcompile: {
         command: './node_modules/.bin/pug ./views/web/*.pug -D -P -c --name-after-file -o ./public/js/templates',
