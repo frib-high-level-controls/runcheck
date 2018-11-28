@@ -1,0 +1,17 @@
+extends layout.pug
+
+block head
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables.net-bs/css/dataTables.bootstrap.css')
+  link(rel='stylesheet', href=basePath + '/node_modules/datatables.net-buttons-bs/css/buttons.bootstrap.min.css')
+  title Machine Modes :: CCDB
+
+block content
+  br
+  .container#machmodes
+    h2 Machine Mode Summary
+    br
+    machine-mode-table(url=basePath + '/api/v2/slots' update=600)
+
+block js
+  //- View Model
+  script(type='text/javascript' src=basePath + '/dist/machmodes.js')

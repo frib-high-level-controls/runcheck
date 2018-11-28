@@ -222,4 +222,30 @@ declare namespace webapi {
   interface ChecklistStatusDetails extends ChecklistStatus {
     history: History;
   }
+
+  namespace api2 {
+
+    interface Slot {
+      id: string;
+      name: string;
+      desc: string;
+      area: string;
+      deviceType: string;
+      approved: boolean;
+      careLevel: string;
+      safetyLevel: string;
+      arr: string;
+      drr: string;
+      machineModes: string[];
+    }
+
+    interface Device {
+      id: string;
+      name: string;
+      desc: string;
+      dept: string;
+      deviceType: string;
+      approved: boolean;
+    }
+  }
 }

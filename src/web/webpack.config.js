@@ -9,6 +9,7 @@ module.exports = {
     slot: './src/web/ts/slot-action.ts',
     device: './src/web/ts/device-action.ts',
     group: './src/web/ts/slot-group-action.ts',
+    machmodes: './src/web/ts/machmodes.ts',
   },
   output: {
     path: path.resolve(__dirname, '../../public/dist'),

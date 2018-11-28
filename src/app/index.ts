@@ -32,6 +32,7 @@ import checklists = require('./routes/checklists');
 import devices = require('./routes/devices');
 import groups = require('./routes/groups');
 import slots = require('./routes/slots');
+import * as views from './routes/views';
 
 
 // package metadata
@@ -324,13 +325,13 @@ async function doStart(): Promise<express.Application> {
   // Authentication configuration
   if (!cfg.forgapi.url) {
     throw new Error('FORG base URL not configured');
-  }
+    }
   info('FORG API base URL: %s', cfg.forgapi.url);
 
   const forgClient = new forgapi.Client({
     url: String(cfg.forgapi.url),
     agentOptions: cfg.forgapi.agentOptions || {},
-  });
+    });
   // Need the FORG base URL available to views
   app.locals.forgurl = String(cfg.forgapi.url);
 
@@ -433,6 +434,7 @@ async function doStart(): Promise<express.Application> {
   app.use(slots.getRouter({ adminRoles: ADMIN_ROLES}));
   app.use(groups.getRouter({ adminRoles: ADMIN_ROLES }));
   app.use(checklists.getRouter({ adminRoles: ADMIN_ROLES }));
+  app.use(views.getRouter());
   app.use(api1.getRouter());
   app.use(api2.getRouter());
 

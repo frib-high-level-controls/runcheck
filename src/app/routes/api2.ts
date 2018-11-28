@@ -43,19 +43,7 @@ import {
 type Request = express.Request;
 type Response = express.Response;
 
-interface API2Slot {
-  id: string;
-  name: string;
-  desc: string;
-  area: string;
-  deviceType: string;
-  approved: boolean;
-  careLevel: string;
-  safetyLevel: string;
-  arr: string;
-  drr: string;
-  machineModes: string[];
-}
+type API2Slot = webapi.api2.Slot;
 
 interface API2SlotConds {
   name?: RegExp | { $in: RegExp[] };
@@ -68,14 +56,7 @@ interface API2SlotConds {
   machineModes?: RegExp | { $in: RegExp[] };
 }
 
-interface API2Device {
-  id: string;
-  name: string;
-  desc: string;
-  dept: string;
-  deviceType: string;
-  approved: boolean;
-}
+type API2Device = webapi.api2.Device;
 
 interface API2DeviceConds {
   name?: RegExp | { $in: RegExp[] };
