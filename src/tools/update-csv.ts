@@ -20,6 +20,14 @@ import {
   Device,
 } from '../app/models/device';
 
+import {
+  Group,
+} from '../app/models/group';
+
+import {
+  ChecklistSubject,
+} from '../app/models/checklist';
+
 // Plain Old Javascript Object
 interface POJO {
   [key: string]: {} | undefined;
@@ -53,6 +61,7 @@ const debug = dbg('update-csv');
 
 const readFile = util.promisify(fs.readFile);
 
+// tslint:disable:no-console
 const info = console.info;
 const warn = console.warn;
 const error = console.error;
@@ -97,7 +106,7 @@ async function main() {
   }
 
   if (cfg.h || cfg.help) {
-    info(`Usage: update-csv [ options ] [ slot | device ] data.csv
+    info(`Usage: update-csv [ options ] [ slot | device | group | clsubject ] data.csv
 
     Options
       -h, --help             display help information
@@ -121,6 +130,12 @@ async function main() {
     break;
   case 'DEVICE':
     Model = Device;
+    break;
+  case 'GROUP':
+    Model = Group;
+    break;
+  case 'CLSUBJECT':
+    Model = ChecklistSubject;
     break;
   default:
     error('Error: specified model not supported: %s', cfg._[0]);
