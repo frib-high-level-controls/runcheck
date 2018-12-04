@@ -104,7 +104,7 @@ describe('Test API v2 routes', () => {
     }];
 
     const checkPackageMemberNames = (names: string[]) => {
-      return checkPackage((d) => {
+      return checkPackage((d: {}) => {
         if (!Array.isArray(d)) {
           assert.isArray(d);
           return;
@@ -202,7 +202,7 @@ describe('Test API v2 routes', () => {
     }];
 
     const checkPackageMemberNames = (names: string[]) => {
-      return checkPackage((d) => {
+      return checkPackage((d: {}) => {
         if (!Array.isArray(d)) {
           assert.isArray(d);
           return;
