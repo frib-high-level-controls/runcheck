@@ -3,10 +3,14 @@
  */
 import * as mongoose from 'mongoose';
 
-import { Checklist } from './checklist';
-import { MODEL_NAME as SLOT_MODEL_NAME } from './slot';
+import * as history from '../shared/history';
 
-import * as history from  '../shared/history';
+import { Checklist } from './checklist';
+
+import {
+  DEVICE_MODEL_NAME,
+  SLOT_MODEL_NAME,
+} from './common';
 
 type ObjectId = mongoose.Types.ObjectId;
 
@@ -25,9 +29,6 @@ export interface Device extends IDevice, history.Document<Device> {
   // no additional methods
 };
 
-// Needed to stop cyclical dependency
-// between Slot and Device and Group models.
-export const MODEL_NAME = 'Device';
 
 const Schema = mongoose.Schema;
 
@@ -90,4 +91,4 @@ deviceSchema.plugin(history.addHistory, {
   watchAll: true,
 });
 
-export const Device = history.model<Device>(MODEL_NAME, deviceSchema);
+export const Device = history.model<Device>(DEVICE_MODEL_NAME, deviceSchema);
