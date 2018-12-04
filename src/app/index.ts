@@ -27,14 +27,14 @@ import * as promises from './shared/promises';
 import * as status from './shared/status';
 import * as tasks from './shared/tasks';
 
-import migrations = require('./lib/migrations');
+import * as migrations from './lib/migrations';
 
-import api1 = require('./routes/api1');
-import api2 = require('./routes/api2');
-import checklists = require('./routes/checklists');
-import devices = require('./routes/devices');
-import groups = require('./routes/groups');
-import slots = require('./routes/slots');
+import * as api1 from './routes/api1';
+import * as api2 from './routes/api2';
+import * as checklists from './routes/checklists';
+import * as devices from './routes/devices';
+import * as groups from './routes/groups';
+import * as slots from './routes/slots';
 
 
 // package metadata
