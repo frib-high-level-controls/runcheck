@@ -6,4 +6,6 @@
 
 declare let basePath: string;
 
+declare let forgurl: string | undefined;
+
 declare var Vue: vue.VueConstructor;

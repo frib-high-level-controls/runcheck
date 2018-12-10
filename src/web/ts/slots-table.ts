@@ -2,9 +2,6 @@
  * Slots table view
  */
 
-// Base URL for FORG service
-let forgurl: string | undefined;
-
 $(WebUtil.wrapCatchAll0(async () => {
   type SlotTableRow = webapi.SlotTableRow & { selected?: boolean };
 
