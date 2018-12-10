@@ -520,12 +520,18 @@ async function doStart(): Promise<express.Application> {
 
   // Authenticate Success Handler
   authroute.use((req, res, next) => {
-    const username = auth.getUsername(req);
+    const provider = auth.getProvider();
+    const username = provider.getUsername(req);
     if (!username) {
-      next(new Error('Username not found after authentication'));
+      next(new Error('Username is undefined after authentication!'));
       return;
     }
-    info(`Authentication success: username: '%s'`, username);
+    const userroles = provider.getRoles(req);
+    if (!userroles) {
+      next(new Error('User roles are undefined after authentication!'));
+      return;
+    }
+    info(`Authentication success: username: '%s', roles: [%s]`, username, userroles);
     if (req.query.bounce) {
       res.redirect(req.query.bounce);
       return;
