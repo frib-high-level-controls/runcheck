@@ -3,11 +3,15 @@
  */
 import * as mongoose from 'mongoose';
 
-import { Checklist } from './checklist';
-import { MODEL_NAME as DEVICE_MODEL_NAME } from './device';
-import { MODEL_NAME as GROUP_MODEL_NAME } from './group';
-
 import * as history from '../shared/history';
+
+import { Checklist } from './checklist';
+
+import {
+  DEVICE_MODEL_NAME,
+  GROUP_MODEL_NAME,
+  SLOT_MODEL_NAME,
+} from './common';
 
 type ObjectId = mongoose.Types.ObjectId;
 
@@ -46,10 +50,6 @@ export interface ISlot {
 export interface Slot extends ISlot, history.Document<Slot> {
   // no additional methods
 };
-
-// Needed to stop cyclical dependency
-// between Slot and Device and Group models.
-export const MODEL_NAME = 'Slot';
 
 export const CARE_LEVELS: CareLevel[] = [
   CareLevel.LOW,
@@ -163,4 +163,4 @@ history.addHistory(slotSchema, {
   watchAll: true,
 });
 
-export const Slot = history.model<Slot>(MODEL_NAME, slotSchema);
+export const Slot = history.model<Slot>(SLOT_MODEL_NAME, slotSchema);

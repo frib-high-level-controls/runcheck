@@ -26,7 +26,13 @@ header
               li
                 a(href=basePath + '/checklists?type=SLOT') Slots and Slot Groups
           li.dropdown
-            a.dropdown-toggle(href='#', data-toggle='dropdown') Help
+            a.dropdown-toggle(href='#' data-toggle='dropdown') Reports
+              b.caret
+            ul.dropdown-menu
+              li
+                a(href=basePath + '/reports/machmodes') Machine Modes
+          li.dropdown
+            a.dropdown-toggle(href='#' data-toggle='dropdown') Help
               b.caret
             ul.dropdown-menu
               li

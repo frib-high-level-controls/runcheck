@@ -80,7 +80,7 @@ async function doStart(): Promise<express.Application> {
   const mongoUrl = `mongodb://localhost:${mongoPort}/webapp-test`;
 
   const mongoOptions: mongoose.ConnectionOptions = {
-    useMongoClient: true,
+    useNewUrlParser: true,
   };
 
   await mongoose.connect(mongoUrl, mongoOptions);

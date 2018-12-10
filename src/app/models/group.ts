@@ -8,6 +8,11 @@ import * as history from '../shared/history';
 import { Checklist } from './checklist';
 
 import {
+  GROUP_MODEL_NAME,
+  // SLOT_MODEL_NAME,
+} from './common';
+
+import {
   SAFETY_LEVELS,
   SafetyLevel,
 } from './slot';
@@ -26,10 +31,6 @@ export interface IGroup {
 export interface Group extends IGroup, history.Document<Group> {
   // no additional methods
 };
-
-// Needed to stop cyclical dependency
-// between Slot and Device and Group models.
-export const MODEL_NAME = 'Group';
 
 const Schema = mongoose.Schema;
 
@@ -55,6 +56,9 @@ const groupSchema = new Schema({
   },
   memberType: {
     type: String,
+    // TODO: Add this constraint when there
+    // is sufficient time for testing.
+    // enum: [ SLOT_MODEL_NAME ],
     required: true,
   },
   checklistId: {
@@ -73,4 +77,4 @@ history.addHistory(groupSchema, {
   watchAll: true,
 });
 
-export const Group = history.model<Group>(MODEL_NAME, groupSchema);
+export const Group = history.model<Group>(GROUP_MODEL_NAME, groupSchema);
