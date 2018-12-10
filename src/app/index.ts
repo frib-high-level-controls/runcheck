@@ -59,6 +59,7 @@ interface Config {
     trust_proxy: {};
     session_life: {};
     session_secret: {};
+    admin_roles: {};
   };
   mongo: {
     user?: {};
@@ -93,9 +94,6 @@ interface Config {
     groupAttributes?: {};
   };
 }
-
-// application roles (consider moving to configuration file)
-const ADMIN_ROLES = [ 'ADM:RUNCHECK', 'ADM:CCDB' ];
 
 // application states (same as tasks.State, but avoids the dependency)
 export type State = 'STARTING' | 'STARTED' | 'STOPPING' | 'STOPPED';
@@ -233,6 +231,7 @@ async function doStart(): Promise<express.Application> {
       trust_proxy: false,
       session_life: 3600000,
       session_secret: crypto.randomBytes(50).toString('base64'),
+      admin_roles: [ 'ADM:RUNCHECK', 'ADM:CCDB' ],
     },
     mongo: {
       port: '27017',
@@ -348,6 +347,12 @@ async function doStart(): Promise<express.Application> {
   await migrations.migrate();
 
   // Authentication configuration
+  if (!Array.isArray(cfg.app.admin_roles)) {
+    throw new Error('Administrator roles must be an array');
+  }
+  const adminRoles = cfg.app.admin_roles.map(String);
+  info('Administrator roles: [%s]', adminRoles);
+
   {
     if (!cfg.ldap.url) {
       throw new Error('LDAP URL must be specified');
@@ -569,10 +574,10 @@ async function doStart(): Promise<express.Application> {
   });
 
   app.use('/status', status.router);
-  app.use(devices.getRouter({ adminRoles: ADMIN_ROLES }));
-  app.use(slots.getRouter({ adminRoles: ADMIN_ROLES}));
-  app.use(groups.getRouter({ adminRoles: ADMIN_ROLES }));
-  app.use(checklists.getRouter({ adminRoles: ADMIN_ROLES }));
+  app.use(devices.getRouter({ adminRoles }));
+  app.use(slots.getRouter({ adminRoles }));
+  app.use(groups.getRouter({ adminRoles }));
+  app.use(checklists.getRouter({ adminRoles }));
   app.use(views.getRouter());
   app.use(api1.getRouter());
   app.use(api2.getRouter());
