@@ -30,9 +30,11 @@ import {
 
 import {
   Device,
+  IDevice,
 } from '../models/device';
 
 import {
+  ISlot,
   Slot,
 } from '../models/slot';
 
@@ -45,24 +47,32 @@ type Response = express.Response;
 
 type API2Slot = webapi.api2.Slot;
 
-interface API2SlotConds {
-  name?: RegExp | { $in: RegExp[] };
-  area?: RegExp | { $in: RegExp[] };
-  deviceType?: RegExp | { $in: RegExp[] };
-  arr?: RegExp | { $in: RegExp[] };
-  drr?: RegExp | { $in: RegExp[] };
-  careLevel?: string | { $in: string[] };
-  safetyLevel?: string | { $in: string[] };
-  machineModes?: RegExp | { $in: RegExp[] };
-}
-
 type API2Device = webapi.api2.Device;
 
-interface API2DeviceConds {
-  name?: RegExp | { $in: RegExp[] };
-  dept?: RegExp | { $in: RegExp[] };
-  deviceType?: RegExp | { $in: RegExp[] };
-}
+type StringCond = string | { $in: string[] };
+
+type WildcardCond = RegExp | { $in: RegExp[] };
+
+type API2SlotConds = {
+  [K in keyof ISlot]?:
+    K extends 'name' ? WildcardCond :
+    K extends 'area' ? WildcardCond :
+    K extends 'deviceType' ? WildcardCond :
+    K extends 'arr' ? WildcardCond :
+    K extends 'drr' ? WildcardCond :
+    K extends 'careLevel' ? StringCond :
+    K extends 'safetyLevel' ? StringCond :
+    K extends 'machineModes' ? WildcardCond :
+    never;
+};
+
+type API2DeviceConds = {
+  [K in keyof IDevice]?:
+    K extends 'name' ? WildcardCond :
+    K extends 'dept' ? WildcardCond :
+    K extends 'deviceType' ? WildcardCond :
+    never;
+};
 
 const debug = dbg('runcheck:routes:api2');
 
@@ -157,7 +167,7 @@ async function slotFilterHandler(req: Request, res: Response) {
       case 'NAME':
         conds.name = patternCond(value, 'i');
         continue;
-      case 'AREA':
+      case 'OWNER':
         conds.area = patternCond(value, 'i');
         continue;
       case 'DEVICETYPE':
@@ -224,7 +234,7 @@ async function slotFilterHandler(req: Request, res: Response) {
       id: ObjectId(slot._id).toHexString(),
       name: slot.name,
       desc: slot.desc,
-      area: slot.area,
+      owner: slot.area,
       deviceType: slot.deviceType,
       arr: slot.arr,
       drr: slot.drr,
@@ -275,7 +285,7 @@ router.get('/api/v2/slots/:name_or_id', ensureAccepts('json'), catchAll(async (r
       id: ObjectId(slot._id).toHexString(),
       name: slot.name,
       desc: slot.desc,
-      area: slot.area,
+      owner: slot.area,
       deviceType: slot.deviceType,
       drr: slot.drr,
       arr: slot.arr,
@@ -301,7 +311,7 @@ async function deviceFilterHandler(req: Request, res: Response) {
       case 'NAME':
         conds.name = patternCond(value, 'i');
         continue;
-      case 'DEPT':
+      case 'OWNER':
         conds.dept = patternCond(value, 'i');
         continue;
       case 'DEVICETYPE':
@@ -353,7 +363,7 @@ async function deviceFilterHandler(req: Request, res: Response) {
       id: ObjectId(device._id).toHexString(),
       name: device.name,
       desc: device.desc,
-      dept: device.dept,
+      owner: device.dept,
       deviceType: device.deviceType,
       approved: approved,
     });
@@ -399,7 +409,7 @@ router.get('/api/v2/devices/:name_or_id', ensureAccepts('json'), catchAll( async
       id: ObjectId(device._id).toHexString(),
       name: device.name,
       desc: device.desc,
-      dept: device.dept,
+      owner: device.dept,
       deviceType: device.deviceType,
       approved: approved,
     },

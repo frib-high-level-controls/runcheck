@@ -19,8 +19,8 @@
           "description": "Description of this device",
           "type": "string"
         },
-        "dept": {
-          "description": "Identifier of the department that owns this device.",
+        "owner": {
+          "description": "Identifier for the owner of this device.",
           "type": "string"
         },
         "deviceType": {
@@ -32,7 +32,7 @@
           "type": "boolean"
         }
       },
-      "required": ["id", "name", "desc", "dept", "deviceType", "approved"]
+      "required": ["id", "name", "desc", "owner", "deviceType", "approved"]
     }
   },
   "error": {

@@ -229,7 +229,7 @@ declare namespace webapi {
       id: string;
       name: string;
       desc: string;
-      area: string;
+      owner: string;
       deviceType: string;
       approved: boolean;
       careLevel: string;
@@ -243,7 +243,7 @@ declare namespace webapi {
       id: string;
       name: string;
       desc: string;
-      dept: string;
+      owner: string;
       deviceType: string;
       approved: boolean;
     }

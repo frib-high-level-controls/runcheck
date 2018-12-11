@@ -19,8 +19,8 @@
           "description": "Description of this slot.",
           "type": "string"
         },
-        "area": {
-          "description": "Identifier of the area that owns this slot.",
+        "owner": {
+          "description": "Identifier for the owner of this slot.",
           "type": "string"
         },
         "deviceType": {
@@ -55,7 +55,7 @@
           }
         }
       },
-      "required": ["id", "name", "desc", "area", "deviceType", "approved",
+      "required": ["id", "name", "desc", "owner", "deviceType", "approved",
                     "arr", "drr", "careLevel", "safetyLevel", "machineModes"]
     },
     "error": {

@@ -98,6 +98,10 @@ describe('Test API v2 routes', () => {
       data: [ 'FE_TEST:DEVA_D0002', 'FE_TEST:DEVB_D0002' ],
       status: 200,
     }, {
+      filter: { owner: 'ISF:LAB.DIV.FE' },
+      data: [ 'FE_TEST:DEVA_D0003' ],
+      status: 200,
+    }, {
       filter: { namme: 'FE_TEST:DEVA_D0001' },
       data: [],
       status: 400,
@@ -197,6 +201,10 @@ describe('Test API v2 routes', () => {
       status: 200,
     }, {
       filter: { DeviceType: [ 'deva', 'devb' ]},
+      data: [ 'T99999-DEVA-0009-0099-S00001', 'T99999-DEVB-0009-0099-S00002' ],
+      status: 200,
+    }, {
+      filter: { OWNER: 'ISF:LAB.DIV.FE' },
       data: [ 'T99999-DEVA-0009-0099-S00001', 'T99999-DEVB-0009-0099-S00002' ],
       status: 200,
     }];
