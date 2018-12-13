@@ -9,6 +9,7 @@ import * as log from '../shared/logging';
 
 import * as ldapjs from './ldapjs-client';
 
+export type IClient = forgapi.IClient;
 
 // The 'srcname' property is added to User to facilitate LDAP authentication.
 export type User = forgapi.User & { srcname: string; source: string; };
@@ -138,10 +139,13 @@ export class Client implements forgapi.IClient {
 
   public async findUsers(): Promise<User[]> {
     debug(`Find users with base: '%s', filter: '%s'`, this.userSearchOptions.base, this.userSearchOptions.filter);
-    const entities = await this.ldapClient.search<LDAPEnity>(this.userSearchOptions);
+    const [ entities, groups ] = await Promise.all([
+      this.ldapClient.search<LDAPEnity>(this.userSearchOptions),
+      this.findGroups(),
+    ]);
     const users: User[] = [];
     for (const entity of entities) {
-      const user = this.enityToUser(entity);
+      const user = this.enityToUser(entity, groups);
       if (user) {
         users.push(user);
       }
@@ -158,10 +162,14 @@ export class Client implements forgapi.IClient {
     const options = Object.assign({}, this.userSearchOptions, { filter });
     debug(`Find user with base: '%s', filter: '%s'`, options.base, options.filter);
 
-    const entities = await this.ldapClient.search<LDAPEnity>(options);
+    const [ entities, groups ] = await Promise.all([
+      this.ldapClient.search<LDAPEnity>(options),
+      this.findGroups(),
+    ]);
     for (const entity of entities) {
-      const user = this.enityToUser(entity);
+      const user = this.enityToUser(entity, groups);
       if (user && uid === user.uid.toUpperCase()) {
+        debug('Convert entity to user: %j', entity);
         return user;
       }
     }
@@ -232,6 +240,7 @@ export class Client implements forgapi.IClient {
     for (const entity of entities) {
       const group = this.entityToGroup(entity);
       if (group && uid === group.uid.toUpperCase()) {
+        debug('Convert entity to group: %j', entity);
         return group;
       }
     }
@@ -292,7 +301,7 @@ export class Client implements forgapi.IClient {
   }
 
 
-  protected enityToUser(entity: LDAPEnity): User | null {
+  protected enityToUser(entity: LDAPEnity, groups: Group[]): User | null {
     let attrname = this.userAttributes.cn || DEFAULT_USER_ATTRIBUTES.cn;
     let attrvalue = entity[attrname];
     const cn = attrvalue ? String(attrvalue).trim() : null;
@@ -319,12 +328,35 @@ export class Client implements forgapi.IClient {
 
     attrname = this.userAttributes.memberOf || DEFAULT_USER_ATTRIBUTES.memberOf;
     attrvalue = entity[attrname];
-    const memberOf = Array.isArray(attrvalue) ? attrvalue.map((v) => (String(v).trim().toUpperCase())) : [];
+
+    let memberOfs: string[] = [];
+    if (attrvalue) {
+      if (Array.isArray(attrvalue)) {
+        memberOfs = attrvalue.map(String);
+      } else {
+        memberOfs = [ String(attrvalue) ];
+      }
+    }
+
+    const roles: string[] = [ auth.formatRole(auth.RoleScheme.USR, an) ];
+    for (const memberOf of memberOfs) {
+      let found = false;
+      for (const group of groups) {
+        if (memberOf === group.srcname) {
+          roles.push(group.uid);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        warn('LDAP FORG API: Group not found: %s', memberOf);
+      }
+    }
 
     return {
       uid: an,
       fullname: cn,
-      roles: [ auth.formatRole(auth.RoleScheme.USR, an) ].concat(memberOf),
+      roles: roles,
       srcname: dn,
       source: SOURCE,
     };
