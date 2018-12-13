@@ -7,6 +7,7 @@ import * as passport from 'passport';
 import * as pplocal from 'passport-local';
 
 import * as auth from '../shared/auth';
+import * as log from '../shared/logging';
 import * as ppauth from '../shared/passport-auth';
 
 import * as forgapi from './ldap-forgapi';
@@ -14,7 +15,10 @@ import * as ldapjs from './ldapjs-client';
 
 const debug = Debug('runcheck:ldap-auth');
 
-/// Consider moving this to shared library, passport-auth.ts ///
+type Strategy = passport.Strategy;
+
+type AuthenticateOptions = passport.AuthenticateOptions;
+
 export interface FormPassportProviderOptions {
   usernameField?: string;
   passwordField?: string;
@@ -22,44 +26,46 @@ export interface FormPassportProviderOptions {
   // passReqToCallback?: false;
 }
 
-export type VerifyCallback = (err: any, user?: auth.IUser | false, options?: { message?: string; }) => void;
+/// Consider moving this to shared library, forg-auth.ts ///
+export abstract class ForgPassportAbstractProvider<S extends Strategy, AO extends AuthenticateOptions>
+  extends ppauth.PassportAbstractProvider<S, AO> {
 
-export abstract class FormPassportAbstractProvider<AO extends passport.AuthenticateOptions>
-    extends ppauth.PassportAbstractProvider<pplocal.Strategy, AO> {
+  private forgClient: forgapi.Client;
 
-  protected strategy: pplocal.Strategy;
-
-  constructor(options: FormPassportProviderOptions) {
+  constructor(forgClient: forgapi.Client) {
     super();
-    if (debug.enabled) {
-      debug('Form Auth Provider options: %s ', JSON.stringify(options));
-    }
-    this.strategy = new pplocal.Strategy(options, (username, password, done) => {
-      this.verify(username, password, done);
-    });
+    this.forgClient = forgClient;
   }
 
-  protected getStrategy(): pplocal.Strategy {
-    return this.strategy;
+  protected verifyWithForg(username: string): Promise<forgapi.User | null> {
+    return this.forgClient.findUser(username);
   }
-
-  protected abstract verify(username: string, password: string, done: VerifyCallback): void;
 }
 ////////////////////////////////////////////////////////////////
 
 
-export type LDAPFormProviderOptions = FormPassportProviderOptions;
+export abstract class FormForgPassportAbstractProvider<AO extends passport.AuthenticateOptions>
+    extends ForgPassportAbstractProvider<pplocal.Strategy, AO> {
 
-export class LDAPFormPassportProvider extends FormPassportAbstractProvider<passport.AuthenticateOptions> {
+  protected strategy: pplocal.Strategy;
 
-  private forgClient: forgapi.Client;
-
-  private ldapClient: ldapjs.IClient;
-
-  constructor(ldapClient: ldapjs.IClient, forgClient: forgapi.Client, options: LDAPFormProviderOptions) {
-    super(options);
-    this.ldapClient = ldapClient;
-    this.forgClient = forgClient;
+  constructor(forgClient: forgapi.Client, options: FormPassportProviderOptions) {
+    super(forgClient);
+    if (debug.enabled) {
+      debug('Form Auth Provider options: %s ', JSON.stringify(options));
+    }
+    this.strategy = new pplocal.Strategy(options, (username, password, done) => {
+      this.verify(username, password).then(({ user, message }) => {
+        if (message) {
+          done(null, user || false, { message });
+        } else {
+          done(null, user || false);
+        }
+      })
+      .catch((err: any) => {
+        done(err);
+      });
+    });
   }
 
   public getUsername(req: express.Request): string | undefined {
@@ -78,23 +84,56 @@ export class LDAPFormPassportProvider extends FormPassportAbstractProvider<passp
     return Array.isArray(user.roles) ? user.roles.map(String) : undefined;
   }
 
-  protected verify(username: string, password: string, done: VerifyCallback): void {
-    Promise.resolve().then(async () => {
-      const user = await this.forgClient.findUser(username);
-      if (user === null) {
-        done(null, false, { message: 'Username is incorrect' });
-        return;
-      }
-      const success = await this.ldapClient.bind(user.srcname, password, true);
-      if (success !== true) {
-        done(null, false, { message: 'Password is incorrect' });
-        return;
-      }
-      debug('User verified: %j', user);
-      done(null, user);
-    })
-    .catch((err) => {
-      done(err);
-    });
+  protected getStrategy(): pplocal.Strategy {
+    return this.strategy;
+  }
+
+  protected abstract verify(username: string, password: string): Promise<{ user?: auth.IUser, message?: string; }>;
+}
+
+
+
+export type LDAPFormProviderOptions = FormPassportProviderOptions;
+
+export class LDAPFormForgPassportProvider extends FormForgPassportAbstractProvider<AuthenticateOptions> {
+
+  private ldapClient: ldapjs.IClient;
+
+  constructor(forgClient: forgapi.Client, ldapClient: ldapjs.IClient, options: LDAPFormProviderOptions) {
+    super(forgClient, options);
+    this.ldapClient = ldapClient;
+  }
+
+  protected async verify(username: string, password: string): Promise<{ user?: auth.IUser, message?: string; }> {
+    const user = await this.verifyWithForg(username);
+    if (user === null) {
+      return { message: 'Username is incorrect' };
+    }
+    const success = await this.ldapClient.bind(user.srcname, password, true);
+    if (success !== true) {
+      return { message: 'Password is incorrect' };
+    }
+    return { user };
+  }
+}
+
+export class DevFormForgPassportProvider extends FormForgPassportAbstractProvider<AuthenticateOptions> {
+
+  constructor(forgClient: forgapi.Client, options: LDAPFormProviderOptions) {
+    super(forgClient, options);
+  }
+
+  protected async verify(username: string, password: string): Promise<{ user?: auth.IUser, message?: string; }> {
+    const env = process.env.NODE_ENV ? process.env.NODE_ENV : 'development';
+    if (env === 'production') {
+      log.warn('Development Form Auth Provider DISABLED: PRODUCTION ENVIRONMENT DETECTED');
+      return { message: 'Provider is disabled' };
+    }
+    log.warn('Development Form Auth Provider ENABLED: PASSWORD VERIFICATION DISABLED');
+    const user = await this.verifyWithForg(username);
+    if (user === null) {
+      return { message: 'Username is incorrect' };
+    }
+    return { user };
   }
 }

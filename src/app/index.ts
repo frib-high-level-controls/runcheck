@@ -379,11 +379,12 @@ async function doStart(): Promise<express.Application> {
     };
 
     ldapSearchClient = await ldapjs.Client.create(ldapOptions);
-    info('LDAP client connected: %s', cfg.ldap.url);
+    info('LDAP search client connected: %s', cfg.ldap.url);
+    status.setComponentOk('LDAP Search', 'Connected');
 
     ldapSearchClient.on('connect', () => {
       info('LDAP search client reconnected: %s', cfg.ldap.url);
-      status.setComponentOk('LDAP Search', 'Connected');
+      status.setComponentOk('LDAP Search', 'Reconnected');
     });
 
     ldapSearchClient.on('idle', () => {
@@ -423,31 +424,39 @@ async function doStart(): Promise<express.Application> {
       groupAttributes: cfg.forgapi.groupAttributes,
     });
 
-    ldapBindClient = await ldapjs.Client.create(ldapOptions);
-    info('LDAP bind client connected: %s', cfg.ldap.url);
+    if (env === 'production' || process.env.WEBAPP_AUTHC_DISABLED !== 'true') {
+      ldapBindClient = await ldapjs.Client.create(ldapOptions);
+      info('LDAP bind client connected: %s', cfg.ldap.url);
+      status.setComponentOk('LDAP Bind', 'Connected');
 
-    ldapBindClient.on('connect', () => {
-      info('LDAP bind client reconnected: %s', cfg.ldap.url);
-      status.setComponentOk('LDAP', 'Connected');
-    });
+      ldapBindClient.on('connect', () => {
+        info('LDAP bind client reconnected: %s', cfg.ldap.url);
+        status.setComponentOk('LDAP Bind', 'Reconnected');
+      });
 
-    ldapBindClient.on('idle', () => {
-      info('LDAP bind client connection is idle');
-    });
+      ldapBindClient.on('idle', () => {
+        info('LDAP bind client connection is idle');
+      });
 
-    ldapBindClient.on('close', () => {
-      warn('LDAP bind client connection is closed');
-    });
+      ldapBindClient.on('close', () => {
+        warn('LDAP bind client connection is closed');
+      });
 
-    ldapBindClient.on('error', (err) => {
-      error('LDAP bind client connection: %s', err);
-    });
+      ldapBindClient.on('error', (err) => {
+        error('LDAP bind client connection: %s', err);
+      });
 
-    ldapBindClient.on('quietError', (err) => {
-      status.setComponentError('LDAP', '%s', err);
-    });
+      ldapBindClient.on('quietError', (err) => {
+        status.setComponentError('LDAP Bind', '%s', err);
+      });
 
-    auth.setProvider(new ldapauth.LDAPFormPassportProvider(ldapBindClient, forgClient, {}));
+      auth.setProvider(new ldapauth.LDAPFormForgPassportProvider(forgClient, ldapBindClient, {}));
+      info('LDAP authentication provider enabled');
+    } else {
+      // Use this provider for local development that DISABLES authentication!
+      auth.setProvider(new ldapauth.DevFormForgPassportProvider(forgClient, {}));
+      warn('Development authentication provider: Password verification DISABLED!');
+    }
   }
 
   // view engine configuration
