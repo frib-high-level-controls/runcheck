@@ -71,7 +71,7 @@
 
               let mode = data[name];
               if (!mode) {
-                const sname = name.split(/-0*/, 2);
+                const sname = name.split(/_0?/, 2);
                 mode = {
                   name,
                   machineMode: (sname.length > 0) ? sname[0] : 'N/A',
