@@ -653,7 +653,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
 
   const results: SlotImportResult[] = [];
 
-  const data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
   for (const irow of data) {
     // cast to interface with index signature
