@@ -2,7 +2,7 @@
   "name": "runcheck-web",
   "private": true,
   "dependencies": {
-    "bootstrap": "^3.3.7",
+    "bootstrap": "^3.4.0",
     "bootstrap-datepicker": "^1.8.0",
     "datatables.net": "^1.10.19",
     "datatables.net-bs": "^1.10.19",
@@ -12,7 +12,7 @@
     "font-awesome": "^4.7.0",
     "jszip": "^3.1.5",
     "knockout": "^3.4.2",
-    "moment": "^2.22.2",
+    "moment": "^2.23.0",
     "select2": "^4.0.6-rc.0",
     "select2-bootstrap-theme": "0.1.0-beta.10"
   }
