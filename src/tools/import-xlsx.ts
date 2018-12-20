@@ -100,6 +100,7 @@ const debug = dbg('import-xlsx');
 
 const readFile = util.promisify(fs.readFile);
 
+// tslint:disable:no-console
 const info = console.info;
 const warn = console.warn;
 const error = console.error;
@@ -116,7 +117,7 @@ const ARR_REGEX = /^ARR[\d?]?[\d?]?(-[\w?]+)?$/;
 const DEVICE_TYPE_REGEX = /^\w+$/;
 const DEVICE_NAME_REGEX = /^[A-Z]\d{5}-[A-Z]{3}-\d{4}-\d{4}(-S\d{5})?$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const MACHINE_MODE_REGEX = /^M\d[A-Z]?$/;
+const MACHINE_MODE_REGEX = /^M\d_\d\d$/;
 
 let forgClient: forgapi.IClient;
 
