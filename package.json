@@ -10,7 +10,7 @@
     "nyc-mocha": "./node_modules/.bin/nyc ./node_modules/.bin/mocha",
     "pug": "./node_modules/.bin/pug",
     "pug-lint": "./node_modules/.bin/pug-lint",
-    "postinstall": "cd ./public && npm install"
+    "postinstall": "cd ./public && npm ci"
   },
   "dependencies": {
     "@jcu/passport-cas": "^0.1.2",
