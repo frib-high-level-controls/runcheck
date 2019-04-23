@@ -1,13 +1,14 @@
 {
   "name": "webapp",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "private": true,
   "scripts": {
     "start": "./bin/app",
-    "grunt": "./node_modules/.bin/grunt",
-    "mocha": "./node_modules/.bin/mocha",
-    "nyc": "./node_modules/.bin/nyc",
-    "nyc-mocha": "./node_modules/.bin/nyc ./node_modules/.bin/mocha"
+    "build-all": "grunt clean build-all",
+    "grunt": "grunt",
+    "mocha": "mocha",
+    "nyc": "nyc",
+    "nyc-mocha": "nyc mocha"
   },
   "dependencies": {
     "body-parser": "^1.15.1",
