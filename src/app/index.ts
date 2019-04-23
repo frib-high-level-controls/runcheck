@@ -43,6 +43,7 @@ interface Config {
     trust_proxy: {};
     session_life: {};
     session_secret: {};
+    web_env?: {};
   };
 }
 
@@ -187,6 +188,7 @@ async function doStart(): Promise<express.Application> {
     }
   }
 
+  // Configure the server bind address and port
   app.set('port', String(cfg.app.port));
   app.set('addr', String(cfg.app.addr));
 
@@ -201,6 +203,14 @@ async function doStart(): Promise<express.Application> {
   app.set('views', path.resolve(__dirname, '..', 'views'));
   app.set('view engine', 'pug');
   app.set('view cache', (env === 'production') ? true : false);
+
+  // Configure 'webenv' property and add to response locals
+  const webenv = cfg.app.web_env || process.env.WEB_ENV || 'development';
+  app.set('webenv', webenv);
+  app.use((req, res, next) => {
+    res.locals.webenv = webenv;
+    next();
+  });
 
   // Session configuration
   app.use(session({
