@@ -12,13 +12,14 @@ import * as ppauth from './passport-auth';
 
 type Request = express.Request;
 type AuthenticateOptions = passport.AuthenticateOptions;
-export type ForgDoneCallback = (err: any, user?: forgapi.User | false) => void;
-export type PasswordDoneCallback = (err: any, verified?: boolean) => void;
+type CasAuthenticateOptions = ppauth.CasAuthenticateOptions;
+
+type VerifyPasswordCallback = (err: any, verified?: boolean) => void;
 
 const debug = dbg('webapp:forg-auth');
 
 
-export function getUsername(provider: auth.IProvider, req: Request): string | undefined {
+function getUsername(provider: auth.IProvider, req: Request): string | undefined {
   const user = provider.getUser(req);
   if (!user) {
     return;
@@ -27,7 +28,7 @@ export function getUsername(provider: auth.IProvider, req: Request): string | un
 }
 
 
-export function getRoles(provider: auth.IProvider, req: Request): string[] | undefined {
+function getRoles(provider: auth.IProvider, req: Request): string[] | undefined {
   const user = provider.getUser(req);
   if (!user) {
     return;
@@ -36,17 +37,12 @@ export function getRoles(provider: auth.IProvider, req: Request): string[] | und
 }
 
 
-export function verifyWithForg(client: forgapi.IClient, uid: string, required: boolean, done: ForgDoneCallback): void {
-  debug('Verify with FORG: %s', uid);
-  client.findUser(uid).then((user) => {
+function verifyWithForg(forgClient: forgapi.IClient, username: string, done: ppauth.VerifyCallback): void {
+  debug('Verify with FORG: %s', username);
+  forgClient.findUser(username).then((user) => {
     if (!user) {
-      if (required) {
-        debug('FORG user not found');
-        done(null, false);
-      } else {
-        debug('FORG user not found, proceed without roles!');
-        done(null, { uid, fullname: uid, roles: [] });
-      }
+      debug('FORG user not found');
+      done(null, false);
       return;
     }
     if (debug.enabled) {
@@ -60,7 +56,7 @@ export function verifyWithForg(client: forgapi.IClient, uid: string, required: b
 }
 
 
-export class ForgCasProvider extends ppauth.CasPassportAbstractProvider<ppauth.CasAuthenticateOptions> {
+export class ForgCasProvider extends ppauth.CasPassportAbstractProvider<CasAuthenticateOptions> {
 
   protected forgClient: forgapi.IClient;
 
@@ -77,14 +73,14 @@ export class ForgCasProvider extends ppauth.CasPassportAbstractProvider<ppauth.C
     return getRoles(this, req);
   }
 
-  protected verify(profile: string | ppauth.CasProfile, done: ppauth.CasDoneCallback): void {
+  protected verify(profile: string | ppauth.CasProfile, done: ppauth.VerifyCallback): void {
     let username: string;
     if (typeof profile === 'string') {
       username = profile;
     } else {
       username = profile.user;
     }
-    verifyWithForg(this.forgClient, username, true, done);
+    verifyWithForg(this.forgClient, username, done);
   }
 }
 
@@ -105,7 +101,7 @@ export abstract class ForgBasicAbstractProvider extends ppauth.BasicPassportAbst
     return getRoles(this, req);
   }
 
-  protected verify(username: string, password: string, done: ppauth.BasicDoneCallback): void {
+  protected verify(username: string, password: string, done: ppauth.VerifyCallback): void {
     this.verifyPassword(username, password, (err, verified) => {
       if (err) {
         done(err);
@@ -115,11 +111,11 @@ export abstract class ForgBasicAbstractProvider extends ppauth.BasicPassportAbst
         done(null, false);
         return;
       }
-      verifyWithForg(this.forgClient, username, true, done);
+      verifyWithForg(this.forgClient, username, done);
     });
   }
 
-  protected abstract verifyPassword(username: string, password: string, done: PasswordDoneCallback): void;
+  protected abstract verifyPassword(username: string, password: string, done: VerifyPasswordCallback): void;
 }
 
 
@@ -130,7 +126,7 @@ export class DevForgBasicProvider extends ForgBasicAbstractProvider {
     super(forgClient, options);
   }
 
-  protected verifyPassword(username: string, password: string, done: PasswordDoneCallback): void {
+  protected verifyPassword(username: string, password: string, done: (err: any, verified?: boolean) => void): void {
     const env = process.env.NODE_ENV ? process.env.NODE_ENV.toLowerCase() : undefined;
     if (env === 'production') {
       log.warn('Development Auth Provider DISABLED: PRODUCTION ENVIRONMENT DETECTED');
