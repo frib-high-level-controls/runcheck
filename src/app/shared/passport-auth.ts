@@ -1,10 +1,10 @@
 /*
  * Abstract class for a Passport based auth provider.
  */
+import * as ppcas from '@jcu/passport-cas';
 import * as dbg from 'debug';
 import * as express from 'express';
 import * as passport from 'passport';
-import * as ppcas from 'passport-cas';
 import * as pphttp from 'passport-http';
 
 import * as auth from './auth';
@@ -16,12 +16,11 @@ type AuthenticateOptions = passport.AuthenticateOptions;
 
 export type CasProfile = ppcas.Profile;
 
-// Extracted from the definition of BasicVerifyFunction with the addition of optional 'info' property.
-export type BasicDoneCallback = (err: any, user?: any, info?: any) => void;
+export type VerifyCallback = (err: any, user?: auth.IUser | false) => void;
 
-export type BasicProviderOptions = pphttp.BasicStrategyOptions;
-
-export type CasDoneCallback = ppcas.DoneCallback;
+export interface BasicProviderOptions {
+  realm?: string;
+}
 
 export interface CasProviderOptions {
   casUrl: string;
@@ -114,7 +113,7 @@ export abstract class BasicPassportAbstractProvider<AO extends AuthenticateOptio
     return this.strategy;
   }
 
-  protected abstract verify(username: string, password: string, done: BasicDoneCallback): void;
+  protected abstract verify(username: string, password: string, done: VerifyCallback): void;
 }
 
 export abstract class CasPassportAbstractProvider<AO extends CasAuthenticateOptions>
@@ -240,5 +239,5 @@ export abstract class CasPassportAbstractProvider<AO extends CasAuthenticateOpti
     return this.strategy;
   }
 
-  protected abstract verify(profile: string | CasProfile, done: CasDoneCallback): void;
+  protected abstract verify(profile: string | CasProfile, done: VerifyCallback): void;
 }
