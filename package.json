@@ -24,7 +24,8 @@
     "pug": "^2.0.0-beta11",
     "rc": "^1.2.1",
     "request": "^2.81.0",
-    "serve-favicon": "^2.3.0"
+    "serve-favicon": "^2.3.0",
+    "uri-js": "^4.2.2"
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.3",
@@ -52,7 +53,6 @@
     "nyc": "^14.1.1",
     "supertest": "^4.0.2",
     "tslint": "^5.16.0",
-    "typescript": "^3.4.5",
-    "uri-js": "^4.2.2"
+    "typescript": "^3.4.5"
   }
 }
