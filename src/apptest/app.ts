@@ -66,7 +66,10 @@ async function doStart(): Promise<express.Application> {
   const mongoUrl = 'mongodb://localhost:27017/webapp-test';
 
   const mongoOptions: mongoose.ConnectionOptions = {
-    useMongoClient: true,
+    // remove deprecation warnings
+    useFindAndModify: false,
+    useNewUrlParser: true,
+    useCreateIndex: true,
   };
 
   await mongoose.connect(mongoUrl, mongoOptions);
