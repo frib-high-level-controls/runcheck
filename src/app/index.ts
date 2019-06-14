@@ -20,15 +20,13 @@ import * as favicon from 'serve-favicon';
 
 import * as auth from './shared/auth';
 import * as forgauth from './shared/forg-auth';
+import * as forgapi from './shared/forgapi';
 import * as handlers from './shared/handlers';
 import * as logging from './shared/logging';
 import * as promises from './shared/promises';
 import * as status from './shared/status';
 import * as tasks from './shared/tasks';
 
-import * as ldapauth from './lib/ldap-auth';
-import * as forgapi from './lib/ldap-forgapi';
-import * as ldapjs from './lib/ldapjs-client';
 import * as migrations from './lib/migrations';
 
 import * as api1 from './routes/api1';
@@ -70,28 +68,15 @@ interface Config {
     db: {};
     options: {};
   };
-  ldap: {
-    url?: {};
-    bindDN?: {};
-    password?: {};
-    tlsOptions?: {};
-    strictDN?: {},
-    timeout?: {};
-    idleTimeout?: {};
-    connectTimeout?: {};
-    reconnect?: {};
+  cas: {
+    cas_url?: {};
+    service_url?: {};
+    service_base_url?: {};
+    version?: {};
   };
   forgapi: {
-    userSearch?: {
-      base?: {};
-      filter?: {};
-    };
-    groupSearch?: {
-      base?: {};
-      filter?: {};
-    };
-    userAttributes?: {};
-    groupAttributes?: {};
+    url?: {};
+    agentOptions?: {};
   };
 }
 
@@ -100,13 +85,6 @@ export type State = 'STARTING' | 'STARTED' | 'STOPPING' | 'STOPPED';
 
 // application singleton
 let app: express.Application;
-
-// LDAP Search connection
-let ldapSearchClient: ldapjs.Client | null = null;
-
-// LDAP Bind connection (Bind requests use dedicated connection)
-// (see details: https://github.com/vesse/node-ldapauth-fork)
-let ldapBindClient: ldapjs.Client | null = null;
 
 // application logging
 export let info = logging.info;
@@ -242,7 +220,7 @@ async function doStart(): Promise<express.Application> {
         useNewUrlParser: true,
       },
     },
-    ldap: {
+    cas: {
       // no defaults
     },
     forgapi: {
@@ -353,110 +331,40 @@ async function doStart(): Promise<express.Application> {
   const adminRoles = cfg.app.admin_roles.map(String);
   info('Administrator roles: [%s]', adminRoles);
 
-  {
-    if (!cfg.ldap.url) {
-      throw new Error('LDAP URL must be specified');
+  if (!cfg.forgapi.url) {
+    throw new Error('FORG base URL not configured');
+  }
+  info('FORG API base URL: %s', cfg.forgapi.url);
+
+  const forgClient = new forgapi.Client({
+    url: String(cfg.forgapi.url),
+    agentOptions: cfg.forgapi.agentOptions || {},
+  });
+  // Need the FORG base URL available to views
+  app.locals.forgurl = String(cfg.forgapi.url);
+
+  if (env === 'production' || process.env.RUNCHECK_AUTHC_DISABLED !== 'true') {
+    if (!cfg.cas.cas_url) {
+      throw new Error('CAS base URL not configured');
     }
+    info('CAS base URL: %s', cfg.cas.cas_url);
 
-    if (!cfg.ldap.bindDN) {
-      throw new Error('LDAP bindDN must be specified');
+    if (!cfg.cas.service_base_url) {
+      throw new Error('CAS service base URL not configured');
     }
+    info('CAS service base URL: %s (service URL: %s)', cfg.cas.service_base_url, cfg.cas.service_url);
 
-    if (!cfg.ldap.password) {
-      throw new Error('LDAP password must be specified');
-    }
-
-    const ldapOptions = {
-      url: String(cfg.ldap.url).trim(),
-      bindDN: String(cfg.ldap.bindDN).trim(),
-      bindCredentials: String(cfg.ldap.password),
-      tlsOptions: cfg.ldap.tlsOptions,
-      strictDN: cfg.ldap.strictDN !== undefined ? Boolean(cfg.ldap.strictDN) : undefined,
-      timeout: cfg.ldap.timeout ? Number(cfg.ldap.timeout) : undefined,
-      idleTimeout: cfg.ldap.idleTimeout ? Number(cfg.ldap.idleTimeout) : undefined,
-      connectTimeout: cfg.ldap.connectTimeout ? Number(cfg.ldap.connectTimeout) : undefined,
-      reconnect: cfg.ldap.reconnect !== undefined ? Boolean(cfg.ldap.reconnect) : undefined,
-    };
-
-    ldapSearchClient = await ldapjs.Client.create(ldapOptions);
-    info('LDAP search client connected: %s', cfg.ldap.url);
-    status.setComponentOk('LDAP Search', 'Connected');
-
-    ldapSearchClient.on('connect', () => {
-      info('LDAP search client reconnected: %s', cfg.ldap.url);
-      status.setComponentOk('LDAP Search', 'Reconnected');
-    });
-
-    ldapSearchClient.on('idle', () => {
-      info('LDAP search client connection is idle');
-    });
-
-    ldapSearchClient.on('close', () => {
-      warn('LDAP search client connection is closed');
-    });
-
-    ldapSearchClient.on('error', (err) => {
-      error('LDAP search client connection: %s', err);
-    });
-
-    ldapSearchClient.on('quietError', (err) => {
-      status.setComponentError('LDAP Search', '%s', err);
-    });
-
-    if (!cfg.forgapi.userSearch || !cfg.forgapi.userSearch.base || !cfg.forgapi.userSearch.filter) {
-      throw new Error('LDAP user search options \'base\' and \'filter\' are required');
-    }
-
-    if (!cfg.forgapi.groupSearch || !cfg.forgapi.groupSearch.base || !cfg.forgapi.groupSearch.filter) {
-      throw new Error('LDAP group search options \'base\' and \'filter\' are required');
-    }
-
-    const forgClient = new forgapi.Client(ldapSearchClient, {
-      userSearch: {
-        base: String(cfg.forgapi.userSearch.base),
-        filter: String(cfg.forgapi.userSearch.filter),
-      },
-      groupSearch: {
-        base: String(cfg.forgapi.groupSearch.base),
-        filter: String(cfg.forgapi.groupSearch.filter),
-      },
-      userAttributes: cfg.forgapi.userAttributes,
-      groupAttributes: cfg.forgapi.groupAttributes,
-    });
-
-    if (env === 'production' || process.env.WEBAPP_AUTHC_DISABLED !== 'true') {
-      ldapBindClient = await ldapjs.Client.create(ldapOptions);
-      info('LDAP bind client connected: %s', cfg.ldap.url);
-      status.setComponentOk('LDAP Bind', 'Connected');
-
-      ldapBindClient.on('connect', () => {
-        info('LDAP bind client reconnected: %s', cfg.ldap.url);
-        status.setComponentOk('LDAP Bind', 'Reconnected');
-      });
-
-      ldapBindClient.on('idle', () => {
-        info('LDAP bind client connection is idle');
-      });
-
-      ldapBindClient.on('close', () => {
-        warn('LDAP bind client connection is closed');
-      });
-
-      ldapBindClient.on('error', (err) => {
-        error('LDAP bind client connection: %s', err);
-      });
-
-      ldapBindClient.on('quietError', (err) => {
-        status.setComponentError('LDAP Bind', '%s', err);
-      });
-
-      auth.setProvider(new ldapauth.LDAPFormForgPassportProvider(forgClient, ldapBindClient, {}));
-      info('LDAP authentication provider enabled');
-    } else {
-      // Use this provider for local development that DISABLES authentication!
-      auth.setProvider(new ldapauth.DevFormForgPassportProvider(forgClient, {}));
-      warn('Development authentication provider: Password verification DISABLED!');
-    }
+    auth.setProvider(new forgauth.ForgCasProvider(forgClient, {
+      casUrl: String(cfg.cas.cas_url),
+      casServiceUrl: String(cfg.cas.service_url),
+      casServiceBaseUrl: String(cfg.cas.service_base_url),
+      casVersion: cfg.cas.version ? String(cfg.cas.version) : undefined,
+    }));
+    info('CAS authentication provider enabled');
+  } else {
+    // Use this provider for local development that DISABLES authentication!
+    auth.setProvider(new forgauth.DevForgBasicProvider(forgClient, {}));
+    warn('Development authentication provider: Password verification DISABLED!');
   }
 
   // view engine configuration
@@ -505,71 +413,12 @@ async function doStart(): Promise<express.Application> {
     extended: false,
   }));
 
-  const authroute = express.Router();
-
-  // Authenticate Success Handler
-  authroute.use((req, res, next) => {
-    const username = auth.getUsername(req);
-    if (!username) {
-      next();
-      return;
-    }
-    info(`Authentication completed: username: '%s'`, username);
+  app.get('/login', auth.getProvider().authenticate({ rememberParams: [ 'bounce' ]}), (req, res) => {
     if (req.query.bounce) {
       res.redirect(req.query.bounce);
       return;
     }
     res.redirect(res.locals.basePath || '/');
-  });
-
-  authroute.use(auth.getProvider().authenticate({
-    failureMessage: true,
-    failWithError: true,
-  }));
-
-  // Authenticate Success Handler
-  authroute.use((req, res, next) => {
-    const provider = auth.getProvider();
-    const username = provider.getUsername(req);
-    if (!username) {
-      next(new Error('Username is undefined after authentication!'));
-      return;
-    }
-    const userroles = provider.getRoles(req);
-    if (!userroles) {
-      next(new Error('User roles are undefined after authentication!'));
-      return;
-    }
-    info(`Authentication success: username: '%s', roles: [%s]`, username, userroles);
-    if (req.query.bounce) {
-      res.redirect(req.query.bounce);
-      return;
-    }
-    res.redirect(res.locals.basePath || '/');
-  });
-
-  app.get('/login', authroute, (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err.name !== 'AuthenticationError') {
-      next(err);
-      return;
-    }
-    // Authentication error expected for 'GET' requests.
-    res.status(handlers.HttpStatus.OK).render('login');
-  });
-
-  app.post('/login', authroute, (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err.name !== 'AuthenticationError') {
-      next(err);
-      return;
-    }
-    let reason = err.message;
-    if (req.session && req.session.messages) {
-      reason = String(req.session.messages);
-      req.session.messages = []; // clear
-    }
-    const username = req.body.username || '';
-    warn(`Authentication failure: username: '%s', reason(s): '%s'`, username, reason);
-    res.render('login', { username, message: 'Username or password is incorrect' });
   });
 
   app.get('/logout', (req, res) => {
@@ -632,26 +481,6 @@ async function doStop(): Promise<void> {
     warn('Destroy %s active socket(s)', activeSockets.size);
     for (const soc of activeSockets) {
       soc.destroy();
-    }
-  }
-
-  if (ldapBindClient) {
-    try {
-      await ldapBindClient.unbind();
-      ldapBindClient.destroy();
-      info('LDAP bind client connection destroyed');
-    } catch (err) {
-      warn('LDAP bind client connection unbind failure: %s', err);
-    }
-  }
-
-  if (ldapSearchClient) {
-    try {
-      await ldapSearchClient.unbind();
-      ldapSearchClient.destroy();
-      info('LDAP search client connection destroyed');
-    } catch (err) {
-      warn('LDAP search client connection unbind failure: %s', err);
     }
   }
 

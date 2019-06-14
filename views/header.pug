@@ -45,7 +45,7 @@ header
         ul.nav.navbar-nav.navbar-right
           if (auth && auth.username)
             li
-              i.fa.fa-user.fa-3x
+              img.img-responsive(style='height: 50px;', src=forgurl + '/api/v1/users/' + auth.username + '/photo', title=auth.username, alt=auth.username)
             li.dropdown
               a.dropdown-toggle(href='#', data-toggle='dropdown') #{auth.user.fullname ? auth.user.fullname : auth.username}
                 b.caret

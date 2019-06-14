@@ -7,10 +7,10 @@ import rc = require('rc');
 import * as XLSX from 'xlsx';
 
 import * as auth from '../app/shared/auth';
+import * as forgapi from '../app/shared/forgapi';
 import * as models from '../app/shared/models';
 
-import * as forgapi from '../app/lib/ldap-forgapi';
-import * as ldapjs from '../app/lib/ldapjs-client';
+import * as pnsapi from '../app/lib/pnsapi';
 
 import {
   CARE_LEVELS,
@@ -44,28 +44,14 @@ interface Config {
     db: {};
     options: {};
   };
-  ldap: {
-    url?: {};
-    bindDN?: {};
-    password?: {};
-    tlsOptions?: {};
-    strictDN?: {},
-    timeout?: {};
-    idleTimeout?: {};
-    connectTimeout?: {};
-    reconnect?: {};
-  };
   forgapi: {
-    userSearch?: {
-      base?: {};
-      filter?: {};
-    };
-    groupSearch?: {
-      base?: {};
-      filter?: {};
-    };
-    userAttributes?: {};
-    groupAttributes?: {};
+    url?: {};
+    agentOptions?: {};
+  };
+  pnsapi: {
+    url?: {};
+    agentOptions?: {};
+    categories?: {};
   };
   dryrun?: {};
   updateBy?: {};
@@ -123,6 +109,7 @@ const USR = auth.RoleScheme.USR;
 
 const approvedAreas = new Array<string>();
 const approvedDepts = new Array<string>();
+const approvedNames = new Array<RegExp>();
 
 const SLOT_NAME_REGEX = /^[^\W_]+_[^\W_]+(:[^\W_]+_[^\W_]+)?$/;
 const DRR_REGEX = /^DRR[\d?]?[\d?]?(-[\w?]+)?$/;
@@ -132,6 +119,7 @@ const DEVICE_NAME_REGEX = /^[A-Z]\d{5}-[A-Z]{3}-\d{4}-\d{4}(-S\d{5})?$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const MACHINE_MODE_REGEX = /^M\d_\d\d$/;
 
+let forgClient: forgapi.IClient;
 
 async function main() {
 
@@ -145,10 +133,10 @@ async function main() {
         useNewUrlParser: true,
       },
     },
-    ldap: {
+    forgapi: {
       // no defaults
     },
-    forgapi: {
+    pnsapi: {
       // no defaults
     },
   };
@@ -205,87 +193,70 @@ async function main() {
   const workbook = XLSX.read(data, {type: 'buffer', dateNF: 'yyyy-mm-dd'});
 
   // FORG API configuration
-  {
-    if (!cfg.ldap.url) {
-      throw new Error('LDAP URL must be specified');
-    }
-
-    if (!cfg.ldap.bindDN) {
-      throw new Error('LDAP bindDN must be specified');
-    }
-
-    if (!cfg.ldap.password) {
-      throw new Error('LDAP password must be specified');
-    }
-
-    const ldapOptions = {
-      url: String(cfg.ldap.url).trim(),
-      bindDN: String(cfg.ldap.bindDN).trim(),
-      bindCredentials: String(cfg.ldap.password),
-      tlsOptions: cfg.ldap.tlsOptions,
-      strictDN: cfg.ldap.strictDN !== undefined ? Boolean(cfg.ldap.strictDN) : undefined,
-      timeout: cfg.ldap.timeout ? Number(cfg.ldap.timeout) : undefined,
-      idleTimeout: cfg.ldap.idleTimeout ? Number(cfg.ldap.idleTimeout) : undefined,
-      connectTimeout: cfg.ldap.connectTimeout ? Number(cfg.ldap.connectTimeout) : undefined,
-      reconnect: cfg.ldap.reconnect !== undefined ? Boolean(cfg.ldap.reconnect) : undefined,
-    };
-
-    const ldapSearchClient = await ldapjs.Client.create(ldapOptions);
-    info('LDAP search client connected: %s', cfg.ldap.url);
-
-    ldapSearchClient.on('connect', () => {
-      info('LDAP search client reconnected: %s', cfg.ldap.url);
-    });
-
-    ldapSearchClient.on('idle', () => {
-      info('LDAP search client connection is idle');
-    });
-
-    ldapSearchClient.on('close', () => {
-      warn('LDAP search client connection is closed');
-    });
-
-    ldapSearchClient.on('error', (err) => {
-      error('LDAP search client connection: %s', err);
-    });
-
-    if (!cfg.forgapi.userSearch || !cfg.forgapi.userSearch.base || !cfg.forgapi.userSearch.filter) {
-      throw new Error('LDAP user search options \'base\' and \'filter\' are required');
-    }
-
-    if (!cfg.forgapi.groupSearch || !cfg.forgapi.groupSearch.base || !cfg.forgapi.groupSearch.filter) {
-      throw new Error('LDAP group search options \'base\' and \'filter\' are required');
-    }
-
-    const forgClient = new forgapi.Client(ldapSearchClient, {
-      userSearch: {
-        base: String(cfg.forgapi.userSearch.base),
-        filter: String(cfg.forgapi.userSearch.filter),
-      },
-      groupSearch: {
-        base: String(cfg.forgapi.groupSearch.base),
-        filter: String(cfg.forgapi.groupSearch.filter),
-      },
-      userAttributes: cfg.forgapi.userAttributes,
-      groupAttributes: cfg.forgapi.groupAttributes,
-    });
-
-    await forgClient.findGroups().then((forgGroups) => {
-      for (const group of forgGroups) {
-        if (group.type === 'DEPT') {
-          approvedDepts.push(group.uid);
-          debug('FORG Approved department: %s (%s)', group.uid, group.fullname);
-        }
-        if (group.type === 'AREA') {
-          approvedAreas.push(group.uid);
-          debug('FORG Approved area: %s (%s)', group.uid, group.fullname);
-        }
-      }
-    });
-
-    await ldapSearchClient.unbind();
-    ldapSearchClient.destroy();
+  if (!cfg.forgapi.url) {
+    error(`Error: FORG base URL not configured`);
+    process.exitCode = 1;
+    return;
   }
+  info('FORG API base URL: %s', cfg.forgapi.url);
+
+  forgClient = new forgapi.Client({
+    url: String(cfg.forgapi.url),
+    agentOptions: cfg.forgapi.agentOptions || {},
+  });
+
+  const loadGroups = forgClient.findGroups().then((forgGroups) => {
+    for (const group of forgGroups) {
+      if (group.type === 'DEPT') {
+        approvedDepts.push(group.uid);
+        debug('FORG Approved department: %s (%s)', group.uid, group.fullname);
+      }
+      if (group.type === 'AREA') {
+        approvedAreas.push(group.uid);
+        debug('FORG Approved area: %s (%s)', group.uid, group.fullname);
+      }
+    }
+  });
+
+  // PNS API configuration
+  if (!cfg.pnsapi.url) {
+    error(`Error: PNS base URL not configured`);
+    process.exitCode = 1;
+    return;
+  }
+  info('PNS API base URL: %s', cfg.pnsapi.url);
+
+  const pnsClient = new pnsapi.Client({
+    url: String(cfg.pnsapi.url),
+    agentOptions: cfg.pnsapi.agentOptions || {},
+  });
+
+  let categories = ['system', 'subsystem', 'device-type'];
+  if (cfg.pnsapi.categories) {
+    if (!Array.isArray(cfg.pnsapi.categories)) {
+      error(`Error: PNS API categories must be an array`);
+      process.exitCode = 1;
+      return;
+    }
+    categories = cfg.pnsapi.categories.map(String);
+  }
+
+  const loadNames = pnsClient.findNames().then((pnsNames) => {
+    for (const name of pnsNames) {
+      if (name.code && categories.includes(name.category)) {
+        const m = name.code.match(/^[A-Z0-9nx]+$/);
+        if (!m) {
+          warn(`PNS Invalid %s name: '%s' (ignoring)`, name.category, name.code);
+          continue;
+        }
+        const code = name.code.replace(/n/g, '\\d?').replace(/x/g, '[OLE]');
+        approvedNames.push(new RegExp(`^${code}$`));
+        debug(`PNS Approved %s name: '%s' /%s/`, name.category, name.code, code);
+      }
+    }
+  });
+
+  await Promise.all([loadGroups, loadNames]);
 
   let slotSheetName: string | undefined;
   let deviceSheetName: string | undefined;
@@ -749,6 +720,15 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
     } else if (!deviceType.match(DEVICE_TYPE_REGEX)) {
       result.errors.push(`Slot type, '${deviceType}', is not valid`);
     } else {
+      let found = false;
+      for (const approvedName of approvedNames) {
+        if (approvedName.test(deviceType)) {
+          found = true;
+        }
+      }
+      if (!found) {
+        warn(`Slot device type, '${deviceType}', is not approved`);
+      }
       result.slot.deviceType = deviceType;
     }
 
@@ -890,6 +870,15 @@ async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResul
     } else if (!deviceType.match(DEVICE_TYPE_REGEX)) {
       result.errors.push(`Device type, '${deviceType}', is not valid`);
     } else {
+      let found = false;
+      for (const approvedName of approvedNames) {
+        if (approvedName.test(deviceType)) {
+          found = true;
+        }
+      }
+      if (!found) {
+        warn(`Device device type, '${deviceType}', is not approved`);
+      }
       result.device.deviceType = deviceType;
     }
 
