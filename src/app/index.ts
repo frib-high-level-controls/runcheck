@@ -58,6 +58,7 @@ interface Config {
     session_life: {};
     session_secret: {};
     admin_roles: {};
+    web_env?: {};
   };
   mongo: {
     user?: {};
@@ -371,6 +372,15 @@ async function doStart(): Promise<express.Application> {
   app.set('views', path.resolve(__dirname, '..', 'views'));
   app.set('view engine', 'pug');
   app.set('view cache', (env === 'production') ? true : false);
+
+  // Configure 'webenv' property and add to response locals
+  const webenv = cfg.app.web_env || process.env.WEB_ENV || 'development';
+  info('Web environment: \'%s\'', webenv);
+  app.set('webenv', webenv);
+  app.use((req, res, next) => {
+    res.locals.webenv = webenv;
+    next();
+  });
 
   // Session configuration
   app.use(session({
