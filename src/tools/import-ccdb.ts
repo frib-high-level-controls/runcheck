@@ -347,7 +347,7 @@ async function main() {
   // | component_type | bigint(20)   | YES  | MUL | NULL    |       |
   // +----------------+--------------+------+-----+---------+-------+
 
-  let rows: {};
+  let rows: unknown;
   try {
     rows = await connection.query(
       `SELECT d.id, d.description, d.serial_number, t.name from device AS d, component_type AS t
@@ -372,7 +372,7 @@ async function main() {
     device.desc = row.description;
     device.deviceType = row.name;
 
-    let props: {};
+    let props: unknown;
     try {
       props = await connection.query(
         `SELECT * from property AS p, device_property_value AS pv
@@ -507,7 +507,7 @@ async function main() {
       info('Alternate Safety Level specified: %s', slot.safetyLevel);
     }
 
-    let props = {};
+    let props: unknown;
     try {
       props = await connection.query(
         `SELECT * from property AS p, slot_property_value AS pv

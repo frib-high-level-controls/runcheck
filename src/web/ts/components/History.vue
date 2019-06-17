@@ -11,7 +11,17 @@
     import HistoryPanel from './HistoryPanel.vue';
     import LoadingPanel from './LoadingPanel.vue';
 
-    export default Vue.extend({
+    interface CompProps {
+        GET_URI: string;
+    }
+
+    interface CompData {
+        updates: webapi.Update[];
+        loading: boolean;
+        errorState: boolean;
+    }
+
+    export default Vue.extend<CompData, unknown, unknown, CompProps>({
         props: {
             GET_URI: {
                 type: String,
