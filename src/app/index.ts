@@ -238,6 +238,7 @@ async function doStart(): Promise<express.Application> {
     }
   }
 
+  // Configure the server bind address and port
   app.set('port', String(cfg.app.port));
   app.set('addr', String(cfg.app.addr));
 

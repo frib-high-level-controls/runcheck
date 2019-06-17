@@ -1,6 +1,6 @@
 /**
  * Type declaration for the 'passport-cas' package
- * See: https://www.npmjs.com/package/passport-cas
+ * See: https://www.npmjs.com/package/@jcu/passport-cas
  */
 declare module '@jcu/passport-cas' {
 

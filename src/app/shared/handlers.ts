@@ -239,6 +239,13 @@ export function requestErrorHandler(): ErrorRequestHandler {
     } else if (err instanceof Error) {
       message = err.message;
       details.message = message;
+      // If the error includes a 'status' property then use it.
+      // (Specifically added to support passport's AuthenticationError)
+      const s = Number((err as any).status);
+      if (s >= 100 && s < 600) {
+        status = Math.floor(s);
+        details.code = status;
+      }
     }
 
     if (status >= 500) {
@@ -269,6 +276,21 @@ export function requestErrorHandler(): ErrorRequestHandler {
     }).catch(next);
   };
 }
+
+
+/**
+ * Noop request handler useful for initial values or placeholders.
+ */
+export function noopHandler(err?: any): RequestHandler {
+  return (req, res, next) => {
+    if (err) {
+      next(err);
+      return;
+    }
+    next();
+  };
+}
+
 
 /**
  * Set the response local 'basePath' to relative

@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "start": "./bin/app",
-    "grunt": "./node_modules/.bin/grunt",
-    "mocha": "./node_modules/.bin/mocha",
-    "nyc": "./node_modules/.bin/nyc",
-    "nyc-mocha": "./node_modules/.bin/nyc ./node_modules/.bin/mocha",
-    "pug": "./node_modules/.bin/pug",
-    "pug-lint": "./node_modules/.bin/pug-lint",
+    "build-all": "grunt clean build-all",
+    "grunt": "grunt",
+    "mocha": "mocha",
+    "nyc": "nyc",
+    "nyc-mocha": "nyc mocha",
+    "pug": "pug",
+    "pug-lint": "pug-lint",
     "postinstall": "cd ./public && npm ci"
   },
   "dependencies": {
