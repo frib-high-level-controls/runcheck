@@ -98,13 +98,13 @@ export async function start(options?: { dbpath?: boolean | string }): Promise<nu
       } else {
         warn('MongoDB exit with code: %s, signal: %s', code, sig);
       }
+      if (mongod && !mongod.stdout) {
+        reject(new Error('MongoDB process standard output is null'));
+      } else {
+        reject(new Error('MongoDB terminated before startup completed'));
+      }
       mongod = null;
-      reject(new Error('MongoDB terminated before startup completed'));
     });
-
-    if (!mongod.stdout || !mongod) {
-      mongod.kill();
-    }
 
     if (mongod.stdout) {
       mongod.stdout.on('data', (data) => {
@@ -119,18 +119,17 @@ export async function start(options?: { dbpath?: boolean | string }): Promise<nu
         }
       });
     } else {
-      warn('Unable to read MongoDB port from standard output');
       mongod.kill();
     }
 
     if (mongod.stderr) {
-    mongod.stderr.on('data', (data) => {
-      for (const line of data.toString().split('\n')) {
-        if (line) {
-          dberr(line);
+      mongod.stderr.on('data', (data) => {
+        for (const line of data.toString().split('\n')) {
+          if (line) {
+            dberr(line);
+          }
         }
-      }
-    });
+      });
     }
   });
 }
