@@ -981,7 +981,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage()
   let [subjects, configs, statuses ] = await pending;
   debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
 
-  let subject: IChecklistSubject | undefined;
+  let subject: ChecklistSubject | undefined;
   for (let s of subjects) {
     if (s.name === name) {
       subject = s;
@@ -1004,7 +1004,25 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage()
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
-  let pkg: webapi.Pkg<{ required?: {}, assignees?: {} }> = req.body;
+  const pkg: webapi.Pkg<{ desc?: {}, required?: {}, assignees?: {} }> = req.body;
+
+  if (pkg.data.desc !== undefined) {
+    if (typeof pkg.data.desc !== 'string') {
+      throw new RequestError('Checklist Subject desc is invalid', BAD_REQUEST);
+    }
+    const desc = pkg.data.desc.trim();
+    if (desc === '') {
+      throw new RequestError('Checklist Subject desc is required', BAD_REQUEST);
+    }
+    if (subject.desc !== desc) {
+      if (!subject.isCustom()) {
+        throw new RequestError('Checklist Subject is not custom', BAD_REQUEST);
+      }
+      subject.desc = desc;
+      debug('Save subject: %s', subject.name);
+      await subject.saveWithHistory(auth.formatRole(USR, username));
+    }
+  }
 
   if (pkg.data.required !== undefined) {
     if (typeof pkg.data.required !== 'boolean') {
