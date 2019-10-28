@@ -352,6 +352,11 @@ router.get('/checklists', catchAll(async (req, res) => {
           varRoles = [];
         }
 
+        let ownerRoles: string[] = [];
+        if (varRoles.length > 0) {
+          ownerRoles = [ varRoles[0][1] ];
+        }
+
         let webSubjects: webapi.ChecklistSubjectTableRow[] = [];
         for (let subject of subjects) {
           if (!subject.checklistId || subject.checklistId.equals(checklist._id)) {
@@ -376,7 +381,7 @@ router.get('/checklists', catchAll(async (req, res) => {
             }
 
             webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-            webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+            webSubject.canUpdate = auth.hasAnyRole(req, ownerRoles, adminRoles, webSubject.assignees);
 
             webSubjects.push(webSubject);
           }
@@ -580,7 +585,7 @@ router.post('/checklists', auth.ensureAuthc(), ensurePackage(), ensureAccepts('j
     };
 
     webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+    webSubject.canUpdate =  auth.hasAnyRole(req, ownerRole, adminRoles, webSubject.assignees);
 
     webSubjects.push(webSubject);
   }
@@ -697,7 +702,7 @@ router.get('/checklists/:id', ensureAccepts('json'), catchAll(async (req, res) =
     }
 
     webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-    webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+    webSubject.canUpdate =  auth.hasAnyRole(req, ownerRole, adminRoles, webSubject.assignees);
 
     webSubjects.push(webSubject);
   }
@@ -890,7 +895,7 @@ router.post('/checklists/:id/subjects', auth.ensureAuthc(), ensurePackage(), ens
   };
 
   webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-  webSubject.canUpdate =  auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+  webSubject.canUpdate =  auth.hasAnyRole(req, ownerRole, adminRoles, webSubject.assignees);
 
   res.status(CREATED).json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -1083,7 +1088,7 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage()
   }
 
   webSubject.assignees = subVarRoles(webSubject.assignees, varRoles);
-  webSubject.canUpdate = auth.hasAnyRole(req, adminRoles, webSubject.assignees);
+  webSubject.canUpdate = auth.hasAnyRole(req, ownerRole, adminRoles, webSubject.assignees);
 
   res.json(<webapi.Pkg<webapi.ChecklistSubjectDetails>> {
     data: webSubject,
@@ -1124,6 +1129,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
   ]);
 
   let varRoles: Array<[string, string]>;
+  let ownerRole: string | undefined;
 
   switch (checklist.targetType) {
   case Device.modelName: {
@@ -1132,6 +1138,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
       throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(device) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   case Slot.modelName: {
@@ -1143,6 +1150,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
       throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(slot) ];
+    ownerRole = varRoles[0][1];
     if (slot.installDeviceId) {
       if (!device) {
         throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
@@ -1157,6 +1165,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
       throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
     }
     varRoles = [ getVarRoles(group) ];
+    ownerRole = varRoles[0][1];
     break;
   }
   default:
@@ -1219,7 +1228,7 @@ router.put('/checklists/:id/statuses/:name', auth.ensureAuthc(), ensurePackage()
   subject.assignees = subVarRoles(subject.assignees, varRoles);
 
   debug('Assert user has any role: [%s]', subject.assignees);
-  if (!auth.hasAnyRole(req, adminRoles, subject.assignees)) {
+  if (!auth.hasAnyRole(req, ownerRole, adminRoles, subject.assignees)) {
     throw new RequestError('Not permitted to modify subject', FORBIDDEN);
   }
 
