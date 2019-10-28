@@ -498,7 +498,7 @@ $(WebUtil.wrapCatchAll0(async () => {
       title: 'Order',
       data: <any> null,
       render: (row: SlotTableRow): string => {
-        let m = row.name.match(/([DN]\d+)/);
+        let m = row.name.match(/_([DN]\d{4})$/);
         return m ? m[1] : '';
       },
       searching: true,
