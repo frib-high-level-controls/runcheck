@@ -499,6 +499,11 @@ $(WebUtil.wrapCatchAll0(async () => {
       data: <any> null,
       render: (row: SlotTableRow): string => {
         let m = row.name.match(/_([DN]\d{4})$/);
+        if (!m) {
+          // If names does not contain a D or N
+          // number then check the desc field.
+          m = row.desc.match(/\[([DN]\d{4})\]/);
+        }
         return m ? m[1] : '';
       },
       searching: true,
