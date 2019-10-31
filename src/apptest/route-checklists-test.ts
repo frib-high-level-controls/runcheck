@@ -492,4 +492,64 @@ describe('Test Checklist routes', () => {
     }
   });
 
+  describe('Delete custom checklist subject', () => {
+    const table = [
+      // User unauthenticated
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: '', subject: 'EE2', cl: { approved: true, checked: 3, total: 4 }, status: 302 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: '', subject: 'ASM', cl: { approved: true, checked: 3, total: 4 }, status: 302 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: '', subject: 'EE2', cl: { approved: true, checked: 4, total: 5 }, status: 302 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          user: '', subject: 'ASM', cl: { approved: true, checked: 4, total: 4 }, status: 302 },
+      // User unauthorized
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'EESME', subject: 'EE2', cl: { approved: true, checked: 3, total: 4 }, status: 403 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEDM',  subject: 'EE2', cl: { approved: true, checked: 4, total: 5 }, status: 403 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEDM',  subject: 'ASM', cl: { approved: true, checked: 4, total: 4 }, status: 403 },
+      // Delete Standard Subject
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM',   subject: 'EE',  cl: { approved: true, checked: 3, total: 4 }, status: 400 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM',   subject: 'DO',  cl: { approved: true, checked: 3, total: 4 }, status: 400 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM',   subject: 'ME',  cl: { approved: true, checked: 4, total: 5 }, status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM',   subject: 'EE',  cl: { approved: true, checked: 4, total: 4 }, status: 400 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM',   subject: 'AM',  cl: { approved: true, checked: 4, total: 4 }, status: 400 },
+      // Delete Custom Subject
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM',   subject: 'EE2',  cl: { approved: true,  checked: 3, total: 3 }, status: 204 },
+      { target: '/devices/T99999-DEVA-0009-0099-S00001', user: 'FEDM',   subject: 'ASM',  cl: { approved: true,  checked: 2, total: 2 }, status: 204 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM',   subject: 'EE2',  cl: { approved: true,  checked: 4, total: 4 }, status: 204 },
+      { target: '/slots/FE_TEST:DEVA_D0001',             user: 'FEAM',   subject: 'ASM',  cl: { approved: true,  checked: 3, total: 3 }, status: 204 },
+      { target: '/groups/slot/FE_SLOT_GROUP01',          user: 'FEAM',   subject: 'ASM',  cl: { approved: true,  checked: 3, total: 3 }, status: 204 },
+    ];
+    for (const row of table) {
+      it(`User ${row.user || '\'Anonymous\''} delete checklist (${row.target}) subject: ${row.subject}`, async () => {
+        let checklistId: string | undefined;
+        await request(handler)
+          .get(row.target)
+          .set('Accept', 'application/json')
+          .expect(200)
+          .expect((res: request.Response) => {
+            assert.isObject(res.body, 'res.body');
+            assert.isObject(res.body.data, 'res.body.data');
+            assert.isString(res.body.data.checklistId, 'res.body.data.checklistId');
+            checklistId = String(res.body.data.checklistId);
+          });
+
+        for (const c of customChecklistSubjects) {
+          if (c.target === row.target && c.desc === row.subject) {
+            row.subject = c.name;
+            break;
+          }
+        }
+
+        const agent = await requestFor(handler, row.user);
+        await agent
+          .delete(`/checklists/${checklistId}/subjects/${row.subject}`)
+          .set('Accept', 'application/json')
+          .expect(row.status);
+
+        await request(handler)
+          .get(`/checklists/${checklistId}`)
+          .set('Accept', 'application/json')
+          .expect(expectPackage(row.cl))
+          .expect(200);
+      });
+    }
+  });
+
 });

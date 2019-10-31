@@ -166,9 +166,39 @@ class ChecklistEditFormViewModel {
           row.requestStatusMsg = 'Success';
 
         } else if (remove) {
-          // Remove an existing subject
-          row.requestStatus = 'FAIL';
-          row.requestStatusMsg = 'Subject remove not yet supported';
+          // Remove an existing subject from the checklist
+          try {
+            await $.ajax({
+              url: `${basePath}/checklists/${this.parent.checklist.id}/subjects/${row.name}`,
+              method: 'DELETE',
+              dataType: 'json',
+            });
+          } catch (xhr) {
+            const message = 'Unknown error removing subject';
+            row.requestStatus = 'FAIL';
+            row.requestStatusMsg = WebUtil.unwrapPkgErrMsg(xhr, message);
+            continue;
+          }
+
+          for (let idx = 0; idx < this.parent.checklist.subjects.length; idx += 1) {
+            if (this.parent.checklist.subjects[idx].name === row.name) {
+              // update the parent view model
+              this.parent.checklist.subjects.splice(idx, 1);
+            }
+          }
+
+          for (let idx = 0; idx < this.parent.checklist.statuses.length; idx += 1) {
+            if (this.parent.checklist.statuses[idx].subjectName === row.name) {
+              // update the parent view model
+              this.parent.checklist.statuses.splice(idx, 1);
+            }
+          }
+
+          // update the local view model
+          row.requestStatus = 'DONE';
+          row.requestStatusMsg = 'Success';
+          // remove the row from the view
+          this.rows.splice(ridx, 1);
 
         } else {
           // Update and existing subject

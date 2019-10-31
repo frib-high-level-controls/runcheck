@@ -7,6 +7,7 @@ import * as lodash from 'lodash';
 import * as mongoose from 'mongoose';
 
 import * as auth from '../shared/auth';
+import * as logging from '../shared/logging';
 import * as models from '../shared/models';
 
 import {
@@ -66,6 +67,7 @@ interface RouterOptions {
 const debug = dbg('runcheck:checklists');
 
 const CREATED = HttpStatus.CREATED;
+const NO_CONTENT = HttpStatus.NO_CONTENT;
 const CONFLICT = HttpStatus.CONFLICT;
 const FORBIDDEN = HttpStatus.FORBIDDEN;
 const NOT_FOUND = HttpStatus.NOT_FOUND;
@@ -75,6 +77,8 @@ const INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR;
 const GRP = auth.RoleScheme.GRP;
 const USR = auth.RoleScheme.USR;
 const VAR = auth.RoleScheme.VAR;
+
+const warn = logging.warn;
 
 let adminRoles: string[] = [];
 
@@ -98,6 +102,16 @@ export function getRouter(opts?: RouterOptions): express.Router {
   return router;
 };
 
+
+/**
+ * Expose the useful withSession() method available in MongoDB driver, but not in Mongoose!
+ * (See: https://mongodb.github.io/node-mongodb-native/3.2/api/MongoClient.html#startSession)
+ *
+ * Consider moving this utility method to the 'models' module. Hopefully Mongoose will support it!
+ */
+function withSession(operation: (session: mongoose.ClientSession) => Promise<void>): Promise<void> {
+  return (mongoose.connection as any).client.withSession(operation);
+}
 
 /**
  * Map the specified array of objects by checklist type property
@@ -1112,6 +1126,167 @@ router.put('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensurePackage()
     data: webSubject,
   });
 
+}));
+
+
+/**
+ * Delete a checklist (custom) subject specified by name
+ */
+// tslint:disable-next-line:max-line-length
+router.delete('/checklists/:id/subjects/:name', auth.ensureAuthc(), ensureAccepts('json'), catchAll(async (req, res) => {
+  const id = String(req.params.id).toUpperCase();
+  const name = String(req.params.name).toUpperCase();
+  debug('Find Checklist with id: %s', id);
+
+  const username = auth.getUsername(req);
+  if (!username) {
+    throw new RequestError('No username on authenticated request.', INTERNAL_SERVER_ERROR);
+  }
+
+  await withSession(async (session) => {
+    const checklist = await Checklist.findById(id).session(session).exec();
+    if (!checklist) {
+      throw new RequestError('Checklist not found', NOT_FOUND);
+    }
+
+    const subjectsPx = ChecklistSubject.find({
+      checklistType: checklist.checklistType,
+      $or: [ {checklistId: {$exists: false}}, {checklistId: checklist._id} ],
+    }).session(session).exec();
+
+    const configsPx = ChecklistConfig.find({
+      checklistId: checklist._id,
+    }).session(session).exec();
+
+    const statusesPx = ChecklistStatus.find({
+      checklistId: checklist._id,
+    }).session(session).exec();
+
+    let varRoles: Array<[string, string]>;
+    let ownerRole: string;
+
+    switch (checklist.targetType) {
+    case Device.modelName: {
+      const device = await Device.findById(checklist.targetId).session(session).exec();
+      if (!device || !device.id) {
+        throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles = [ getVarRoles(device) ];
+      ownerRole = varRoles[0][1];
+      break;
+    }
+    case Slot.modelName: {
+      const [ slot, device ] = await Promise.all([
+        Slot.findById(checklist.targetId).session(session).exec(),
+        Device.findOne({ installSlotId: checklist.targetId }).session(session).exec(),
+      ]);
+      if (!slot || !slot.id) {
+        throw new RequestError('Slot not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles = [ getVarRoles(slot) ];
+      ownerRole = varRoles[0][1];
+      if (slot.installDeviceId) {
+        if (!device) {
+          throw new RequestError('Device not found', INTERNAL_SERVER_ERROR);
+        }
+        varRoles.push(getVarRoles(device));
+      }
+      break;
+    }
+    case Group.modelName: {
+      const group = await Group.findById(checklist.targetId).session(session).exec();
+      if (!group || !group.id) {
+        throw new RequestError('Group not found', INTERNAL_SERVER_ERROR);
+      }
+      varRoles = [ getVarRoles(group) ];
+      ownerRole = varRoles[0][1];
+      break;
+    }
+    default:
+      throw new RequestError(`Target type not supported: ${checklist.targetType}`, INTERNAL_SERVER_ERROR);
+    }
+
+    const [subjects, configs, statuses ] = await Promise.all([subjectsPx, configsPx, statusesPx]);
+    debug('Found Checklist subjects: %s, configs: %s, statuses: %s', subjects.length, configs.length, statuses.length);
+
+    let subject: ChecklistSubject | undefined;
+    for (let idx = 0; idx < subjects.length; idx++) {
+      const s = subjects[idx];
+      if (s.name === name) {
+        subjects.splice(idx, 1); // Remove from subjects lists!
+        subject = s;
+        break;
+      }
+    }
+    if (!subject) {
+      throw new RequestError(`Checklist subject not found`, NOT_FOUND);
+    }
+
+    let config: ChecklistConfig | undefined;
+    for (let idx = 0; idx < configs.length; idx++) {
+      const c = configs[idx];
+      if (c.subjectName === name) {
+        configs.splice(idx, 1); // Remove from configs list!
+        config = c;
+        break;
+      }
+    }
+
+    if (!auth.hasAnyRole(req, adminRoles, ownerRole)) {
+      throw new RequestError('Not permitted to modify subject', FORBIDDEN);
+    }
+
+    if (!subject.isCustom()) {
+      throw new RequestError('Checkist subject is not custom', BAD_REQUEST);
+    }
+
+    const rmstatuses: ChecklistStatus[] = [];
+    for (let idx = 0; idx < statuses.length; idx++) {
+      const s = statuses[idx];
+      if (s.subjectName === name) {
+        statuses.splice(idx, 1); // Remove from statuses list!
+        rmstatuses.push(s);
+      }
+    }
+
+    // Consider using transaction once upgraded to MongoDB v4+ //
+    // await session.withTransaction(async () => {
+    await Promise.resolve().then(async () => {
+      const pxs: Array<Promise<{}>> = [];
+
+      // First remove the subject (SHOULD always be defined!)
+      if (subject) {
+        debug('Remove the Checkist subject: %s', name);
+        // Attempt to remove the subject first, if it fails the database is still consistent.
+        await subject.remove();
+      }
+
+      // Next remove the config
+      if (config) {
+        debug('Remove the Checklist config for subject: %s', name);
+        pxs.push(config.remove());
+      }
+
+      // Next remove the statuses
+      debug('Remove the Checklist statuses for subject: %s (%s)', name, rmstatuses.length);
+      pxs.push(...rmstatuses.map((s) => s.remove()));
+
+      // Next update the checklist
+      debug('Save checklist with updated summary');
+      isChecklistApproved(checklist, subjects, configs, statuses, true);
+      pxs.push(checklist.save());
+
+      try {
+        // Attempt to remove associated documents, if it fails the database could be inconsistent!
+        await Promise.all(pxs);
+      } catch (e) {
+        warn('Failed to complete Checklist Subject delete (%s, %s)', id, name);
+        throw e;
+      }
+    });
+  });
+
+  res.status(NO_CONTENT).send();
 }));
 
 /**
