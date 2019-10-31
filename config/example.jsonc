@@ -56,7 +56,12 @@
       // Force use of  createIndex() instead of ensureIndex()
       "useCreateIndex": true,
       // Use `findOneAndUpdate()` instead of deprecated `findAndModify()`
-      "useFindAndModify": false
+      "useFindAndModify": false,
+      // Use the new Server Discover and Monitoring engine
+      // Problems have been reported with respect to connection
+      // and disconnection issues, so will keep disabled for now!
+      // (See: https://github.com/Automattic/mongoose/issues/8180)
+      "useUnifiedTopology": false
     }
   },
   "cas": {
