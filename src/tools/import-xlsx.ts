@@ -799,7 +799,7 @@ interface DeviceImportResult extends ImportResult {
 async function readDevices(worksheet: XLSX.WorkSheet): Promise<DeviceImportResult[]> {
   const results: DeviceImportResult[] = [];
 
-  const data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
   for (const irow of data) {
     // cast to interface with index signature
@@ -899,7 +899,7 @@ interface InstallImportResult extends ImportResult {
 async function readInstalls(worksheet: XLSX.WorkSheet): Promise<InstallImportResult[]> {
   const results: InstallImportResult[] = [];
 
-  const data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
   for (const irow of data) {
     // cast to interface with index signature
@@ -979,7 +979,7 @@ interface UninstallImportResult extends ImportResult {
 async function readUninstalls(worksheet: XLSX.WorkSheet): Promise<UninstallImportResult[]> {
   const results: UninstallImportResult[] = [];
 
-  const data = XLSX.utils.sheet_to_json(worksheet);
+  const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
   for (const irow of data) {
     // cast to interface with index signature
