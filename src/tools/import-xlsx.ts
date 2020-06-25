@@ -767,7 +767,7 @@ async function readSlots(worksheet: XLSX.WorkSheet): Promise<SlotImportResult[]>
     if (!arr) {
       result.errors.push('Slot ARR is not specified');
     } else if (!arr.match(ARR_REGEX)) {
-      result.errors.push(`Slot ARR, '${drr}', is not valid`);
+      result.errors.push(`Slot ARR, '${arr}', is not valid`);
     } else {
       result.slot.arr = arr;
     }
