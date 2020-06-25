@@ -113,7 +113,7 @@ const approvedNames = new Array<RegExp>();
 
 const SLOT_NAME_REGEX = /^[^\W_]+_[^\W_]+(:[^\W_]+_[^\W_]+)?$/;
 const DRR_REGEX = /^DRR[\d?]?[\d?]?(-[\w?]+)?$/;
-const ARR_REGEX = /^ARR[\d?]?[\d?]?(-[\w?]+)?$/;
+const ARR_REGEX = /^[AI]RR[\d?]?[\d?]?(-[\w?]+)?$/;
 const DEVICE_TYPE_REGEX = /^\w+$/;
 const DEVICE_NAME_REGEX = /^[A-Z]\d{5}-[A-Z]{3}-\d{4}-\d{4}(-S\d{5})?$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
